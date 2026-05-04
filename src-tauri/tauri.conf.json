@@ -1,10 +1,10 @@
 {
-  "build": {
+"build": {
     "beforeBuildCommand": "",
     "beforeDevCommand": "",
-    "devPath": "../",
-    "distDir": "../"
-  },
+    "devPath": "../dist/",
+    "distDir": "../dist/"
+},
   "package": {
     "productName": "Flight Track Viewer",
     "version": "1.0.0"
