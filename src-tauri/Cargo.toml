@@ -1,0 +1,18 @@
+[package]
+name = "flight-track-viewer"
+version = "1.0.0"
+description = "Flight Track Viewer — NAV Portugal"
+authors = ["NAV Portugal"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+tauri = { version = "1.6", features = ["shell-open"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]
