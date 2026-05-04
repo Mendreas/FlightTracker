@@ -31,16 +31,17 @@
     "updater": {
       "active": false
     },
-    "windows": [
-      {
-        "fullscreen": false,
-        "resizable": true,
-        "title": "Flight Track Viewer",
-        "width": 1400,
-        "height": 900,
-        "minWidth": 900,
-        "minHeight": 600
-      }
-    ]
+"windows": [
+  {
+    "fullscreen": false,
+    "resizable": true,
+    "title": "Flight Track Viewer",
+    "width": 1400,
+    "height": 900,
+    "minWidth": 900,
+    "minHeight": 600,
+    "fileDropEnabled": false
+  }
+]
   }
 }
