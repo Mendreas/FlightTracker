@@ -1,0 +1,43 @@
+name: Criar DMG para macOS (Tauri)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+
+    steps:
+      - name: Download do código
+        uses: actions/checkout@v4
+
+      - name: Instalar Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar Tauri CLI
+        run: npm install -g @tauri-apps/cli@1
+
+      - name: Build Tauri (DMG)
+        run: tauri build
+        env:
+          TAURI_PRIVATE_KEY: ''
+          TAURI_KEY_PASSWORD: ''
+
+      - name: Publicar DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: Flight-Track-Viewer-macOS-DMG
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 30
