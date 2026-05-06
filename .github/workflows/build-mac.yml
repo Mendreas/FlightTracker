@@ -30,7 +30,7 @@ jobs:
         run: npm install -g @tauri-apps/cli@1
 
       - name: Build Tauri (DMG)
-        run: tauri build
+        run: tauri build --bundles dmg
         env:
           TAURI_PRIVATE_KEY: ''
           TAURI_KEY_PASSWORD: ''
