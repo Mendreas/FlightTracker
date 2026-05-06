@@ -361,6 +361,13 @@ tr:hover td{background:rgba(0,200,255,.03);}
 <header>
   <div class="logo">NAV <span>Portugal</span> / Flight Track Viewer</div>
   <div class="hdr-right">
+    <label style="font-size:10px;color:var(--muted);margin-right:2px;">Aeroporto:</label>
+    <select id="airportSel" class="inp inp-sm" style="width:130px;font-size:11px;" onchange="switchAirport(this.value)">
+      <option value="LPPT" selected>Lisboa (LPPT)</option>
+      <option value="LPPR">Porto (LPPR)</option>
+      <option value="LPFR">Faro (LPFR)</option>
+      <option value="LPMA">Funchal (LPMA)</option>
+    </select>
     <span class="dot" id="sDot"></span>
     <span style="font-size:11px;color:var(--muted);" id="sTxt">Sem dados</span>
     <button class="btn toggled" id="coordBtn" onclick="toggleCoords()">&#x1F4D0; Decimais</button>
@@ -425,7 +432,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
       <div class="tab" onclick="switchTab('tbl',this)">&#x1F4CB; Dados por tempo</div>
       <div class="tab" onclick="switchTab('pts',this)">&#x1F4CD; Pontos</div>
       <div class="tab" onclick="switchTab('seq',this)">&#x1F6EB; Sequ&ecirc;ncia</div>
-      <div class="tab" onclick="switchTab('final',this)">&#x1F6EC; Final (02/20)</div>
+      <div class="tab" id="tabFinal" onclick="switchTab('final',this)">&#x1F6EC; Final</div>
       <div class="tab" onclick="switchTab('kpi',this)">&#x1F4CA; KPIs</div>
       <div class="tab" onclick="switchTab('ias',this)">&#x26A1; Velocidades STAR</div>
       <div class="tab" onclick="switchTab('iasapp',this)">&#x1F6EC; Velocidades APP</div>
@@ -463,12 +470,8 @@ tr:hover td{background:rgba(0,200,255,.03);}
           </div>
           <div style="padding:7px 9px;border-bottom:1px solid var(--border);flex-shrink:0;">
             <div class="sb-section-lbl" style="margin-bottom:5px;">Conjunto de pontos</div>
-            <div class="pt-mode-row">
-              <button class="btn" id="ptModeAPP_02" onclick="setPointMode('APP_02')">APP_02</button>
-              <button class="btn" id="ptModeAPP_20" onclick="setPointMode('APP_20')">APP_20</button>
-              <button class="btn" id="ptModeSTAR02" onclick="setPointMode('STAR02')">STAR02</button>
-              <button class="btn" id="ptModeSTAR20" onclick="setPointMode('STAR20')">STAR20</button>
-              <button class="btn" id="ptModeALL" onclick="setPointMode('ALL')" style="grid-column:1 / -1;">TODAS</button>
+            <div class="pt-mode-row" id="ptModeRow">
+              <!-- populated by buildPointModeButtons() -->
             </div>
           </div>
           <div class="pts-list" id="ptList"></div>
@@ -551,9 +554,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">Aproxima&ccedil;&otilde;es</span>
         <span class="radius-lbl">Pista:</span>
         <select id="finRwy" class="inp inp-sm" style="width:140px;">
-          <option value="BOTH" selected>Ambas (02+20)</option>
-          <option value="02">RWY 02</option>
-          <option value="20">RWY 20</option>
+          <!-- populated dynamically by buildFinRwyOptions() -->
         </select>
         <span class="radius-lbl">FAF:</span>
         <input class="inp inp-sm" id="finFaf" type="number" value="7" min="3" max="15" step="0.5" style="width:60px;">
@@ -574,7 +575,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <div class="empty" id="finEmpty">
           <div class="empty-ico">&#x1F6EC;</div>
           <div class="empty-ttl">Configura par&acirc;metros e clica Analisar</div>
-          <div class="empty-sub" style="font-size:10px;color:var(--muted);">Detecta aterragens em LPPT 02/20 e calcula m&eacute;tricas FAF&rarr;THR</div>
+          <div class="empty-sub" style="font-size:10px;color:var(--muted);">Detecta aterragens e calcula m&eacute;tricas FAF&rarr;THR</div>
         </div>
         <table id="finResultTable" style="display:none;width:100%;border-collapse:collapse;font-size:11px;">
           <thead id="finResultHead"></thead><tbody id="finResultBody"></tbody>
@@ -2331,6 +2332,104 @@ const AIP_POINTS=[
   {name:'ROMEP',lat:39.065364,lon:-8.720614,type:'aip',desc:'Waypoint ARR LPPT'},
   {name:'PT810',lat:39.758353,lon:-8.513492,type:'aip',desc:'PT waypoint ARR LPPT'},
   {name:'PT812',lat:39.398158,lon:-8.796156,type:'aip',desc:'PT waypoint ARR LPPT'},
+  // ---- LPPR (Porto) FRA points from ENR 4.4 ----
+  {name:'ABLEG',lat:40.722778,lon:-8.431111,type:'aip',desc:'FRA LPPR'},
+  {name:'ASMOV',lat:40.969444,lon:-9.346944,type:'aip',desc:'FRA LPPR'},
+  {name:'ASPOR',lat:41.815278,lon:-8.081111,type:'aip',desc:'FRA LPPR'},
+  {name:'ADNOV',lat:41.518333,lon:-8.753056,type:'aip',desc:'Holding LPPR'},
+  {name:'BELDU',lat:41.358611,lon:-7.777222,type:'aip',desc:'FRA DEP LPPR'},
+  {name:'DIVUT',lat:41.023889,lon:-8.325833,type:'aip',desc:'Holding LPPR'},
+  {name:'ELGIX',lat:41.521111,lon:-7.673056,type:'aip',desc:'FRA ARR LPPR'},
+  {name:'INKIT',lat:41.180278,lon:-7.890833,type:'aip',desc:'FRA ARR LPPR'},
+  {name:'MANIK',lat:40.691944,lon:-8.616111,type:'aip',desc:'FRA DEP LPPR'},
+  {name:'MALIS',lat:41.855556,lon:-7.604722,type:'aip',desc:'PORTO TMA'},
+  {name:'MAPOR',lat:41.614167,lon:-8.058333,type:'aip',desc:'FRA LPPR'},
+  {name:'OTREG',lat:41.273056,lon:-8.687778,type:'aip',desc:'FRA LPPR'},
+  {name:'PESUL',lat:40.881944,lon:-8.115000,type:'aip',desc:'FRA ARR/DEP LPPR'},
+  {name:'RETMO',lat:41.222222,lon:-9.013889,type:'aip',desc:'Holding LPPR'},
+  {name:'UBANI',lat:41.557778,lon:-9.239444,type:'aip',desc:'FRA ARR/DEP LPPR'},
+  {name:'UDRUB',lat:41.424167,lon:-8.727500,type:'aip',desc:'FRA LPPR'},
+  {name:'ULVAX',lat:41.004167,lon:-7.834444,type:'aip',desc:'Holding LPPR'},
+  {name:'VASIP',lat:41.555000,lon:-8.376111,type:'aip',desc:'Holding LPPR'},
+  {name:'XAPIM',lat:41.078056,lon:-8.636667,type:'aip',desc:'FRA LPPR'},
+  // ---- LPFR (Faro) FRA points from ENR 4.4 ----
+  {name:'GENRO',lat:37.193056,lon:-7.614722,type:'aip',desc:'FRA ARR LPFR'},
+  {name:'GIMAL',lat:36.764444,lon:-8.005833,type:'aip',desc:'FRA ARR/DEP LPFR'},
+  {name:'IXOLI',lat:36.976389,lon:-8.701667,type:'aip',desc:'FRA ARR/DEP LPFR'},
+  {name:'MARIM',lat:37.416667,lon:-7.841111,type:'aip',desc:'FRA ARR LPFR'},
+  {name:'OKARI',lat:36.448611,lon:-8.159167,type:'aip',desc:'FRA DEP LPFR'},
+  {name:'TUPIX',lat:37.076111,lon:-7.383333,type:'aip',desc:'FRA ARR/DEP LPFR'},
+  {name:'USALU',lat:37.222222,lon:-8.300278,type:'aip',desc:'FRA ARR LPFR'},
+  {name:'XAPAS',lat:37.597222,lon:-7.950000,type:'aip',desc:'FRA DEP LPFR'},
+  // ---- LPFR approach / ILS fixes ----
+  {name:'THR10',lat:37.017222,lon:-7.985614,type:'aip',desc:'THR RWY 10 LPFR'},
+  {name:'THR28',lat:37.013450,lon:-7.959042,type:'aip',desc:'THR RWY 28 LPFR'},
+  {name:'VFA',lat:37.013611,lon:-7.975000,type:'aip',desc:'DVOR/DME 112.8 LPFR'},
+  {name:'RUWIB',lat:37.057083,lon:-8.269222,type:'aip',desc:'IF ILS/RNP 10 LPFR'},
+  {name:'FR910',lat:37.043778,lon:-8.174000,type:'aip',desc:'FAP ILS RWY 10 LPFR'},
+  {name:'FR728',lat:36.997000,lon:-7.842167,type:'aip',desc:'MATF ILS RWY 10 LPFR'},
+  {name:'FR609',lat:36.930917,lon:-8.346694,type:'aip',desc:'RCF RNP 10 LPFR'},
+  {name:'GEBTI',lat:36.972778,lon:-7.675306,type:'aip',desc:'IF ILS/RNP 28 LPFR'},
+  {name:'FR928',lat:36.986472,lon:-7.770333,type:'aip',desc:'FAP ILS RWY 28 LPFR'},
+  {name:'FR710',lat:37.033972,lon:-8.102472,type:'aip',desc:'MATF ILS RWY 28 LPFR'},
+  {name:'FR604',lat:36.867333,lon:-7.686833,type:'aip',desc:'RCF RNP 28 LPFR'},
+  // ---- LPMA (Funchal) FRA points from ENR 4.4 ----
+  {name:'BIMBO',lat:31.421389,lon:-16.032778,type:'aip',desc:'FRA ARR LPMA'},
+  {name:'DEGUN',lat:33.418611,lon:-15.658333,type:'aip',desc:'FRA DEP LPMA'},
+  {name:'EKNOT',lat:32.176389,lon:-16.295833,type:'aip',desc:'FRA ARR LPMA'},
+  {name:'FUSUL',lat:32.601389,lon:-16.661944,type:'aip',desc:'Holding LPMA'},
+  {name:'GALOZ',lat:33.033611,lon:-17.420556,type:'aip',desc:'FRA DEP LPMA'},
+  {name:'GOSGA',lat:32.082222,lon:-16.631111,type:'aip',desc:'FRA DEP LPMA'},
+  {name:'IBBAN',lat:33.343056,lon:-17.142222,type:'aip',desc:'FRA ARR LPMA'},
+  {name:'IRKID',lat:33.925000,lon:-18.069167,type:'aip',desc:'FRA DEP LPMA'},
+  {name:'KICAS',lat:33.750556,lon:-16.473333,type:'aip',desc:'FRA ARR LPMA'},
+  {name:'LAPPA',lat:33.295833,lon:-16.358611,type:'aip',desc:'FRA DEP LPMA'},
+  {name:'LIDRO',lat:33.667500,lon:-15.949722,type:'aip',desc:'FRA ARR LPMA'},
+  {name:'NIDUL',lat:32.365278,lon:-17.353056,type:'aip',desc:'FRA ARR/DEP LPMA'},
+  {name:'ORTIS',lat:31.406944,lon:-16.556944,type:'aip',desc:'FRA DEP LPMA'},
+  {name:'PILIM',lat:32.854167,lon:-16.591389,type:'aip',desc:'FRA DEP LPMA'},
+  {name:'RAKUN',lat:33.556944,lon:-15.781389,type:'aip',desc:'FRA ARR LPMA'},
+  // ── LPMA Airport & Approach waypoints ──────────────────────────────────────
+  {name:'THR05',lat:32.689932,lon:-16.783751,type:'aip',desc:'THR RWY 05 LPMA'},
+  {name:'THR23',lat:32.705841,lon:-16.765150,type:'aip',desc:'THR RWY 23 LPMA'},
+  {name:'FUN',lat:32.747222,lon:-16.705556,type:'aip',desc:'DVOR/DME 112.2 LPMA'},
+  {name:'MONEC',lat:32.456369,lon:-16.830389,type:'aip',desc:'IAF/Hold LPMA'},
+  {name:'ABUSU',lat:32.866944,lon:-16.635556,type:'aip',desc:'FAF DVOR LPMA'},
+  {name:'FUSUL',lat:32.601389,lon:-16.661944,type:'aip',desc:'Fix DVOR LPMA'},
+  {name:'GELO',lat:32.664558,lon:-16.803336,type:'aip',desc:'Visual Fix RWY 05 LPMA'},
+  // RNP RWY 05-a approach fixes
+  {name:'MA563',lat:32.799380,lon:-16.636633,type:'aip',desc:'IF RNP 05-a LPMA'},
+  {name:'MA564',lat:32.772003,lon:-16.659286,type:'aip',desc:'FAF RNP 05-a LPMA'},
+  {name:'MA565',lat:32.736403,lon:-16.688708,type:'aip',desc:'APP RNP 05 LPMA'},
+  {name:'MA566',lat:32.682993,lon:-16.732808,type:'aip',desc:'MAPT RNP 05-a LPMA'},
+  {name:'MA412',lat:32.701422,lon:-16.603542,type:'aip',desc:'Fix RNP 05-a LPMA'},
+  // RNP RWY 23 approach fixes
+  {name:'MA410',lat:32.807068,lon:-16.646557,type:'aip',desc:'IF RNP 23 LPMA'},
+  {name:'MA408',lat:32.771466,lon:-16.688354,type:'aip',desc:'FAP RNP 23 LPMA'},
+  {name:'MA561',lat:32.808964,lon:-16.639436,type:'aip',desc:'FAF RNP 23-b LPMA'},
+  {name:'MA562',lat:32.747169,lon:-16.705453,type:'aip',desc:'MAPT RNP 23-b LPMA'},
+  // ── LPPR Airport & Approach waypoints ──────────────────────────────────────
+  {name:'THR17',lat:41.260681,lon:-8.684561,type:'aip',desc:'THR RWY 17 LPPR'},
+  {name:'THR35',lat:41.233886,lon:-8.677536,type:'aip',desc:'THR RWY 35 LPPR'},
+  {name:'PRT',lat:41.272944,lon:-8.687778,type:'aip',desc:'DVOR/DME 114.1 LPPR'},
+  {name:'ADNOV',lat:41.518244,lon:-8.753164,type:'aip',desc:'IAF RWY 17 LPPR'},
+  {name:'RETMO',lat:41.228908,lon:-9.013808,type:'aip',desc:'Hold LPPR'},
+  {name:'AKULU',lat:40.984044,lon:-8.611819,type:'aip',desc:'IAF RWY 35 LPPR'},
+  // RNP Y/Z RWY 17 approach fixes
+  {name:'PR741',lat:41.452894,lon:-8.735161,type:'aip',desc:'IF RNP 17 LPPR'},
+  {name:'PR742',lat:41.384278,lon:-8.717044,type:'aip',desc:'FAF RNP Y 17 LPPR'},
+  {name:'PR743',lat:41.371458,lon:-8.713669,type:'aip',desc:'FAF RNP Z 17 LPPR'},
+  {name:'PR744',lat:41.211589,lon:-8.671669,type:'aip',desc:'MATF RNP 17 LPPR'},
+  // RNP RWY 35 approach fixes
+  {name:'PR541',lat:41.061011,lon:-8.632356,type:'aip',desc:'IF RNP 35 LPPR'},
+  {name:'PR542',lat:41.093897,lon:-8.640931,type:'aip',desc:'FAF RNP 35 LPPR'},
+  {name:'PR543',lat:41.233886,lon:-8.677536,type:'aip',desc:'MAPT RNP 35 LPPR'},
+  {name:'PR544',lat:41.315678,lon:-8.698997,type:'aip',desc:'MATF RNP 35 LPPR'},
+  // STAR waypoints (approach-specific, not in ENR)
+  {name:'ABLEG',lat:40.722658,lon:-8.431169,type:'aip',desc:'STAR Fix LPPR'},
+  {name:'VASIP',lat:41.554978,lon:-8.376133,type:'aip',desc:'STAR Fix LPPR'},
+  {name:'PR650',lat:41.550383,lon:-8.441872,type:'aip',desc:'STAR Fix LPPR'},
+  {name:'PR612',lat:41.537558,lon:-8.622525,type:'aip',desc:'STAR Fix LPPR'},
 ];
 
 let userPoints=[],selectedPoint=null,ptQueryResults=[];
@@ -2349,22 +2448,72 @@ const POINT_GROUPS={
     'ROMEP','EVPAP','FUSSI','ARNIT','UPKAT','PT813','PT811','PT818','EKLID','ROTBU',
     'LERLI','FADEF','COCUN'
   ],
+  // ── LPMA approach groups ──────────────────────────────────────────────────
+  LPMA_APP_05:['PILIM','MONEC','ABUSU','MA563','MA564','MA565','MA566','THR05'],
+  LPMA_APP_23:['PILIM','MONEC','MA410','MA561','MA562','THR23'],
+  // ── LPPR approach groups ──────────────────────────────────────────────────
+  LPPR_APP_17:['ADNOV','PR741','PR742','THR17','PR744','RETMO'],
+  LPPR_APP_35:['AKULU','PR541','PR542','THR35','PR544','RETMO'],
+  LPPR_STAR17:['ABLEG','VASIP','PR650','PR612','ADNOV'],
+  LPPR_STAR35:['ABLEG','AKULU','VASIP'],
+  // ── LPFR approach groups ──────────────────────────────────────────────────
+  LPFR_APP_10:['RUWIB','FR910','THR10','FR728','GIMAL'],
+  LPFR_APP_28:['GEBTI','FR928','THR28','FR710','GIMAL'],
 };
-const POINT_GROUPS_ALL=[...new Set([...POINT_GROUPS.APP_02,...POINT_GROUPS.APP_20,...POINT_GROUPS.STAR02,...POINT_GROUPS.STAR20])];
+const POINT_GROUPS_ALL=[...new Set([...POINT_GROUPS.APP_02,...POINT_GROUPS.APP_20,...POINT_GROUPS.STAR02,...POINT_GROUPS.STAR20,...POINT_GROUPS.LPMA_APP_05,...POINT_GROUPS.LPMA_APP_23,...POINT_GROUPS.LPPR_APP_17,...POINT_GROUPS.LPPR_APP_35,...POINT_GROUPS.LPPR_STAR17,...POINT_GROUPS.LPPR_STAR35,...POINT_GROUPS.LPFR_APP_10,...POINT_GROUPS.LPFR_APP_28])];
 function activePointNames(){
   return new Set(pointMode==='ALL'?POINT_GROUPS_ALL:(POINT_GROUPS[pointMode]||POINT_GROUPS_ALL));
 }
 function allPoints(){
   const names=activePointNames();
-  const aip=AIP_POINTS.filter(p=>names.has(String(p.name||'').toUpperCase()));
+  const aip=AIP_POINTS.filter(p=>{
+    const n=String(p.name||'').toUpperCase();
+    if((p.desc||'').includes(activeAirport)){
+      // For airports with POINT_GROUPS, filter by active mode (unless ALL)
+      if(pointMode==='ALL')return true;
+      return names.has(n);
+    }
+    // LPPT: POINT_GROUPS names not tagged with airport in desc
+    if(activeAirport==='LPPT')return names.has(n);
+    return false;
+  });
   return [...aip,...userPoints];
 }
+function buildPointModeButtons(){
+  const row=document.getElementById('ptModeRow');
+  if(!row)return;
+  let modes;
+  if(activeAirport==='LPPT'){
+    modes=[
+      {k:'APP_02',l:'APP 02'},{k:'APP_20',l:'APP 20'},
+      {k:'STAR02',l:'STAR 02'},{k:'STAR20',l:'STAR 20'},
+      {k:'ALL',l:'TODAS',full:true}
+    ];
+  }else if(activeAirport==='LPMA'){
+    modes=[
+      {k:'LPMA_APP_05',l:'APP 05'},{k:'LPMA_APP_23',l:'APP 23'},
+      {k:'ALL',l:'TODAS',full:true}
+    ];
+  }else if(activeAirport==='LPPR'){
+    modes=[
+      {k:'LPPR_APP_17',l:'APP 17'},{k:'LPPR_APP_35',l:'APP 35'},
+      {k:'LPPR_STAR17',l:'STAR 17'},{k:'LPPR_STAR35',l:'STAR 35'},
+      {k:'ALL',l:'TODAS',full:true}
+    ];
+  }else if(activeAirport==='LPFR'){
+    modes=[
+      {k:'LPFR_APP_10',l:'APP 10'},{k:'LPFR_APP_28',l:'APP 28'},
+      {k:'ALL',l:'TODAS',full:true}
+    ];
+  }else{
+    modes=[{k:'ALL',l:'TODAS',full:true}];
+  }
+  row.innerHTML=modes.map(m=>
+    `<button class="btn${pointMode===m.k?' toggled':''}" id="ptMode${m.k}" onclick="setPointMode('${m.k}')"${m.full?' style="grid-column:1 / -1;"':''} >${m.l}</button>`
+  ).join('');
+}
 function refreshPointModeButtons(){
-  const ids=['APP_02','APP_20','STAR02','STAR20','ALL'];
-  ids.forEach(id=>{
-    const b=$('ptMode'+id);
-    if(b)b.classList.toggle('toggled',pointMode===id);
-  });
+  buildPointModeButtons();
 }
 function setPointMode(mode){
   pointMode=POINT_GROUPS[mode]?mode:'ALL';
@@ -2753,13 +2902,65 @@ function exportSeqResult(){
   dlBlob('\uFEFF'+[hdr,...lines].join('\r\n'),'text/csv;charset=utf-8;',`sequencia_${ptName}_${new Date().toISOString().slice(0,10)}.csv`);
 }
 
-// ================= FINAL APPROACH ANALYSIS (LPPT 02/20) =================
-// Thresholds/bearings are TRUE. LPPT AD elev ~ 374 ft.
-const LPPT_RWY={
-  // brg = true runway bearing (physical \u2014 n\u00e3o muda com re-designa\u00e7\u00e3o magn\u00e9tica)
-  '02':{thr:{lat:38.766428,lon:-9.143903},brg:32.0,elev:357,name:'RWY 02'},
-  '20':{thr:{lat:38.792331,lon:-9.130047},brg:212.0,elev:303,name:'RWY 20'},
+// ================= FINAL APPROACH ANALYSIS — MULTI-AIRPORT =================
+// brg = true runway bearing. Thresholds from AIP.
+const AIRPORT_CONFIGS={
+  LPPT:{name:'Lisboa (LPPT)',center:[38.7813,-9.1359],elev:374,rwys:{
+    '02':{thr:{lat:38.766428,lon:-9.143903},brg:32.0,elev:357,name:'RWY 02'},
+    '20':{thr:{lat:38.792331,lon:-9.130047},brg:212.0,elev:303,name:'RWY 20'},
+  }},
+  LPPR:{name:'Porto (LPPR)',center:[41.2481,-8.6814],elev:227,rwys:{
+    '17':{thr:{lat:41.260681,lon:-8.684561},brg:171.0,elev:151,name:'RWY 17'},
+    '35':{thr:{lat:41.233886,lon:-8.677536},brg:351.0,elev:227,name:'RWY 35'},
+  }},
+  LPFR:{name:'Faro (LPFR)',center:[37.0153,-7.9723],elev:24,rwys:{
+    '10':{thr:{lat:37.017222,lon:-7.985614},brg:101.0,elev:24,name:'RWY 10'},
+    '28':{thr:{lat:37.013450,lon:-7.959042},brg:281.0,elev:18,name:'RWY 28'},
+  }},
+  LPMA:{name:'Funchal (LPMA)',center:[32.6978,-16.7745],elev:191,rwys:{
+    '05':{thr:{lat:32.689932,lon:-16.783751},brg:47.0,elev:146,name:'RWY 05'},
+    '23':{thr:{lat:32.705841,lon:-16.765150},brg:227.0,elev:191,name:'RWY 23'},
+  }},
 };
+let activeAirport='LPPT';
+function getActiveRwy(){return AIRPORT_CONFIGS[activeAirport].rwys;}
+function getActiveArptCfg(){return AIRPORT_CONFIGS[activeAirport];}
+// Legacy alias for any remaining references
+const LPPT_RWY=AIRPORT_CONFIGS.LPPT.rwys;
+
+function buildFinRwyOptions(){
+  const sel=document.getElementById('finRwy');if(!sel)return;
+  const rwys=Object.keys(getActiveRwy());
+  const bothLabel='Ambas ('+rwys.join('+')+')';
+  let html=`<option value="BOTH" selected>${bothLabel}</option>`;
+  for(const r of rwys)html+=`<option value="${r}">RWY ${r}</option>`;
+  sel.innerHTML=html;
+}
+
+function switchAirport(icao){
+  if(!AIRPORT_CONFIGS[icao]){console.warn('Unknown airport:',icao);return;}
+  activeAirport=icao;
+  // Reset pointMode if no longer valid for new airport
+  const lpptModes=['APP_02','APP_20','STAR02','STAR20','ALL'];
+  const lpmaModes=['LPMA_APP_05','LPMA_APP_23','ALL'];
+  const lpprModes=['LPPR_APP_17','LPPR_APP_35','LPPR_STAR17','LPPR_STAR35','ALL'];
+  const lpfrModes=['LPFR_APP_10','LPFR_APP_28','ALL'];
+  if(icao==='LPPT'&&!lpptModes.includes(pointMode))pointMode='ALL';
+  else if(icao==='LPMA'&&!lpmaModes.includes(pointMode))pointMode='ALL';
+  else if(icao==='LPPR'&&!lpprModes.includes(pointMode))pointMode='ALL';
+  else if(icao==='LPFR'&&!lpfrModes.includes(pointMode))pointMode='ALL';
+  else if(!['LPPT','LPMA','LPPR','LPFR'].includes(icao))pointMode='ALL';
+  buildFinRwyOptions();buildPointModeButtons();
+  finalResults=[];rotResults=[];
+  const empty=document.getElementById('finEmpty');if(empty)empty.style.display='';
+  const tbl=document.getElementById('finResultTable');if(tbl)tbl.style.display='none';
+  const cnt=document.getElementById('finResultCount');if(cnt)cnt.textContent='';
+  const sum=document.getElementById('finSummary');if(sum)sum.style.display='none';
+  if(typeof clearFinalOverlay==='function')clearFinalOverlay();
+  if(typeof renderROTResults==='function')renderROTResults();
+  if(typeof renderPointList==='function')renderPointList();
+  if(typeof markMapDirty==='function'){markMapDirty();renderMapIfActive();}
+}
 let finalResults=[];
 let _finalOverlayOn=false;
 let _finalOverlay=null;
@@ -2935,7 +3136,7 @@ async function runFinalAnalysis(){
   const fafNM=parseFloat($('finFaf').value)||7;
   const corrNM=parseFloat($('finCorr').value)||2;
   const altThrMax=parseFloat($('finAltThr').value)||1000;
-  const rwys=rwySel==='BOTH'?['02','20']:[rwySel];
+  const rwys=rwySel==='BOTH'?Object.keys(getActiveRwy()):[rwySel];
 
   finalResults=[];
   $('finResultCount').textContent='A analisar...';
@@ -2943,7 +3144,7 @@ async function runFinalAnalysis(){
 
   const legs=getFlightLegs();
   for(const rid of rwys){
-    const rwy=LPPT_RWY[rid];
+    const rwy=getActiveRwy()[rid];
     let i=0;
     for(const leg of legs){
       if(!isLegVisible(leg))continue;
@@ -3055,9 +3256,9 @@ function exportFinalCsv(){
 function drawFinalOverlay(rwys,fafNM,corrNM){
   clearFinalOverlay();
   const grp=L.layerGroup();
-  const list=rwys&&rwys.length?rwys:['02','20'];
+  const list=rwys&&rwys.length?rwys:Object.keys(getActiveRwy());
   for(const rid of list){
-    const rwy=LPPT_RWY[rid],th=rwy.thr,appBrg=(rwy.brg+180)%360;
+    const rwy=getActiveRwy()[rid],th=rwy.thr,appBrg=(rwy.brg+180)%360;
     const faf=projectPoint(th.lat,th.lon,appBrg,fafNM);
     const far=projectPoint(th.lat,th.lon,appBrg,fafNM+5);
     const corL_thr=projectPoint(th.lat,th.lon,(rwy.brg+270)%360,corrNM);
@@ -3080,7 +3281,7 @@ function toggleFinalOverlay(){
   const btn=$('finOvBtn');
   if(_finalOverlayOn){
     const rwySel=$('finRwy').value;
-    const rwys=rwySel==='BOTH'?['02','20']:[rwySel];
+    const rwys=rwySel==='BOTH'?Object.keys(getActiveRwy()):[rwySel];
     const fafNM=parseFloat($('finFaf').value)||7,corrNM=parseFloat($('finCorr').value)||2;
     drawFinalOverlay(rwys,fafNM,corrNM);
     btn.classList.add('toggled');btn.innerHTML='\uD83D\uDDFA Ocultar corredor';
@@ -4212,7 +4413,7 @@ function _flightTrackPts(f){
 function yieldToUi(){return new Promise(res=>setTimeout(res,0));}
 
 async function detectHoldings(){
-  const arptLat=38.7813,arptLon=-9.1359;
+  const _ac1=getActiveArptCfg();const arptLat=_ac1.center[0],arptLon=_ac1.center[1];
   const arptRInput=$('anaArptRadius');
   const arptR=Math.max(10,parseFloat(arptRInput?arptRInput.value:30)||30);
   const MIN_TURN=270,MAX_BOX=12,MIN_DUR=90;
@@ -4311,10 +4512,10 @@ async function detectHoldings(){
 }
 
 async function detectGoArounds(){
-  const arptLat=38.7813,arptLon=-9.1359;
+  const _ac2=getActiveArptCfg();const arptLat=_ac2.center[0],arptLon=_ac2.center[1];
   const arptRInput=$('anaArptRadius');
   const arptR=Math.max(10,parseFloat(arptRInput?arptRInput.value:30)||30);
-  const ARPT_ELEV=374;
+  const ARPT_ELEV=_ac2.elev;
   const MIN_ALT=3000,MIN_CLIMB=800,MAX_ALT_THR=3500;
   const landedByKey={};
   for(const fr of finalResults||[]){
@@ -4887,8 +5088,8 @@ function detectROT(){
     pts.sort((a,b)=>a.t-b.t);
     if(pts.length<3){_rotDiag.noPts++;continue;}
     let gotOne=false;
-    for(const rwy of ['02','20']){
-      const rwyConf=LPPT_RWY[rwy];if(!rwyConf)continue;
+    for(const rwy of Object.keys(getActiveRwy())){
+      const rwyConf=getActiveRwy()[rwy];if(!rwyConf)continue;
       const brg=rwyConf.brg,thr=rwyConf.thr;
       for(let i=1;i<pts.length;i++){
         const rc0=runwayCoords(pts[i-1].lat,pts[i-1].lon,thr.lat,thr.lon,brg);
@@ -5276,6 +5477,7 @@ ${kpiHtml}
     $('coordBtn').textContent=coordMode==='dec'?'\uD83D\uDCD0 Decimais':'\uD83C\uDF10 Geogr\xe1ficas';
   }catch(e){}
   try{loadIasLimits();}catch(e){}
+  try{buildFinRwyOptions();}catch(e){}
   refreshPointModeButtons();
   initUiTooltips();
   setSplashMode(true);
