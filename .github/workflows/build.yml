@@ -29,8 +29,8 @@ jobs:
       - name: Instalar Tauri CLI
         run: npm install -g @tauri-apps/cli@1
 
-      - name: Build Tauri
-        run: tauri build
+      - name: Build Tauri (NSIS)
+        run: tauri build --bundles nsis
         env:
           TAURI_PRIVATE_KEY: ''
           TAURI_KEY_PASSWORD: ''
