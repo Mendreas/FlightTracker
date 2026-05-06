@@ -15,7 +15,7 @@
     },
     "bundle": {
       "active": true,
-      "targets": ["dmg"],
+      "targets": "all",
       "identifier": "pt.nav.flighttrackviewer",
       "icon": [
         "icons/32x32.png",
