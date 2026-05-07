@@ -654,8 +654,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="panel" id="panel-iasapp">
       <div class="pts-result-hdr" style="gap:8px;flex-wrap:wrap;">
         <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">Conformidade IAS (APP)</span>
-        <span class="radius-lbl">Modo activo:</span>
-        <span id="iasAppModeLbl" style="font-size:11px;color:var(--muted);font-weight:700;">APP_02 / APP_20</span>
+        <div id="iasAppRwyBtns" style="display:flex;gap:4px;"></div>
         <span class="radius-lbl">Raio CPA:</span>
         <input class="inp inp-sm" id="iasAppRadius" type="number" value="1" min="0.1" max="10" step="0.1" style="width:60px;">
         <span class="radius-lbl">NM</span>
@@ -671,8 +670,13 @@ tr:hover td{background:rgba(0,200,255,.03);}
       <div class="pts-result-wrap" style="overflow:auto;padding:0;">
         <div class="empty" id="iasAppEmpty">
           <div class="empty-ico">&#x1F6EC;</div>
-          <div class="empty-ttl">Clica Analisar para ver violações IAS nas aproximações 02 e 20</div>
-          <div class="empty-sub" style="font-size:10px;color:var(--muted);">Analisa automaticamente APP_02 e APP_20 — não é necessário seleccionar modo na aba Pontos</div>
+          <div class="empty-ttl" id="iasAppEmptyTtl">Clica Analisar para ver violações IAS nas aproximações</div>
+          <div class="empty-sub" style="font-size:10px;color:var(--muted);" id="iasAppEmptySub">Analisa automaticamente ambas as pistas — não é necessário seleccionar modo na aba Pontos</div>
+        </div>
+        <div id="iasAppLpmaMsg" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--muted);padding:40px 20px;text-align:center;">
+          <div style="font-size:44px;opacity:.3;">&#x1F6AB;</div>
+          <div style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-size:15px;font-weight:600;color:var(--text);opacity:.6;">LPMA — Sem restrições de velocidade</div>
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;max-width:400px;line-height:1.8;">O aeroporto da Madeira não tem restrições de velocidade definidas em AIP por falta de aproximação ILS publicada. Esta análise não está disponível para LPMA.</div>
         </div>
         <div id="iasAppResultsContent" style="display:none;padding:10px 14px;">
           <div class="kpi-h" style="margin-bottom:6px;">Violações por voo (ordem temporal)</div>
@@ -2103,7 +2107,7 @@ function switchTab(id,el){
       if(id==='kpi')renderKpis();
       if(id==='ana'){switchAnaTab(_anaTab||'fast');}
       if(id==='ias'){if(!iasLimits)loadIasLimits();renderIasManage();}
-      if(id==='iasapp')renderIasAppResults();
+      if(id==='iasapp'){buildIasAppRwyButtons();renderIasAppResults();}
       if(id==='ana')renderAnaResults();
       applyUiTooltips(document);
     }catch(err){
@@ -2517,7 +2521,6 @@ function refreshPointModeButtons(){
 }
 function setPointMode(mode){
   pointMode=POINT_GROUPS[mode]?mode:'ALL';
-  iasAppResults=null;iasAppSelectedSet=new Set();
   if(selectedPoint && !allPoints().some(p=>p.name===selectedPoint.name)){
     selectedPoint=null;
     $('ptSelName').textContent='Selecciona um ponto';
@@ -2959,6 +2962,9 @@ function switchAirport(icao){
   if(typeof clearFinalOverlay==='function')clearFinalOverlay();
   if(typeof renderROTResults==='function')renderROTResults();
   if(typeof renderPointList==='function')renderPointList();
+  iasAppResults=null;iasAppSelectedSet=new Set();iasAppRwyFilter='ALL';
+  buildIasAppRwyButtons();
+  renderIasAppResults();
   if(typeof markMapDirty==='function'){markMapDirty();renderMapIfActive();}
 }
 let finalResults=[];
@@ -3490,10 +3496,34 @@ let rotResults=[];
 let iasAppSelectedSet=new Set();
 let iasAppSortKey='time';
 let iasAppSortDir='asc';
+let iasAppRwyFilter='ALL';
 const APP_IAS_DEFAULTS={
   APP_02:{PESEX:180,NETVO:160,OKNIB:160,THR02:160},
   APP_20:{UPKAT:180,TOPVI:160,ROKOB:160,THR20:160},
+  LPPR_APP_17:{ADNOV:180,PR741:180,PR742:180,THR17:180},
+  LPPR_APP_35:{AKULU:180,PR541:180,PR542:180,THR35:180},
+  LPFR_APP_10:{RUWIB:180,FR910:180,THR10:180},
+  LPFR_APP_28:{GEBTI:180,FR928:180,THR28:180},
 };
+// Pontos de análise APP por modo (ordem de passagem na aproximação)
+const APP_POINT_ORDER={
+  APP_02:['PESEX','NETVO','OKNIB','THR02'],
+  APP_20:['UPKAT','TOPVI','ROKOB','THR20'],
+  LPPR_APP_17:['ADNOV','PR741','PR742','THR17'],
+  LPPR_APP_35:['AKULU','PR541','PR542','THR35'],
+  LPFR_APP_10:['RUWIB','FR910','THR10'],
+  LPFR_APP_28:['GEBTI','FR928','THR28'],
+};
+function getAppModesForAirport(icao){
+  if(icao==='LPPT')return['APP_02','APP_20'];
+  if(icao==='LPPR')return['LPPR_APP_17','LPPR_APP_35'];
+  if(icao==='LPFR')return['LPFR_APP_10','LPFR_APP_28'];
+  return[];// LPMA e outros: sem análise
+}
+function getRwyFromMode(mode){
+  // APP_02→'02', LPPR_APP_17→'17', LPFR_APP_28→'28', etc.
+  const m=mode.match(/(\d+)$/);return m?m[1]:'??';
+}
 function loadIasLimits(){
   try{const s=localStorage.getItem('ft.iasLimits');if(s){iasLimits=JSON.parse(s);return;}}catch(e){}
   iasLimits={...LPPT_STAR_IAS_DEFAULTS};
@@ -3810,6 +3840,8 @@ function findNearestPassInRadius(rows,pt,radius){
 }
 function runIasAppCompliance(){
   if(!Object.keys(flights).length){alert('Sem dados carregados.');return;}
+  const modes=getAppModesForAirport(activeAirport);
+  if(!modes.length){renderIasAppResults();return;}// LPMA: mostra mensagem
   const radius=Math.max(0.1,parseFloat($('iasAppRadius').value)||1);
   const tol=Math.max(0,parseFloat($('iasAppTolerance').value)||0);
   const pointByName={};for(const p of allPoints())pointByName[String(p.name||'').toUpperCase()]=p;
@@ -3817,13 +3849,13 @@ function runIasAppCompliance(){
   const records=[];
   let flightsTotal=0,arrAnalysed=0;
   for(const leg of legs){if(!isLegVisible(leg))continue;flightsTotal++;if(classifyFlight(leg.rows)==='arr')arrAnalysed++;}
-  for(const mode of ['APP_02','APP_20']){
-    const pointOrder=(POINT_GROUPS[mode]||[]).slice(0,4);
-    if(pointOrder.length!==4)continue;
+  for(const mode of modes){
+    const pointOrder=(APP_POINT_ORDER[mode]||POINT_GROUPS[mode]||[]);
+    if(pointOrder.length<2)continue;
     const missingPts=pointOrder.filter(n=>!pointByName[n]);
     if(missingPts.length)continue;
     const lims=APP_IAS_DEFAULTS[mode]||{};
-    const rwy=mode==='APP_02'?'02':'20';
+    const rwy=getRwyFromMode(mode);
     for(const leg of legs){
       if(!isLegVisible(leg))continue;
       if(classifyFlight(leg.rows)!=='arr')continue;
@@ -3883,10 +3915,36 @@ function selectIasAppRecord(idx){
   else iasAppSelectedSet.add(idx);
   renderIasAppResults();
 }
+function buildIasAppRwyButtons(){
+  const container=$('iasAppRwyBtns');if(!container)return;
+  const modes=getAppModesForAirport(activeAirport);
+  if(!modes.length){container.innerHTML='';return;}
+  const rwys=modes.map(m=>getRwyFromMode(m));
+  let html='';
+  html+=`<button class="btn${iasAppRwyFilter==='ALL'?' toggled':''}" style="font-size:10px;padding:3px 10px;" onclick="setIasAppRwyFilter('ALL')">Todas</button>`;
+  for(const r of rwys){
+    html+=`<button class="btn${iasAppRwyFilter===r?' toggled':''}" style="font-size:10px;padding:3px 10px;" onclick="setIasAppRwyFilter('${r}')">RWY ${r}</button>`;
+  }
+  container.innerHTML=html;
+}
+function setIasAppRwyFilter(rwy){
+  iasAppRwyFilter=rwy;
+  buildIasAppRwyButtons();
+  renderIasAppResults();
+}
 function renderIasAppResults(){
-  const modeLbl=$('iasAppModeLbl');
-  if(modeLbl)modeLbl.textContent='APP 02 + APP 20';
   const emp=$('iasAppEmpty'),cnt=$('iasAppResultsContent'),sum=$('iasAppSummary'),countLbl=$('iasAppCount');
+  const lpmaMsg=$('iasAppLpmaMsg');
+  // LPMA: mostrar mensagem, esconder tudo o resto
+  if(activeAirport==='LPMA'){
+    if(emp)emp.style.display='none';
+    if(cnt)cnt.style.display='none';
+    if(sum){sum.style.display='none';sum.innerHTML='';}
+    if(countLbl)countLbl.textContent='';
+    if(lpmaMsg)lpmaMsg.style.display='flex';
+    return;
+  }
+  if(lpmaMsg)lpmaMsg.style.display='none';
   if(!iasAppResults){
     if(emp)emp.style.display='flex';
     if(cnt)cnt.style.display='none';
@@ -3897,18 +3955,23 @@ function renderIasAppResults(){
   if(emp)emp.style.display='none';
   if(cnt)cnt.style.display='block';
   const res=iasAppResults;
-  if(countLbl)countLbl.textContent=`${res.records.length} voo(s) com violações`;
+  // Aplicar filtro de pista
+  const filteredRecs=iasAppRwyFilter==='ALL'?res.records:res.records.filter(r=>r.rwy===iasAppRwyFilter);
+  const rwysLabel=getAppModesForAirport(activeAirport).map(m=>'RWY '+getRwyFromMode(m)).join(' + ');
+  if(countLbl)countLbl.textContent=`${filteredRecs.length} voo(s) com violações${iasAppRwyFilter!=='ALL'?' (RWY '+iasAppRwyFilter+')':''}`;
   if(sum){
     sum.style.display='flex';
     sum.innerHTML=`
-      <span><b>Pistas:</b> APP 02 + APP 20</span>
+      <span><b>Pistas:</b> ${iasAppRwyFilter==='ALL'?rwysLabel:'RWY '+iasAppRwyFilter}</span>
       <span><b>Voos ARR analisados:</b> ${res.arrAnalysed}/${res.flightsTotal}</span>
       <span><b>Raio:</b> ${res.radius} NM</span>
       <span><b>Tolerância:</b> ±${res.tol} kt</span>
       <span><b>Actualizado:</b> ${res.generatedAt.toLocaleTimeString('pt-PT')}</span>`;
   }
   const sortMark=(k)=>iasAppSortKey===k?(iasAppSortDir==='asc'?' ↑':' ↓'):'';
-  const sorted=getIasAppSortedRecords(res);
+  // Ordenar apenas os registos filtrados
+  const resFiltered={...res,records:filteredRecs};
+  const sorted=getIasAppSortedRecords(resFiltered);
   $('iasAppViolHead').innerHTML=`<tr><th>#</th><th style="cursor:pointer;" onclick="toggleIasAppSort('time')">Hora${sortMark('time')}</th><th>Data</th><th>Voo</th><th>Pista</th><th style="cursor:pointer;" onclick="toggleIasAppSort('viol')">Violações${sortMark('viol')}</th><th style="cursor:pointer;" onclick="toggleIasAppSort('max')">Desvio máx${sortMark('max')}</th></tr>`;
   $('iasAppViolBody').innerHTML=sorted.map((it,rowPos)=>{const r=it.r,i=it.idx;return `<tr data-idx="${i}" style="cursor:pointer;${iasAppSelectedSet.has(i)?'background:rgba(0,200,255,.08);':''}" onclick="selectIasAppRecord(${i})">
     <td style="color:var(--muted);">${rowPos+1}</td>
