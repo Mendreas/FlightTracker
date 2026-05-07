@@ -820,6 +820,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <button class="btn" id="prefExportBtn" onclick="openExportModal()">&#x2193; Exportar CSV</button>
           <button class="btn" id="prefPastaBtn" onclick="document.getElementById('addDir').click()">&#x2191; Pasta</button>
           <button class="btn" id="prefFicheirosBtn" onclick="document.getElementById('addFiles').click()">&#x2191; Ficheiros</button>
+          <button class="btn" style="color:#f87171;" onclick="_clearSession()">&#x1F5D1; Limpar sessão guardada</button>
         </div>
       </div>
     </div>
@@ -1356,6 +1357,7 @@ function finishLoading(){
     showWarn(`\u26A0\uFE0F ${loaded} ficheiros carregados (~${(estRows/1000|0)}k linhas). Filtra por dia/bloco antes de aplicar.`);
   }
   $('sDot').classList.add('on');
+  setTimeout(()=>_saveSession(),300);
 }
 
 document.getElementById('fileIn').addEventListener('change',e=>{loadFiles(e.target.files);e.target.value='';});
@@ -2052,6 +2054,16 @@ function renderTable(){
     <th>IAS (kt)</th><th>ROC (fpm)</th>
     <th>${geo?'Latitude (geo)':'Latitude'}</th><th>${geo?'Longitude (geo)':'Longitude'}</th>
   </tr></thead><tbody id="tblBody"></tbody></table>`;
+  // Activar sort nos headers do tblMain (virtual scroll — sort diferente)
+  const tblMainEl=document.getElementById('tblMain');
+  if(tblMainEl){
+    const hrow=tblMainEl.querySelector('thead tr');
+    if(hrow)Array.from(hrow.cells).forEach((th,i)=>{
+      th.style.cssText+='cursor:pointer;user-select:none;';
+      th.title='Clica para ordenar';
+      th.addEventListener('click',()=>_sortTblMain(i));
+    });
+  }
   if(_tblState.scrollHandler)wrap.removeEventListener('scroll',_tblState.scrollHandler);
   let pending=false;
   const update=()=>{
@@ -2720,6 +2732,7 @@ function renderPtResults(pt,radius){
       <td style="color:var(--muted);font-size:10px">${latV}</td>
       <td style="color:var(--muted);font-size:10px">${lonV}</td></tr>`;
   }).join('');
+  activateSortable('ptResultTable');
 }
 function exportPtResult(){
   if(!ptQueryResults.length){alert('Sem resultados para exportar.');return;}
@@ -2894,6 +2907,7 @@ function renderSeqResults(pt,radius){
       <td style="color:#a78bfa">${r.ias}</td>
     </tr>`;
   }).join('');
+  activateSortable('seqResultTable');
 }
 function exportSeqResult(){
   if(!seqResults.length){alert('Sem resultados para exportar.');return;}
@@ -3245,6 +3259,7 @@ function renderFinalResults(){
       <td>${stab}</td>
     </tr>`;
   }).join('');
+  activateSortable('finResultTable');
 }
 
 function exportFinalCsv(){
@@ -3765,6 +3780,8 @@ function renderIasResults(){
     const omitted=res.violations.length-MAX_VIOL_ROWS_UI;
     showWarn(`⚠️ Tabela IAS limitada a ${MAX_VIOL_ROWS_UI.toLocaleString('pt-PT')} linhas (${omitted.toLocaleString('pt-PT')} omitidas no ecrã). O CSV inclui todas.`);
   }
+  activateSortable('iasViolTable');
+  activateSortable('iasPerWpTable');
 }
 
 function exportIasCsv(){
@@ -3972,7 +3989,7 @@ function renderIasAppResults(){
   // Ordenar apenas os registos filtrados
   const resFiltered={...res,records:filteredRecs};
   const sorted=getIasAppSortedRecords(resFiltered);
-  $('iasAppViolHead').innerHTML=`<tr><th>#</th><th style="cursor:pointer;" onclick="toggleIasAppSort('time')">Hora${sortMark('time')}</th><th>Data</th><th>Voo</th><th>Pista</th><th style="cursor:pointer;" onclick="toggleIasAppSort('viol')">Violações${sortMark('viol')}</th><th style="cursor:pointer;" onclick="toggleIasAppSort('max')">Desvio máx${sortMark('max')}</th></tr>`;
+  $('iasAppViolHead').innerHTML=`<tr><th>#</th><th>Hora</th><th>Data</th><th>Voo</th><th>Pista</th><th>Violações</th><th>Desvio máx</th></tr>`;
   $('iasAppViolBody').innerHTML=sorted.map((it,rowPos)=>{const r=it.r,i=it.idx;return `<tr data-idx="${i}" style="cursor:pointer;${iasAppSelectedSet.has(i)?'background:rgba(0,200,255,.08);':''}" onclick="selectIasAppRecord(${i})">
     <td style="color:var(--muted);">${rowPos+1}</td>
     <td style="color:var(--muted);">${r.tod||'—'}</td>
@@ -3982,6 +3999,7 @@ function renderIasAppResults(){
     <td class="ias-bad">${r.violCount}</td>
     <td class="ias-bad">${Math.round(r.maxAbsDeviation||0)} kt</td>
   </tr>`;}).join('')||`<tr><td colspan="7" style="text-align:center;color:#4ade80;padding:14px;">✓ Sem violações</td></tr>`;
+  activateSortable('iasAppViolTable');
   $('iasAppDetailHead').innerHTML=`<tr>
     <th>Hora</th><th>Data</th><th>Voo</th><th>Pista</th>
     <th>PONTO1</th><th>IAS1</th><th>LIMITE</th><th>DESVIO</th>
@@ -4700,6 +4718,8 @@ function renderAnaResults(){
   </tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:#4ade80;padding:14px;">\u2713 Nenhum go-around</td></tr>';
   }
   $('anaCount').textContent=`${holdingsResults.length} holdings \u00b7 ${goAroundResults.length} go-arounds`;
+  activateSortable('holdTable');
+  activateSortable('gaTable');
   renderFastResults();
   refreshAnaSubSummary();
 }
@@ -4874,7 +4894,7 @@ function renderFastResults(){
   }
   if(emp)emp.style.display='none';tbl.style.display='';
   if(cnt)cnt.textContent=`${pairs.length} par(es)`+(_fastIntercalOnly?' · com DEP intercalar':'')+(_fastRwyFilter!=='all'?` · RWY ${_fastRwyFilter}`:'');
-  if(thead)thead.innerHTML='<tr><th>#</th><th>Pista</th><th>Data</th><th>Líder (THR)</th><th>IAS Líder</th><th>Seguidor</th><th>IAS Seg.</th><th>Sep. (s)</th></tr>';
+  if(thead)thead.innerHTML='<tr><th>#</th><th>Pista</th><th>Data</th><th>Líder</th><th>Hora (THR)</th><th>IAS Líder</th><th>Seguidor</th><th>IAS Seg.</th><th>Sep. (s)</th></tr>';
   if(tbody)tbody.innerHTML=pairs.map((p,i)=>{
     const sepOk=p.sep>=160;
     const sepColor=p.sep<120?'#f87171':p.sep<160?'#f59e0b':'#22d3a0';
@@ -4882,7 +4902,8 @@ function renderFastResults(){
     <td style="color:var(--muted);">${i+1}</td>
     <td style="font-weight:700;color:var(--accent);">RWY ${p.lead.rwy}</td>
     <td style="color:var(--muted);font-size:10px;">${p.lead.date}</td>
-    <td><span style="display:inline-block;width:9px;height:9px;background:${p.lead.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b>${p.lead.csn}</b><span style="color:var(--muted);margin-left:5px;font-size:10px;">${p.lead.tTHRstr||''}</span></td>
+    <td><span style="display:inline-block;width:9px;height:9px;background:${p.lead.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b>${p.lead.csn}</b></td>
+    <td style="color:var(--muted);font-size:10px;">${p.lead.tTHRstr||'—'}</td>
     <td style="color:#a78bfa;">${p.lead.iasTHR!=null?Math.round(p.lead.iasTHR)+'kt':'\u2014'}</td>
     <td><span style="display:inline-block;width:9px;height:9px;background:${p.trail.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b>${p.trail.csn}</b></td>
     <td style="color:#a78bfa;">${p.trail.iasTHR!=null?Math.round(p.trail.iasTHR)+'kt':'\u2014'}</td>
@@ -4893,6 +4914,7 @@ function renderFastResults(){
   if(listScroll)listScroll.scrollTop=0;
   // Store filtered pairs for detail lookup
   window._fastFilteredPairs=pairs;
+  activateSortable('fastTable');
 }
 function showFastDetail(idx){
   const pairs=window._fastFilteredPairs||[];
@@ -5547,7 +5569,154 @@ ${kpiHtml}
 })();
 renderPointList();
 
-</script>
+// ===== SORT GENÉRICO PARA TODAS AS TABELAS =====
+const _tblSort={};
+function activateSortable(id){
+  const tbl=document.getElementById(id);if(!tbl)return;
+  const hrow=tbl.querySelector('thead tr');if(!hrow)return;
+  Array.from(hrow.cells).forEach((th,i)=>{
+    const clone=th.cloneNode(true);
+    th.parentNode.replaceChild(clone,th);
+    clone.style.cssText+='cursor:pointer;user-select:none;';
+    clone.title='Clica para ordenar';
+    clone.addEventListener('click',()=>_doSort(id,i));
+  });
+  _updateSortMark(id);
+}
+function _sortVal(text){
+  const t=text.trim();
+  // Só considera numérico se o valor INTEIRO for um número (sem letras)
+  if(t!==''&&/^-?[\d]+([.,]\d+)?(\s*(kt|ft|nm|s|%|NM))?$/i.test(t)){
+    return{type:'num',val:parseFloat(t.replace(',','.'))};
+  }
+  // Formato hora HH:MM:SS → comparação lexicográfica (já ordenada corretamente)
+  return{type:'str',val:t.toLowerCase()};
+}
+function _doSort(id,col){
+  const s=_tblSort[id]||{c:-1,d:'asc'};
+  _tblSort[id]={c:col,d:(s.c===col&&s.d==='asc')?'desc':'asc'};
+  const tbl=document.getElementById(id);if(!tbl)return;
+  const tbody=tbl.querySelector('tbody');if(!tbody)return;
+  const rows=Array.from(tbody.querySelectorAll('tr'));
+  const dir=_tblSort[id].d;
+  rows.sort((a,b)=>{
+    const av=_sortVal((a.cells[col]||{textContent:''}).textContent);
+    const bv=_sortVal((b.cells[col]||{textContent:''}).textContent);
+    let c;
+    if(av.type==='num'&&bv.type==='num') c=av.val-bv.val;
+    else c=av.val.localeCompare(bv.val,'pt',{sensitivity:'base',numeric:true});
+    return dir==='asc'?c:-c;
+  });
+  rows.forEach(r=>tbody.appendChild(r));
+  _updateSortMark(id);
+}
+function _updateSortMark(id){
+  const tbl=document.getElementById(id);if(!tbl)return;
+  const st=_tblSort[id];
+  const hrow=tbl.querySelector('thead tr');if(!hrow)return;
+  Array.from(hrow.cells).forEach((th,i)=>{
+    const base=th.textContent.replace(/\s*[↑↓]$/,'').trim();
+    th.textContent=base+(st&&st.c===i?(st.d==='asc'?' ↑':' ↓'):'');
+  });
+}
 
-</body>
+// ===== SORT ESPECIAL PARA DADOS POR TEMPO (virtual scroll) =====
+const _tblMainSortFields=['tod','_date','csn','_tipo','_alt','_ias','_roc','latitude','longitude'];
+function _sortTblMain(col){
+  if(!_tblState.rows.length)return;
+  const st=_tblSort['tblMain']||{c:-1,d:'asc'};
+  _tblSort['tblMain']={c:col,d:(st.c===col&&st.d==='asc')?'desc':'asc'};
+  const dir=_tblSort['tblMain'].d;
+  _tblState.rows.sort((a,b)=>{
+    let av,bv;
+    if(col===0){av=String(a.r.tod||'');bv=String(b.r.tod||'');}
+    else if(col===1){av=String(a.r._date||'');bv=String(b.r._date||'');}
+    else if(col===2){av=String(a.csn||'');bv=String(b.csn||'');}
+    else if(col===3){// Tipo (ARR/DEP/NVL)
+      const cls=r=>flights[r.csn]?classifyFlight(flights[r.csn].rows):'?';
+      av=cls(a);bv=cls(b);
+    }
+    else if(col===4){av=+(getAlt(a.r)||0);bv=+(getAlt(b.r)||0);return dir==='asc'?av-bv:bv-av;}
+    else if(col===5){av=+(gv(a.r,'iar','iara')||0);bv=+(gv(b.r,'iar','iara')||0);return dir==='asc'?av-bv:bv-av;}
+    else if(col===6){av=+(gv(a.r,'roc')||0);bv=+(gv(b.r,'roc')||0);return dir==='asc'?av-bv:bv-av;}
+    else if(col===7){av=+(a.r.latitude||0);bv=+(b.r.latitude||0);return dir==='asc'?av-bv:bv-av;}
+    else if(col===8){av=+(a.r.longitude||0);bv=+(b.r.longitude||0);return dir==='asc'?av-bv:bv-av;}
+    else{av='';bv='';}
+    const c=(av||'').toString().localeCompare((bv||'').toString(),'pt',{sensitivity:'base',numeric:true});
+    return dir==='asc'?c:-c;
+  });
+  // Re-renderizar o virtual scroll
+  const wrap=document.getElementById('tblWrap');if(!wrap)return;
+  wrap.scrollTop=0;
+  if(_tblState.scrollHandler)wrap.dispatchEvent(new Event('scroll'));
+  // Actualizar marcas de sort nos headers
+  const tbl=document.getElementById('tblMain');if(!tbl)return;
+  const hrow=tbl.querySelector('thead tr');if(!hrow)return;
+  Array.from(hrow.cells).forEach((th,i)=>{
+    const base=th.textContent.replace(/\s*[↑↓]$/,'').trim();
+    th.textContent=base+(_tblSort['tblMain'].c===i?(_tblSort['tblMain'].d==='asc'?' ↑':' ↓'):'');
+  });
+}
+
+// ===== PERSISTÊNCIA DE SESSÃO (IndexedDB) =====
+const _IDB_NAME='FT_Session_v2';
+let _idb=null;
+function _openIDB(){
+  return new Promise((res,rej)=>{
+    if(_idb){res(_idb);return;}
+    const r=indexedDB.open(_IDB_NAME,1);
+    r.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('files'))db.createObjectStore('files',{keyPath:'_key'});
+    };
+    r.onsuccess=e=>{_idb=e.target.result;res(_idb);};
+    r.onerror=()=>rej(r.error);
+  });
+}
+async function _saveSession(){
+  try{
+    const db=await _openIDB();
+    const tx=db.transaction('files','readwrite');
+    const store=tx.objectStore('files');
+    store.clear();
+    const entries=Object.entries(loadedFiles);
+    for(const[k,fd]of entries){
+      store.put({...fd,_key:k});
+    }
+    await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
+    console.log('[session] guardada:',entries.length,'ficheiros');
+  }catch(e){console.warn('[session] save failed',e);}
+}
+async function _restoreSession(){
+  try{
+    const db=await _openIDB();
+    const tx=db.transaction('files','readonly');
+    const req=tx.objectStore('files').getAll();
+    const all=await new Promise((res,rej)=>{req.onsuccess=()=>res(req.result);req.onerror=rej;});
+    if(!all||!all.length){console.log('[session] vazia');return;}
+    for(const fd of all){
+      const k=fd._key;
+      const obj={...fd};delete obj._key;
+      loadedFiles[k]=obj;
+    }
+    finishLoading();
+    showWarn('✅ Sessão anterior restaurada ('+all.length+' ficheiro(s)). Usa Preferências → Limpar sessão para apagar.');
+    console.log('[session] restaurada:',all.length,'ficheiros');
+  }catch(e){console.warn('[session] restore failed',e);}
+}
+async function _clearSession(){
+  try{
+    const db=await _openIDB();
+    const tx=db.transaction('files','readwrite');
+    tx.objectStore('files').clear();
+    await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
+    alert('Sessão guardada apagada com sucesso.\nOs dados actuais mantêm-se em memória até ao próximo refresh.');
+  }catch(e){alert('Erro ao limpar sessão: '+e.message);}
+}
+
+window.addEventListener('load',()=>{
+  if(!Object.keys(loadedFiles).length) _restoreSession();
+});
+
+</script>
 </html>
