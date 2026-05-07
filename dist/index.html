@@ -306,7 +306,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="upload-layout">
       <div>
         <span class="upload-plane">&#x2708;&#xFE0F;</span>
-        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v1.2</span></h2>
+        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v1.1</span></h2>
         <p style="margin-bottom:18px;color:#64748b;">Escolhe como queres carregar os dados de voo:</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
           <div class="upload-card">
@@ -1949,6 +1949,7 @@ function renderMap(){
     const lg=L.layerGroup();
     const pl=L.polyline(lls,{color:f.color,weight:2.5,opacity:.85,smoothFactor});
     pl.on('click',function(e){
+      L.DomEvent.stopPropagation(e);
       openFlightModal(csn, f.color);
     });
     pl.addTo(lg);
@@ -2022,7 +2023,7 @@ function _rowHtml(item,geo){
   const flt=flights[csn];const cls=flt?classifyFlight(flt.rows):'?';
   const clsHtml=cls==='arr'?'<span style="color:#f87171;font-size:9px;">▼ARR</span>':cls==='dep'?'<span style="color:#22d3a0;font-size:9px;">▲DEP</span>':'<span style="color:#64748b;font-size:9px;">-NVL</span>';
   return `<tr style="height:${TABLE_ROW_HEIGHT}px"><td>${tod}</td><td style="color:var(--muted);font-size:10px">${dateStr}</td>
-    <td><span class="badge" style="background:${color}22;color:${color}">\u25cf ${csn}</span></td>
+    <td><span class="badge" style="background:${color}22;color:${color};cursor:pointer;" onclick="openFlightModal('${csn}','${color}')">&#x25cf; ${csn}</span></td>
     <td>${clsHtml}</td>
     <td style="color:#60a5fa">${alt}</td>
     <td style="color:#a78bfa">${ias}</td><td style="${rcls}">${roc}</td>
@@ -2721,7 +2722,7 @@ function renderPtResults(pt,radius){
     const geo=coordMode==='geo',latV=geo?toDMS(parseFloat(r.lat),'lat'):r.lat,lonV=geo?toDMS(parseFloat(r.lon),'lon'):r.lon;
     return `<tr><td>${r.tod}</td><td style="color:var(--muted);font-size:10px">${r.date}</td>
       <td style="color:var(--muted);font-size:10px">${r.block}</td>
-      <td><span class="badge" style="background:${r.color}22;color:${r.color}">\u25cf ${r.csn}</span></td>
+      <td><span class="badge" style="background:${r.color}22;color:${r.color};cursor:pointer;" onclick="openFlightModal('${r.csn}','${r.color}')">&#x25cf; ${r.csn}</span></td>
       <td>${r.tipo||'?'}</td><td style="color:#f59e0b;font-weight:600">${r.d}</td>
       <td style="color:#60a5fa">${r.alt}</td>
       <td style="${iasStyle}">${r.ias}</td><td style="${rcls}">${r.roc}</td>
@@ -2895,7 +2896,7 @@ function renderSeqResults(pt,radius){
       <td>${r.tod}</td>
       <td style="color:var(--muted);font-size:10px">${r.date}</td>
       <td style="color:var(--muted);font-size:10px">${r.block}</td>
-      <td><span class="badge" style="background:${r.color}22;color:${r.color}">\u25cf ${r.csn}</span></td>
+      <td><span class="badge" style="background:${r.color}22;color:${r.color};cursor:pointer;" onclick="openFlightModal('${r.csn}','${r.color}')">&#x25cf; ${r.csn}</span></td>
       <td style="color:#f59e0b;font-weight:700">${fmtNM1(r.dNum)}</td>
       <td style="${antClr}">${antStr}</td>
       <td style="${segClr}">${segStr}</td>
@@ -3240,7 +3241,7 @@ function renderFinalResults(){
     return `<tr>
       <td style="color:var(--muted);font-size:10px">${r.idx}</td>
       <td><span class="badge" style="background:${rwyBg};color:${rwyFg};font-weight:700;">RWY ${r.rwy}</span></td>
-      <td><span class="badge" style="background:${r.color}22;color:${r.color};">\u25cf ${r.csn}</span></td>
+      <td><span class="badge" style="background:${r.color}22;color:${r.color};cursor:pointer;" onclick="openFlightModal('${r.csn}','${r.color}')">&#x25cf; ${r.csn}</span></td>
       <td style="color:var(--muted);font-size:10px">${r.date||'\u2014'}</td>
       <td>${r.tFAFstr}</td>
       <td>${r.tTHRstr}</td>
@@ -3765,7 +3766,7 @@ function renderIasResults(){
     <td style="color:var(--muted);">${i+1}</td>
     <td style="color:var(--muted);">${v.tod}</td>
     <td style="color:var(--muted);">${v.date}</td>
-    <td><span style="display:inline-block;width:10px;height:10px;background:${v.color};border-radius:2px;vertical-align:middle;margin-right:6px;"></span><span style="font-weight:700;">${v.csn}</span></td>
+    <td><span style="display:inline-block;width:10px;height:10px;background:${v.color};border-radius:2px;vertical-align:middle;margin-right:6px;"></span><span style="font-weight:700;cursor:pointer;" onclick="openFlightModal('${v.csn}','${v.color}')">${v.csn}</span></td>
     <td style="color:var(--accent);font-weight:700;font-family:monospace;">${v.wp}</td>
     <td class="ias-bad">${v.ias}</td>
     <td>${v.limit}</td>
@@ -3990,7 +3991,7 @@ function renderIasAppResults(){
     <td style="color:var(--muted);">${rowPos+1}</td>
     <td style="color:var(--muted);">${r.tod||'—'}</td>
     <td style="color:var(--muted);">${r.date||'—'}</td>
-    <td><span style="display:inline-block;width:10px;height:10px;background:${r.color};border-radius:2px;vertical-align:middle;margin-right:6px;"></span><span style="font-weight:700;">${r.csn}</span></td>
+    <td><span style="display:inline-block;width:10px;height:10px;background:${r.color};border-radius:2px;vertical-align:middle;margin-right:6px;"></span><span style="font-weight:700;cursor:pointer;" onclick="openFlightModal('${r.csn}','${r.color}')">${r.csn}</span></td>
     <td style="font-weight:700;color:var(--accent);">RWY ${r.rwy||'—'}</td>
     <td class="ias-bad">${r.violCount}</td>
     <td class="ias-bad">${Math.round(r.maxAbsDeviation||0)} kt</td>
@@ -4019,7 +4020,7 @@ function renderIasAppResults(){
     return `<tr>
       <td style="color:var(--muted);">${rec.tod||'—'}</td>
       <td style="color:var(--muted);">${rec.date||'—'}</td>
-      <td><span style="font-weight:700;">${rec.csn}</span></td>
+      <td><span style="font-weight:700;cursor:pointer;" onclick="openFlightModal('${rec.csn}','${rec.color}')">${rec.csn}</span></td>
       <td style="font-weight:700;color:var(--accent);">RWY ${rec.rwy||'—'}</td>
       <td style="color:var(--accent);font-weight:700;font-family:monospace;">${p[0].point}</td><td>${p[0].ias}</td><td>${p[0].lim}</td><td class="${p[0].devCls}">${p[0].dev}</td>
       <td style="color:var(--accent);font-weight:700;font-family:monospace;">${p[1].point}</td><td>${p[1].ias}</td><td>${p[1].lim}</td><td class="${p[1].devCls}">${p[1].dev}</td>
@@ -4898,10 +4899,10 @@ function renderFastResults(){
     <td style="color:var(--muted);">${i+1}</td>
     <td style="font-weight:700;color:var(--accent);">RWY ${p.lead.rwy}</td>
     <td style="color:var(--muted);font-size:10px;">${p.lead.date}</td>
-    <td><span style="display:inline-block;width:9px;height:9px;background:${p.lead.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b>${p.lead.csn}</b></td>
+    <td><span style="display:inline-block;width:9px;height:9px;background:${p.lead.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b style="cursor:pointer;" onclick="openFlightModal('${p.lead.csn}','${p.lead.color||'#888'}')">${p.lead.csn}</b></td>
     <td style="color:var(--muted);font-size:10px;">${p.lead.tTHRstr||'—'}</td>
     <td style="color:#a78bfa;">${p.lead.iasTHR!=null?Math.round(p.lead.iasTHR)+'kt':'\u2014'}</td>
-    <td><span style="display:inline-block;width:9px;height:9px;background:${p.trail.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b>${p.trail.csn}</b></td>
+    <td><span style="display:inline-block;width:9px;height:9px;background:${p.trail.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b style="cursor:pointer;" onclick="openFlightModal('${p.trail.csn}','${p.trail.color||'#888'}')">${p.trail.csn}</b></td>
     <td style="color:#a78bfa;">${p.trail.iasTHR!=null?Math.round(p.trail.iasTHR)+'kt':'\u2014'}</td>
     <td style="font-weight:700;color:${sepColor};">${Math.round(p.sep)}s</td>
   </tr>`;
@@ -5540,39 +5541,7 @@ h2{font-size:14px;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #
 <div style="color:#6b7280;margin-bottom:18px;">Gerado em ${now.toLocaleString('pt-PT')} \u00b7 Dados: ${Object.keys(flights).length} voos</div>
 ${kpiHtml}
 <div class="footer">Flight Tracker \u2014 Relat\u00f3rio autom\u00e1tico. Dados baseados em track radar.</div>
-<script>window.onload=()=>{setTimeout(()=>window.print(),500);};<\/script><!-- MODAL DETALHE DE VOO -->
-<div id="flightModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
-  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;width:min(680px,95vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.5);">
-    <!-- Header -->
-    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
-      <span id="fmColorDot" style="display:inline-block;width:14px;height:14px;border-radius:3px;flex-shrink:0;"></span>
-      <span id="fmCallsign" style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-size:18px;font-weight:700;color:var(--txt);"></span>
-      <span id="fmType" style="font-size:11px;padding:3px 10px;border-radius:12px;margin-left:4px;"></span>
-      <button onclick="closeFlightModal()" style="margin-left:auto;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
-    </div>
-    <!-- Body -->
-    <div style="overflow:auto;padding:16px 20px;flex:1;">
-      <!-- Stats row -->
-      <div id="fmStats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
-      <!-- APP violations -->
-      <div id="fmAppSection" style="display:none;margin-bottom:16px;">
-        <div style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-size:11px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div>
-        <div id="fmAppTable" style="border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:11px;"></div>
-      </div>
-      <!-- STAR violations -->
-      <div id="fmStarSection" style="display:none;margin-bottom:16px;">
-        <div style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-size:11px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div>
-        <div id="fmStarTable" style="border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:11px;"></div>
-      </div>
-      <!-- No violations -->
-      <div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:12px;">
-        <span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>
-        Sem violações de velocidade registadas para este voo.
-      </div>
-    </div>
-  </div>
-</div>
-
+<script>window.onload=()=>{setTimeout(()=>window.print(),500);};<\/script>
 </body></html>`;
   const w=window.open('','_blank');
   if(!w){alert('Popup bloqueado. Permite popups para ver o relat\u00f3rio.');return;}
@@ -5744,81 +5713,116 @@ async function _clearSession(){
 
 // ===== MODAL DETALHE DE VOO =====
 function openFlightModal(csn, color){
-  const fl=flights[csn];if(!fl)return;
-  const modal=$('flightModal');
-  // Preencher header
-  $('fmColorDot').style.background=color;
-  $('fmCallsign').textContent=csn;
-  const cls=classifyFlight(fl.rows);
-  const typeLbl=$('fmType');
-  if(cls==='arr'){typeLbl.textContent='▼ ARR';typeLbl.style.background='rgba(248,113,113,0.15)';typeLbl.style.color='#f87171';}
-  else if(cls==='dep'){typeLbl.textContent='▲ DEP';typeLbl.style.background='rgba(34,211,160,0.15)';typeLbl.style.color='#22d3a0';}
-  else{typeLbl.textContent='— NVL';typeLbl.style.background='rgba(100,116,139,0.15)';typeLbl.style.color='#94a3b8';}
+  // Remove modal anterior se existir
+  var old=document.getElementById('flightModal');
+  if(old)old.parentNode.removeChild(old);
+
+  // Criar modal dinamicamente
+  var overlay=document.createElement('div');
+  overlay.id='flightModal';
+  overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:99999;display:flex;align-items:center;justify-content:center;';
+  overlay.onclick=function(e){if(e.target===overlay)closeFlightModal();};
+
+  var box=document.createElement('div');
+  box.style.cssText='background:var(--panel,#1e2a3a);border:1px solid var(--border,#2a3a4a);border-radius:10px;width:660px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.8);overflow:hidden;';
+  box.onclick=function(e){e.stopPropagation();};
+
+  // Header
+  var hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border,#2a3a4a);flex-shrink:0;';
+  hdr.innerHTML='<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:'+(color||'#888')+'"></span>'
+    +'<span style="font-size:17px;font-weight:700;color:var(--txt,#e2e8f0);">'+csn+'</span>'
+    +'<span id="fmType" style="font-size:11px;padding:2px 10px;border-radius:12px;margin-left:4px;"></span>'
+    +'<button onclick="closeFlightModal()" style="margin-left:auto;background:none;border:none;color:var(--muted,#64748b);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>';
+
+  // Body
+  var body=document.createElement('div');
+  body.style.cssText='overflow:auto;padding:16px 18px;flex:1;';
+  body.innerHTML='<div id="fmStats" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"><span style="color:var(--muted,#64748b);font-size:12px;">A carregar...</span></div>'
+    +'<div id="fmAppSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div><div id="fmAppTable" style="border:1px solid var(--border,#2a3a4a);border-radius:6px;overflow:hidden;font-size:11px;"></div></div>'
+    +'<div id="fmStarSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div><div id="fmStarTable" style="border:1px solid var(--border,#2a3a4a);border-radius:6px;overflow:hidden;font-size:11px;"></div></div>'
+    +'<div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:var(--muted,#64748b);font-size:12px;"><span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>Sem violações de velocidade registadas.</div>';
+
+  box.appendChild(hdr);
+  box.appendChild(body);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  setTimeout(function(){_fillFlightModal(csn,color);},0);
+}
+
+function closeFlightModal(){
+  var m=document.getElementById('flightModal');
+  if(m&&m.parentNode)m.parentNode.removeChild(m);
+}
+
+function _fillFlightModal(csn, color){
+  const fl=flights[csn];
 
   // Stats
-  const rows=fl.rows;
-  const alts=rows.map(r=>parseFloat(getAlt(r))).filter(v=>isFinite(v));
-  const iasVals=rows.map(r=>parseFloat(gv(r,'iar','iara'))).filter(v=>isFinite(v)&&v>0);
-  const firstRow=rows[0],lastRow=rows[rows.length-1];
-  const dates=[...new Set(rows.map(r=>r._date).filter(Boolean))].map(d=>fmtDate(String(d))).join(', ');
-  const stat=(label,value,color)=>`<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 14px;min-width:80px;">
-    <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">${label}</div>
-    <div style="font-size:14px;font-weight:700;color:${color||'var(--txt)'};">${value}</div>
-  </div>`;
-  $('fmStats').innerHTML=
-    stat('Data',dates||'—','var(--txt)')+
-    stat('Pontos',rows.length.toLocaleString(),'var(--txt)')+
-    stat('Alt máx',alts.length?Math.max(...alts).toLocaleString()+' ft':'—','#60a5fa')+
-    stat('Alt mín',alts.length?Math.min(...alts).toLocaleString()+' ft':'—','#60a5fa')+
-    (iasVals.length?stat('IAS máx',Math.max(...iasVals)+' kt','#a78bfa'):'')+
-    stat('Hora ini',firstRow?String(firstRow.tod||'').substring(0,8):'—','var(--txt)')+
-    stat('Hora fim',lastRow?String(lastRow.tod||'').substring(0,8):'—','var(--txt)');
+  const statsEl=$('fmStats');
+  if(statsEl){
+    try{
+      const stat=(label,value,clr)=>`<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;min-width:72px;text-align:center;"><div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">${label}</div><div style="font-size:13px;font-weight:700;color:${clr||'var(--txt)'};">${value}</div></div>`;
+      if(fl){
+        const rows=fl.rows;
+        const alts=rows.map(r=>parseFloat(getAlt(r))).filter(v=>isFinite(v));
+        const iasVals=rows.map(r=>parseFloat(gv(r,'iar','iara'))).filter(v=>isFinite(v)&&v>0);
+        const firstRow=rows[0],lastRow=rows[rows.length-1];
+        const dates=[...new Set(rows.map(r=>r._date).filter(d=>d&&d!=='??'))].map(d=>fmtDate(String(d))).join(', ');
+        statsEl.innerHTML=
+          stat('Data',dates||'—')+
+          stat('Pontos',rows.length.toLocaleString())+
+          (alts.length?stat('Alt máx',Math.max(...alts).toLocaleString()+' ft','#60a5fa'):'')+
+          (alts.length?stat('Alt mín',Math.min(...alts).toLocaleString()+' ft','#60a5fa'):'')+
+          (iasVals.length?stat('IAS máx',Math.max(...iasVals)+' kt','#a78bfa'):'')+
+          stat('Início',firstRow?String(firstRow.tod||'').substring(0,8):'—')+
+          stat('Fim',lastRow?String(lastRow.tod||'').substring(0,8):'—');
+      }else{statsEl.innerHTML='';}
+    }catch(e){statsEl.innerHTML=`<span style="color:var(--muted);font-size:11px;">Voo: ${csn}</span>`;}
+  }
 
   // APP violations
   const appSec=$('fmAppSection'),appTbl=$('fmAppTable');
-  const appRec=iasAppResults?iasAppResults.records.find(r=>r.csn===csn):null;
-  if(appRec){
-    appSec.style.display='';
-    const hdr=`<div style="display:grid;grid-template-columns:90px 1fr 60px 60px 60px;gap:0;background:var(--bg);border-bottom:1px solid var(--border);padding:6px 12px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;">
-      <span>Ponta</span><span>Waypoint</span><span>IAS</span><span>Limite</span><span>Desvio</span></div>`;
-    const rows2=appRec.points.filter(p=>p.ias!=null).map(p=>{
-      const bad=Math.abs(p.deviation||0)>(iasAppResults.tol||0);
-      return `<div style="display:grid;grid-template-columns:90px 1fr 60px 60px 60px;gap:0;padding:6px 12px;border-bottom:1px solid var(--border);${bad?'background:rgba(248,113,113,0.06)':''}">
-        <span style="color:var(--accent);font-weight:700;">RWY ${appRec.rwy}</span>
-        <span style="font-family:monospace;color:var(--txt);">${p.point}</span>
-        <span style="${bad?'color:#f87171;font-weight:700;':'color:var(--txt);'}">${p.ias} kt</span>
-        <span style="color:var(--muted);">${p.limit} kt</span>
-        <span style="${bad?'color:#f87171;font-weight:700;':'color:#22d3a0;'}">
-          ${(p.deviation||0)>0?'+':''}${Math.round(p.deviation||0)} kt
-        </span></div>`;
-    }).join('');
-    appTbl.innerHTML=hdr+(rows2||'<div style="padding:10px 12px;color:var(--muted);">Sem dados de passagem</div>');
-  }else{appSec.style.display='none';}
+  let hasApp=false;
+  if(appSec&&appTbl){
+    try{
+      const appRec=iasAppResults&&iasAppResults.records?iasAppResults.records.find(r=>r.csn===csn):null;
+      if(appRec){
+        hasApp=true;appSec.style.display='';
+        const tol=iasAppResults.tol||0;
+        const cols='grid-template-columns:80px 1fr 55px 55px 55px';
+        const hdr=`<div style="display:grid;${cols};background:var(--bg);border-bottom:1px solid var(--border);padding:6px 12px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;"><span>Pista</span><span>Waypoint</span><span>IAS</span><span>Limite</span><span>Desvio</span></div>`;
+        const body=(appRec.points||[]).filter(p=>p.ias!=null).map(p=>{
+          const bad=Math.abs(p.deviation||0)>tol;
+          return `<div style="display:grid;${cols};padding:6px 12px;border-bottom:1px solid var(--border);${bad?'background:rgba(248,113,113,0.06)':''}"><span style="color:var(--accent);font-weight:700;">RWY ${appRec.rwy}</span><span style="font-family:monospace;">${p.point}</span><span style="${bad?'color:#f87171;font-weight:700;':''}">${p.ias}kt</span><span style="color:var(--muted);">${p.limit}kt</span><span style="${bad?'color:#f87171;font-weight:700;':'color:#22d3a0;'}">${(p.deviation||0)>=0?'+':''}${Math.round(p.deviation||0)}kt</span></div>`;
+        }).join('');
+        appTbl.innerHTML=hdr+(body||`<div style="padding:10px 12px;color:var(--muted);">Sem dados de passagem</div>`);
+      }else{appSec.style.display='none';}
+    }catch(e){if(appSec)appSec.style.display='none';}
+  }
 
   // STAR violations
   const starSec=$('fmStarSection'),starTbl=$('fmStarTable');
-  const starViols=iasResults?iasResults.violations.filter(v=>v.csn===csn):[];
-  if(starViols.length){
-    starSec.style.display='';
-    const hdr=`<div style="display:grid;grid-template-columns:80px 90px 1fr 60px 60px 60px;gap:0;background:var(--bg);border-bottom:1px solid var(--border);padding:6px 12px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;">
-      <span>Hora</span><span>Data</span><span>Waypoint</span><span>IAS</span><span>Limite</span><span>Excesso</span></div>`;
-    const rows3=starViols.map(v=>`<div style="display:grid;grid-template-columns:80px 90px 1fr 60px 60px 60px;gap:0;padding:6px 12px;border-bottom:1px solid var(--border);background:rgba(245,158,11,0.06);">
-      <span style="color:var(--muted);">${v.tod||'—'}</span>
-      <span style="color:var(--muted);">${v.date||'—'}</span>
-      <span style="font-family:monospace;color:#f59e0b;font-weight:700;">${v.wp}</span>
-      <span style="color:#f87171;font-weight:700;">${v.ias} kt</span>
-      <span style="color:var(--muted);">${v.limit} kt</span>
-      <span style="color:#f87171;font-weight:700;">+${v.excess||Math.round(v.ias-v.limit)} kt</span>
-    </div>`).join('');
-    starTbl.innerHTML=hdr+rows3;
-  }else{starSec.style.display='none';}
+  let hasStar=false;
+  if(starSec&&starTbl){
+    try{
+      const starViols=iasResults&&iasResults.violations?iasResults.violations.filter(v=>v.csn===csn):[];
+      if(starViols.length){
+        hasStar=true;starSec.style.display='';
+        const cols='grid-template-columns:75px 80px 1fr 50px 50px 55px';
+        const hdr=`<div style="display:grid;${cols};background:var(--bg);border-bottom:1px solid var(--border);padding:6px 12px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;"><span>Hora</span><span>Data</span><span>Waypoint</span><span>IAS</span><span>Lim.</span><span>Excesso</span></div>`;
+        const body=starViols.map(v=>`<div style="display:grid;${cols};padding:6px 12px;border-bottom:1px solid var(--border);background:rgba(245,158,11,0.05);"><span style="color:var(--muted);font-size:10px;">${v.tod||'—'}</span><span style="color:var(--muted);font-size:10px;">${v.date||'—'}</span><span style="font-family:monospace;color:#f59e0b;font-weight:700;">${v.wp}</span><span style="color:#f87171;font-weight:700;">${v.ias}kt</span><span style="color:var(--muted);">${v.limit}kt</span><span style="color:#f87171;font-weight:700;">+${v.excess!=null?Number(v.excess).toFixed(0):Math.round(v.ias-v.limit)}kt</span></div>`).join('');
+        starTbl.innerHTML=hdr+body;
+      }else{starSec.style.display='none';}
+    }catch(e){if(starSec)starSec.style.display='none';}
+  }
 
   // No violations message
-  $('fmNoViolations').style.display=(!appRec&&!starViols.length)?'':'none';
-
-  modal.style.display='flex';
-  modal.onclick=function(e){if(e.target===modal)closeFlightModal();};
+  const noViol=$('fmNoViolations');
+  if(noViol)noViol.style.display=(!hasApp&&!hasStar)?'':'none';
 }
+
 function closeFlightModal(){
   const m=$('flightModal');if(m)m.style.display='none';
 }
