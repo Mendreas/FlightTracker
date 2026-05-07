@@ -306,7 +306,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="upload-layout">
       <div>
         <span class="upload-plane">&#x2708;&#xFE0F;</span>
-        <h2>Flight Track Viewer</h2>
+        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v1.2</span></h2>
         <p style="margin-bottom:18px;color:#64748b;">Escolhe como queres carregar os dados de voo:</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
           <div class="upload-card">
@@ -676,7 +676,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <div id="iasAppLpmaMsg" style="display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--muted);padding:40px 20px;text-align:center;">
           <div style="font-size:44px;opacity:.3;">&#x1F6AB;</div>
           <div style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-size:15px;font-weight:600;color:var(--text);opacity:.6;">LPMA — Sem restrições de velocidade</div>
-          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;max-width:400px;line-height:1.8;">O aeroporto da Madeira não tem restrições de velocidade definidas em AIP por falta de aproximação ILS publicada. Esta análise não está disponível para LPMA.</div>
+          <div style="font-size:11px;letter-spacing:1px;text-transform:uppercase;max-width:400px;line-height:1.8;">O aeroporto da Madeira não tem restrições de velocidade definidas em AIP por falta de rotinas operacionais.</div>
         </div>
         <div id="iasAppResultsContent" style="display:none;padding:10px 14px;">
           <div class="kpi-h" style="margin-bottom:6px;">Violações por voo (ordem temporal)</div>
@@ -1715,6 +1715,7 @@ async function applyFilter(){
   for(const f of filtered){
     for(const row of f.rows){
       const csn=String(row.csn||row.callsign||'UNKNOWN').trim();
+      if(csn==='UNKNOWN'||csn==='')continue; // ignorar voos sem identificação
       if(csnFilter&&!csn.toLowerCase().includes(csnFilter))continue;
       let fl=flights[csn];
       if(!fl){flights[csn]={color:getColor(csn),rows:[],visible:true};fl=flights[csn];}
@@ -1948,12 +1949,7 @@ function renderMap(){
     const lg=L.layerGroup();
     const pl=L.polyline(lls,{color:f.color,weight:2.5,opacity:.85,smoothFactor});
     pl.on('click',function(e){
-      const np=nearestPoint(valid,e.latlng);
-      if(!np)return;
-      L.popup({closeButton:true,offset:[0,-4]})
-        .setLatLng([+np.r.latitude,+np.r.longitude])
-        .setContent(makePointPopupContent(csn,np.r,f.color))
-        .openOn(map);
+      openFlightModal(csn, f.color);
     });
     pl.addTo(lg);
     L.circleMarker(lls[0],{radius:7,fillColor:f.color,color:'#fff',weight:2,fillOpacity:1})
@@ -5544,7 +5540,39 @@ h2{font-size:14px;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #
 <div style="color:#6b7280;margin-bottom:18px;">Gerado em ${now.toLocaleString('pt-PT')} \u00b7 Dados: ${Object.keys(flights).length} voos</div>
 ${kpiHtml}
 <div class="footer">Flight Tracker \u2014 Relat\u00f3rio autom\u00e1tico. Dados baseados em track radar.</div>
-<script>window.onload=()=>{setTimeout(()=>window.print(),500);};<\/script>
+<script>window.onload=()=>{setTimeout(()=>window.print(),500);};<\/script><!-- MODAL DETALHE DE VOO -->
+<div id="flightModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;width:min(680px,95vw);max-height:85vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,0.5);">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+      <span id="fmColorDot" style="display:inline-block;width:14px;height:14px;border-radius:3px;flex-shrink:0;"></span>
+      <span id="fmCallsign" style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-size:18px;font-weight:700;color:var(--txt);"></span>
+      <span id="fmType" style="font-size:11px;padding:3px 10px;border-radius:12px;margin-left:4px;"></span>
+      <button onclick="closeFlightModal()" style="margin-left:auto;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>
+    </div>
+    <!-- Body -->
+    <div style="overflow:auto;padding:16px 20px;flex:1;">
+      <!-- Stats row -->
+      <div id="fmStats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"></div>
+      <!-- APP violations -->
+      <div id="fmAppSection" style="display:none;margin-bottom:16px;">
+        <div style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-size:11px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div>
+        <div id="fmAppTable" style="border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:11px;"></div>
+      </div>
+      <!-- STAR violations -->
+      <div id="fmStarSection" style="display:none;margin-bottom:16px;">
+        <div style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-size:11px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div>
+        <div id="fmStarTable" style="border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:11px;"></div>
+      </div>
+      <!-- No violations -->
+      <div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:12px;">
+        <span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>
+        Sem violações de velocidade registadas para este voo.
+      </div>
+    </div>
+  </div>
+</div>
+
 </body></html>`;
   const w=window.open('','_blank');
   if(!w){alert('Popup bloqueado. Permite popups para ver o relat\u00f3rio.');return;}
@@ -5714,9 +5742,90 @@ async function _clearSession(){
   }catch(e){alert('Erro ao limpar sessão: '+e.message);}
 }
 
+// ===== MODAL DETALHE DE VOO =====
+function openFlightModal(csn, color){
+  const fl=flights[csn];if(!fl)return;
+  const modal=$('flightModal');
+  // Preencher header
+  $('fmColorDot').style.background=color;
+  $('fmCallsign').textContent=csn;
+  const cls=classifyFlight(fl.rows);
+  const typeLbl=$('fmType');
+  if(cls==='arr'){typeLbl.textContent='▼ ARR';typeLbl.style.background='rgba(248,113,113,0.15)';typeLbl.style.color='#f87171';}
+  else if(cls==='dep'){typeLbl.textContent='▲ DEP';typeLbl.style.background='rgba(34,211,160,0.15)';typeLbl.style.color='#22d3a0';}
+  else{typeLbl.textContent='— NVL';typeLbl.style.background='rgba(100,116,139,0.15)';typeLbl.style.color='#94a3b8';}
+
+  // Stats
+  const rows=fl.rows;
+  const alts=rows.map(r=>parseFloat(getAlt(r))).filter(v=>isFinite(v));
+  const iasVals=rows.map(r=>parseFloat(gv(r,'iar','iara'))).filter(v=>isFinite(v)&&v>0);
+  const firstRow=rows[0],lastRow=rows[rows.length-1];
+  const dates=[...new Set(rows.map(r=>r._date).filter(Boolean))].map(d=>fmtDate(String(d))).join(', ');
+  const stat=(label,value,color)=>`<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 14px;min-width:80px;">
+    <div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">${label}</div>
+    <div style="font-size:14px;font-weight:700;color:${color||'var(--txt)'};">${value}</div>
+  </div>`;
+  $('fmStats').innerHTML=
+    stat('Data',dates||'—','var(--txt)')+
+    stat('Pontos',rows.length.toLocaleString(),'var(--txt)')+
+    stat('Alt máx',alts.length?Math.max(...alts).toLocaleString()+' ft':'—','#60a5fa')+
+    stat('Alt mín',alts.length?Math.min(...alts).toLocaleString()+' ft':'—','#60a5fa')+
+    (iasVals.length?stat('IAS máx',Math.max(...iasVals)+' kt','#a78bfa'):'')+
+    stat('Hora ini',firstRow?String(firstRow.tod||'').substring(0,8):'—','var(--txt)')+
+    stat('Hora fim',lastRow?String(lastRow.tod||'').substring(0,8):'—','var(--txt)');
+
+  // APP violations
+  const appSec=$('fmAppSection'),appTbl=$('fmAppTable');
+  const appRec=iasAppResults?iasAppResults.records.find(r=>r.csn===csn):null;
+  if(appRec){
+    appSec.style.display='';
+    const hdr=`<div style="display:grid;grid-template-columns:90px 1fr 60px 60px 60px;gap:0;background:var(--bg);border-bottom:1px solid var(--border);padding:6px 12px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;">
+      <span>Ponta</span><span>Waypoint</span><span>IAS</span><span>Limite</span><span>Desvio</span></div>`;
+    const rows2=appRec.points.filter(p=>p.ias!=null).map(p=>{
+      const bad=Math.abs(p.deviation||0)>(iasAppResults.tol||0);
+      return `<div style="display:grid;grid-template-columns:90px 1fr 60px 60px 60px;gap:0;padding:6px 12px;border-bottom:1px solid var(--border);${bad?'background:rgba(248,113,113,0.06)':''}">
+        <span style="color:var(--accent);font-weight:700;">RWY ${appRec.rwy}</span>
+        <span style="font-family:monospace;color:var(--txt);">${p.point}</span>
+        <span style="${bad?'color:#f87171;font-weight:700;':'color:var(--txt);'}">${p.ias} kt</span>
+        <span style="color:var(--muted);">${p.limit} kt</span>
+        <span style="${bad?'color:#f87171;font-weight:700;':'color:#22d3a0;'}">
+          ${(p.deviation||0)>0?'+':''}${Math.round(p.deviation||0)} kt
+        </span></div>`;
+    }).join('');
+    appTbl.innerHTML=hdr+(rows2||'<div style="padding:10px 12px;color:var(--muted);">Sem dados de passagem</div>');
+  }else{appSec.style.display='none';}
+
+  // STAR violations
+  const starSec=$('fmStarSection'),starTbl=$('fmStarTable');
+  const starViols=iasResults?iasResults.violations.filter(v=>v.csn===csn):[];
+  if(starViols.length){
+    starSec.style.display='';
+    const hdr=`<div style="display:grid;grid-template-columns:80px 90px 1fr 60px 60px 60px;gap:0;background:var(--bg);border-bottom:1px solid var(--border);padding:6px 12px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;">
+      <span>Hora</span><span>Data</span><span>Waypoint</span><span>IAS</span><span>Limite</span><span>Excesso</span></div>`;
+    const rows3=starViols.map(v=>`<div style="display:grid;grid-template-columns:80px 90px 1fr 60px 60px 60px;gap:0;padding:6px 12px;border-bottom:1px solid var(--border);background:rgba(245,158,11,0.06);">
+      <span style="color:var(--muted);">${v.tod||'—'}</span>
+      <span style="color:var(--muted);">${v.date||'—'}</span>
+      <span style="font-family:monospace;color:#f59e0b;font-weight:700;">${v.wp}</span>
+      <span style="color:#f87171;font-weight:700;">${v.ias} kt</span>
+      <span style="color:var(--muted);">${v.limit} kt</span>
+      <span style="color:#f87171;font-weight:700;">+${v.excess||Math.round(v.ias-v.limit)} kt</span>
+    </div>`).join('');
+    starTbl.innerHTML=hdr+rows3;
+  }else{starSec.style.display='none';}
+
+  // No violations message
+  $('fmNoViolations').style.display=(!appRec&&!starViols.length)?'':'none';
+
+  modal.style.display='flex';
+  modal.onclick=function(e){if(e.target===modal)closeFlightModal();};
+}
+function closeFlightModal(){
+  const m=$('flightModal');if(m)m.style.display='none';
+}
 window.addEventListener('load',()=>{
   if(!Object.keys(loadedFiles).length) _restoreSession();
 });
+
 
 </script>
 </html>
