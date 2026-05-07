@@ -5724,24 +5724,24 @@ function openFlightModal(csn, color){
   overlay.onclick=function(e){if(e.target===overlay)closeFlightModal();};
 
   var box=document.createElement('div');
-  box.style.cssText='background:var(--panel,#1e2a3a);border:1px solid var(--border,#2a3a4a);border-radius:10px;width:660px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.8);overflow:hidden;';
+  box.style.cssText='background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:660px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.8);overflow:hidden;';
   box.onclick=function(e){e.stopPropagation();};
 
   // Header
   var hdr=document.createElement('div');
-  hdr.style.cssText='display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border,#2a3a4a);flex-shrink:0;';
+  hdr.style.cssText='display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;';
   hdr.innerHTML='<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:'+(color||'#888')+'"></span>'
-    +'<span style="font-size:17px;font-weight:700;color:var(--txt,#e2e8f0);">'+csn+'</span>'
+    +'<span style="font-size:17px;font-weight:700;color:#e2e8f0;">'+csn+'</span>'
     +'<span id="fmType" style="font-size:11px;padding:2px 10px;border-radius:12px;margin-left:4px;"></span>'
-    +'<button onclick="closeFlightModal()" style="margin-left:auto;background:none;border:none;color:var(--muted,#64748b);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>';
+    +'<button onclick="closeFlightModal()" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>';
 
   // Body
   var body=document.createElement('div');
   body.style.cssText='overflow:auto;padding:16px 18px;flex:1;';
-  body.innerHTML='<div id="fmStats" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"><span style="color:var(--muted,#64748b);font-size:12px;">A carregar...</span></div>'
-    +'<div id="fmAppSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div><div id="fmAppTable" style="border:1px solid var(--border,#2a3a4a);border-radius:6px;overflow:hidden;font-size:11px;"></div></div>'
-    +'<div id="fmStarSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div><div id="fmStarTable" style="border:1px solid var(--border,#2a3a4a);border-radius:6px;overflow:hidden;font-size:11px;"></div></div>'
-    +'<div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:var(--muted,#64748b);font-size:12px;"><span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>Sem violações de velocidade registadas.</div>';
+  body.innerHTML='<div id="fmStats" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"><span style="color:#64748b;font-size:12px;">A carregar...</span></div>'
+    +'<div id="fmAppSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div><div id="fmAppTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:11px;color:#e2e8f0;"></div></div>'
+    +'<div id="fmStarSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div><div id="fmStarTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:11px;color:#e2e8f0;"></div></div>'
+    +'<div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:#64748b;font-size:12px;"><span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>Sem violações de velocidade registadas.</div>';
 
   box.appendChild(hdr);
   box.appendChild(body);
@@ -5763,7 +5763,7 @@ function _fillFlightModal(csn, color){
   const statsEl=$('fmStats');
   if(statsEl){
     try{
-      const stat=(label,value,clr)=>`<div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 12px;min-width:72px;text-align:center;"><div style="font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">${label}</div><div style="font-size:13px;font-weight:700;color:${clr||'var(--txt)'};">${value}</div></div>`;
+      const stat=(label,value,clr)=>`<div style="background:#1a2535;border:1px solid #2a3a4a;border-radius:6px;padding:8px 12px;min-width:72px;text-align:center;"><div style="font-size:9px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">${label}</div><div style="font-size:13px;font-weight:700;color:${clr||'#e2e8f0'};">${value}</div></div>`;
       if(fl){
         const rows=fl.rows;
         const alts=rows.map(r=>parseFloat(getAlt(r))).filter(v=>isFinite(v));
@@ -5779,7 +5779,7 @@ function _fillFlightModal(csn, color){
           stat('Início',firstRow?String(firstRow.tod||'').substring(0,8):'—')+
           stat('Fim',lastRow?String(lastRow.tod||'').substring(0,8):'—');
       }else{statsEl.innerHTML='';}
-    }catch(e){statsEl.innerHTML=`<span style="color:var(--muted);font-size:11px;">Voo: ${csn}</span>`;}
+    }catch(e){statsEl.innerHTML=`<span style="color:#64748b;font-size:11px;">Voo: ${csn}</span>`;}
   }
 
   // APP violations
@@ -5792,12 +5792,12 @@ function _fillFlightModal(csn, color){
         hasApp=true;appSec.style.display='';
         const tol=iasAppResults.tol||0;
         const cols='grid-template-columns:80px 1fr 55px 55px 55px';
-        const hdr=`<div style="display:grid;${cols};background:var(--bg);border-bottom:1px solid var(--border);padding:6px 12px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;"><span>Pista</span><span>Waypoint</span><span>IAS</span><span>Limite</span><span>Desvio</span></div>`;
+        const hdr=`<div style="display:grid;${cols};background:#1a2535;border-bottom:1px solid #2a3a4a;padding:6px 12px;color:#64748b;font-size:10px;letter-spacing:1px;text-transform:uppercase;"><span>Pista</span><span>Waypoint</span><span>IAS</span><span>Limite</span><span>Desvio</span></div>`;
         const body=(appRec.points||[]).filter(p=>p.ias!=null).map(p=>{
           const bad=Math.abs(p.deviation||0)>tol;
-          return `<div style="display:grid;${cols};padding:6px 12px;border-bottom:1px solid var(--border);${bad?'background:rgba(248,113,113,0.06)':''}"><span style="color:var(--accent);font-weight:700;">RWY ${appRec.rwy}</span><span style="font-family:monospace;">${p.point}</span><span style="${bad?'color:#f87171;font-weight:700;':''}">${p.ias}kt</span><span style="color:var(--muted);">${p.limit}kt</span><span style="${bad?'color:#f87171;font-weight:700;':'color:#22d3a0;'}">${(p.deviation||0)>=0?'+':''}${Math.round(p.deviation||0)}kt</span></div>`;
+          return `<div style="display:grid;${cols};padding:6px 12px;border-bottom:1px solid #2a3a4a;${bad?'background:rgba(248,113,113,0.06)':''}"><span style="color:#00c8ff;font-weight:700;">RWY ${appRec.rwy}</span><span style="font-family:monospace;">${p.point}</span><span style="${bad?'color:#f87171;font-weight:700;':''}">${p.ias}kt</span><span style="color:#64748b;">${p.limit}kt</span><span style="${bad?'color:#f87171;font-weight:700;':'color:#22d3a0;'}">${(p.deviation||0)>=0?'+':''}${Math.round(p.deviation||0)}kt</span></div>`;
         }).join('');
-        appTbl.innerHTML=hdr+(body||`<div style="padding:10px 12px;color:var(--muted);">Sem dados de passagem</div>`);
+        appTbl.innerHTML=hdr+(body||`<div style="padding:10px 12px;color:#64748b;">Sem dados de passagem</div>`);
       }else{appSec.style.display='none';}
     }catch(e){if(appSec)appSec.style.display='none';}
   }
@@ -5811,8 +5811,8 @@ function _fillFlightModal(csn, color){
       if(starViols.length){
         hasStar=true;starSec.style.display='';
         const cols='grid-template-columns:75px 80px 1fr 50px 50px 55px';
-        const hdr=`<div style="display:grid;${cols};background:var(--bg);border-bottom:1px solid var(--border);padding:6px 12px;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase;"><span>Hora</span><span>Data</span><span>Waypoint</span><span>IAS</span><span>Lim.</span><span>Excesso</span></div>`;
-        const body=starViols.map(v=>`<div style="display:grid;${cols};padding:6px 12px;border-bottom:1px solid var(--border);background:rgba(245,158,11,0.05);"><span style="color:var(--muted);font-size:10px;">${v.tod||'—'}</span><span style="color:var(--muted);font-size:10px;">${v.date||'—'}</span><span style="font-family:monospace;color:#f59e0b;font-weight:700;">${v.wp}</span><span style="color:#f87171;font-weight:700;">${v.ias}kt</span><span style="color:var(--muted);">${v.limit}kt</span><span style="color:#f87171;font-weight:700;">+${v.excess!=null?Number(v.excess).toFixed(0):Math.round(v.ias-v.limit)}kt</span></div>`).join('');
+        const hdr=`<div style="display:grid;${cols};background:#1a2535;border-bottom:1px solid #2a3a4a;padding:6px 12px;color:#64748b;font-size:10px;letter-spacing:1px;text-transform:uppercase;"><span>Hora</span><span>Data</span><span>Waypoint</span><span>IAS</span><span>Lim.</span><span>Excesso</span></div>`;
+        const body=starViols.map(v=>`<div style="display:grid;${cols};padding:6px 12px;border-bottom:1px solid #2a3a4a;background:rgba(245,158,11,0.05);"><span style="color:#64748b;font-size:10px;">${v.tod||'—'}</span><span style="color:#64748b;font-size:10px;">${v.date||'—'}</span><span style="font-family:monospace;color:#f59e0b;font-weight:700;">${v.wp}</span><span style="color:#f87171;font-weight:700;">${v.ias}kt</span><span style="color:#64748b;">${v.limit}kt</span><span style="color:#f87171;font-weight:700;">+${v.excess!=null?Number(v.excess).toFixed(0):Math.round(v.ias-v.limit)}kt</span></div>`).join('');
         starTbl.innerHTML=hdr+body;
       }else{starSec.style.display='none';}
     }catch(e){if(starSec)starSec.style.display='none';}
@@ -5824,7 +5824,7 @@ function _fillFlightModal(csn, color){
 }
 
 function closeFlightModal(){
-  const m=$('flightModal');if(m)m.style.display='none';
+  var m=document.getElementById('flightModal');if(m&&m.parentNode)m.parentNode.removeChild(m);
 }
 window.addEventListener('load',()=>{
   if(!Object.keys(loadedFiles).length) _restoreSession();
