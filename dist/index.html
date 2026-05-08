@@ -5760,24 +5760,24 @@ function openFlightModal(csn, color){
   overlay.onclick=function(e){if(e.target===overlay)closeFlightModal();};
 
   var box=document.createElement('div');
-  box.style.cssText='background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:720px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.8);overflow:hidden;';
+  box.style.cssText='background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:1000px;max-width:97vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.8);overflow:hidden;';
   box.onclick=function(e){e.stopPropagation();};
 
   // Header
   var hdr=document.createElement('div');
   hdr.style.cssText='display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;';
   hdr.innerHTML='<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:'+(color||'#888')+'"></span>'
-    +'<span style="font-size:17px;font-weight:700;color:#e2e8f0;">'+csn+'</span>'
+    +'<span style="font-size:20px;font-weight:700;color:#e2e8f0;">'+csn+'</span>'
     +'<span id="fmType" style="font-size:11px;padding:2px 10px;border-radius:12px;margin-left:4px;"></span>'
     +'<button onclick="closeFlightModal()" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>';
 
   // Body
   var body=document.createElement('div');
   body.style.cssText='overflow:auto;padding:16px 18px;flex:1;';
-  body.innerHTML='<div id="fmStats" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"><span style="color:#64748b;font-size:12px;">A carregar...</span></div>'
-    +'<div id="fmAppSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div><div id="fmAppTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:11px;color:#e2e8f0;"></div></div>'
-    +'<div id="fmStarSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div><div id="fmStarTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:11px;color:#e2e8f0;"></div></div>'
-    +'<div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:#64748b;font-size:12px;"><span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>Sem violações de velocidade registadas.</div>'+'<div id="fmChartWrap" style="display:none;margin-top:14px;border-top:1px solid #1e2d3d;padding-top:12px;"><div style="font-size:10px;color:#22d3a0;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">📈 Perfil IAS / Altitude</div><canvas id="fmProfileChart" height="150" style="width:100%;max-height:150px;border-radius:6px;background:#080f18;display:block;"></canvas></div>';
+  body.innerHTML='<div id="fmStats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"><span style="color:#64748b;font-size:13px;">A carregar...</span></div>'
+    +'<div id="fmAppSection" style="display:none;margin-bottom:14px;"><div style="font-size:12px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div><div id="fmAppTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:13px;color:#e2e8f0;"></div></div>'
+    +'<div id="fmStarSection" style="display:none;margin-bottom:14px;"><div style="font-size:12px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div><div id="fmStarTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:13px;color:#e2e8f0;"></div></div>'
+    +'<div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:#64748b;font-size:12px;"><span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>Sem violações de velocidade registadas.</div>'+'<div id="fmChartWrap" style="display:none;margin-top:14px;border-top:1px solid #1e2d3d;padding-top:12px;"><div style="font-size:12px;color:#22d3a0;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">📈 Perfil IAS / Altitude</div><canvas id="fmProfileChart" height="220" style="width:100%;max-height:220px;border-radius:6px;background:#080f18;display:block;"></canvas></div>';
 
   box.appendChild(hdr);
   box.appendChild(body);
@@ -6012,9 +6012,9 @@ function exportOperCsv(){
 let _alerts=[];
 function _drawProfileChart(canvas,pts){
   const W=canvas.parentElement?canvas.parentElement.clientWidth||400:400;
-  const H=175;canvas.width=W;canvas.height=H;
+  const H=220;canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d');
-  const PAD={t:26,r:54,b:28,l:46};
+  const PAD={t:30,r:60,b:28,l:52};
   const CW=W-PAD.l-PAD.r,CH=H-PAD.t-PAD.b;
   ctx.fillStyle='#080f18';ctx.fillRect(0,0,W,H);
   const iasV=pts.map(p=>p.ias).filter(v=>v!=null);
@@ -6070,33 +6070,33 @@ function _drawProfileChart(canvas,pts){
     ctx.strokeStyle='#00c8ff';ctx.lineWidth=2;ctx.stroke();
   }
   // gate NM labels (top) + IAS values at gate
-  ctx.font='bold 8px sans-serif';ctx.textAlign='center';
+  ctx.font='bold 10px sans-serif';ctx.textAlign='center';
   for(const gh of gateHits){
     if(!gh)continue;
     const x=xI(gh.i);
     ctx.fillStyle=gh.col;ctx.fillText(gh.nm+'NM',x,PAD.t-6);
     if(gh.ias!=null){
       const yv=yIas(gh.ias);
-      ctx.fillStyle='#fff';ctx.font='bold 9px sans-serif';
+      ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';
       ctx.fillText(Math.round(gh.ias)+'kt',x,yv>PAD.t+10?yv-4:yv+12);
-      ctx.font='bold 8px sans-serif';
+      ctx.font='bold 10px sans-serif';
     }
   }
   // X label
-  ctx.fillStyle='#475569';ctx.font='9px sans-serif';ctx.textAlign='center';
+  ctx.fillStyle='#475569';ctx.font='11px sans-serif';ctx.textAlign='center';
   ctx.fillText('← tempo (aproximação) →',PAD.l+CW/2,H-2);
   // Y left (IAS)
   ctx.textAlign='right';ctx.fillStyle='#00c8ff';
-  for(let i=0;i<=4;i++){const v=iasMin+i*(iasMax-iasMin)/4;ctx.font='9px sans-serif';ctx.fillText(Math.round(v),PAD.l-4,yIas(v)+3);}
-  ctx.save();ctx.translate(10,PAD.t+CH/2);ctx.rotate(-Math.PI/2);ctx.fillStyle='#00c8ff';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('IAS kt',0,0);ctx.restore();
+  for(let i=0;i<=4;i++){const v=iasMin+i*(iasMax-iasMin)/4;ctx.font='11px sans-serif';ctx.fillText(Math.round(v),PAD.l-4,yIas(v)+3);}
+  ctx.save();ctx.translate(10,PAD.t+CH/2);ctx.rotate(-Math.PI/2);ctx.fillStyle='#00c8ff';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('IAS kt',0,0);ctx.restore();
   // Y right (Alt)
   ctx.textAlign='left';ctx.fillStyle='#22d3a0';
-  for(let i=0;i<=4;i++){const v=altMin+i*(altMax-altMin)/4;ctx.font='9px sans-serif';ctx.fillText(Math.round(v),PAD.l+CW+4,yAlt(v)+3);}
-  ctx.save();ctx.translate(W-8,PAD.t+CH/2);ctx.rotate(Math.PI/2);ctx.fillStyle='#22d3a0';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('Alt ft',0,0);ctx.restore();
+  for(let i=0;i<=4;i++){const v=altMin+i*(altMax-altMin)/4;ctx.font='11px sans-serif';ctx.fillText(Math.round(v),PAD.l+CW+4,yAlt(v)+3);}
+  ctx.save();ctx.translate(W-8,PAD.t+CH/2);ctx.rotate(Math.PI/2);ctx.fillStyle='#22d3a0';ctx.font='11px sans-serif';ctx.textAlign='center';ctx.fillText('Alt ft',0,0);ctx.restore();
   // legend
   ctx.setLineDash([]);ctx.strokeStyle='#00c8ff';ctx.lineWidth=2;
   ctx.beginPath();ctx.moveTo(PAD.l,16);ctx.lineTo(PAD.l+18,16);ctx.stroke();
-  ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='left';ctx.fillText('IAS (kt)',PAD.l+22,19);
+  ctx.fillStyle='#94a3b8';ctx.font='11px sans-serif';ctx.textAlign='left';ctx.fillText('IAS (kt)',PAD.l+22,19);
   ctx.strokeStyle='#22d3a0';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
   ctx.beginPath();ctx.moveTo(PAD.l+70,16);ctx.lineTo(PAD.l+88,16);ctx.stroke();ctx.setLineDash([]);
   ctx.fillStyle='#94a3b8';ctx.fillText('Alt (ft)',PAD.l+92,19);
