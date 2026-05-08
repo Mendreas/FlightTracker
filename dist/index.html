@@ -5774,7 +5774,7 @@ function openFlightModal(csn, color){
   // Body
   var body=document.createElement('div');
   body.style.cssText='overflow:auto;padding:16px 18px;flex:1;';
-  body.innerHTML='<div id="fmStats" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"><span style="color:#64748b;font-size:13px;">A carregar...</span></div>'
+  body.innerHTML='<div id="fmStats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:18px;"><span style="color:#64748b;font-size:13px;">A carregar...</span></div>'
     +'<div id="fmAppSection" style="display:none;margin-bottom:14px;"><div style="font-size:12px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div><div id="fmAppTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:13px;color:#e2e8f0;"></div></div>'
     +'<div id="fmStarSection" style="display:none;margin-bottom:14px;"><div style="font-size:12px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div><div id="fmStarTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:13px;color:#e2e8f0;"></div></div>'
     +'<div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:#64748b;font-size:12px;"><span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>Sem violações de velocidade registadas.</div>'+'<div id="fmChartWrap" style="display:none;margin-top:14px;border-top:1px solid #1e2d3d;padding-top:12px;"><div style="font-size:12px;color:#22d3a0;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">📈 Perfil IAS / Altitude</div><canvas id="fmProfileChart" height="220" style="width:100%;max-height:220px;border-radius:6px;background:#080f18;display:block;"></canvas></div>';
@@ -5799,7 +5799,7 @@ function _fillFlightModal(csn, color){
   const statsEl=$('fmStats');
   if(statsEl){
     try{
-      const stat=(label,value,clr)=>`<div style="background:#1a2535;border:1px solid #2a3a4a;border-radius:6px;padding:8px 12px;min-width:72px;text-align:center;"><div style="font-size:9px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;">${label}</div><div style="font-size:13px;font-weight:700;color:${clr||'#e2e8f0'};">${value}</div></div>`;
+      const stat=(label,value,clr)=>`<div style="background:#1a2535;border:1px solid #2a3a4a;border-radius:8px;padding:14px 8px;text-align:center;"><div style="font-size:11px;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">${label}</div><div style="font-size:17px;font-weight:700;color:${clr||'#e2e8f0'};">${value}</div></div>`;
       if(fl){
         const rows=fl.rows;
         const alts=rows.map(r=>parseFloat(getAlt(r))).filter(v=>isFinite(v));
