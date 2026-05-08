@@ -1377,7 +1377,14 @@ function finishLoading(){
   }
   $('sDot').classList.add('on');
   setTimeout(()=>_saveSession(),300);
-  setTimeout(()=>_computeAlerts(),800);
+  setTimeout(async()=>{
+    if(!Object.keys(flights).length)return;
+    if(!finalResults.length)await runFinalAnalysis();
+    if(!_anaTabLoaded.rot){detectROT();_anaTabLoaded.rot=true;}
+    _computeAlerts();
+    if(!_anaTabLoaded.hold){await detectHoldings();_anaTabLoaded.hold=true;_computeAlerts();}
+    if(!_anaTabLoaded.ga){await detectGoArounds();_anaTabLoaded.ga=true;_computeAlerts();}
+  },800);
 }
 
 document.getElementById('fileIn').addEventListener('change',e=>{loadFiles(e.target.files);e.target.value='';});
@@ -5970,7 +5977,7 @@ function runOperAnalysis(){
     const op=_operPrefix(rec.csn);
     if(map[op]){const v=(rec.points||[]).filter(p=>Math.abs(p.deviation||0)>tol).length;map[op].appViols+=v;}
   }
-  _operResults=Object.values(map).map(r=>({...r,rotAvg:r.rotN>0?Math.round(r.rotSum/r.rotN):null}));
+  _operResults=Object.values(map).map(r=>{const tF=r.arr+r.dep+(r.lvl||0);const tV=(r.starViols||0)+(r.appViols||0);return{...r,rotAvg:r.rotN>0?Math.round(r.rotSum/r.rotN):null,medViols:tF>0?tV/tF:null};});
   const oe=$('anaOperEmpty'),oc=$('anaOperContent');
   if(oe)oe.style.display='none';if(oc)oc.style.display='';
   _renderOperKpis();
@@ -5993,7 +6000,7 @@ function renderOperResults(){
     {k:'op',l:'Operador',w:'80px'},
     {k:'arr',l:'ARR',w:'50px'},{k:'dep',l:'DEP',w:'50px'},{k:'lvl',l:'LVL',w:'45px'},
     {k:'rotAvg',l:'ROT méd',w:'70px'},{k:'gaCount',l:'GA',w:'42px'},
-    {k:'starViols',l:'Viols STAR',w:'80px'},{k:'appViols',l:'Viols APP',w:'78px'}
+    {k:'starViols',l:'Viols STAR',w:'80px'},{k:'appViols',l:'Viols APP',w:'78px'},{k:'medViols',l:'Méd Viols',w:'70px'}
   ];
   const gtc=cols.map(c=>c.w).join(' ');
   const sorted=[..._operResults].sort((a,b)=>{
@@ -6004,7 +6011,7 @@ function renderOperResults(){
     ${cols.map(c=>`<div style="padding:6px 8px;cursor:pointer;color:#64748b;font-size:10px;letter-spacing:1px;text-transform:uppercase;user-select:none;" onclick="_operSortBy('${c.k}')">${c.l}${_operSort.col===c.k?(_operSort.dir>0?' ▲':' ▼'):''}</div>`).join('')}
   </div>`;
   const body=sorted.map(r=>`<div style="display:grid;grid-template-columns:${gtc};border-bottom:1px solid var(--border);">
-    <div style="padding:5px 8px;font-weight:700;color:#e2e8f0;font-family:monospace;">${r.op}</div>
+    <div style="padding:5px 8px;font-weight:700;color:#60a5fa;font-family:monospace;">${r.op}</div>
     <div style="padding:5px 8px;color:#60a5fa;">${r.arr}</div>
     <div style="padding:5px 8px;color:#a78bfa;">${r.dep}</div>
     <div style="padding:5px 8px;color:#64748b;">${r.lvl||0}</div>
@@ -6012,6 +6019,7 @@ function renderOperResults(){
     <div style="padding:5px 8px;${r.gaCount>0?'color:#f59e0b;font-weight:700;':''}">${r.gaCount||0}</div>
     <div style="padding:5px 8px;${r.starViols>0?'color:#f59e0b;font-weight:700;':''}">${r.starViols||0}</div>
     <div style="padding:5px 8px;${r.appViols>0?'color:#f87171;font-weight:700;':''}">${r.appViols||0}</div>
+    <div style="padding:5px 8px;${r.medViols!=null&&r.medViols>2?'color:#fbbf24;font-weight:700;':''}">${r.medViols!=null?r.medViols.toFixed(1):'—'}</div>
   </div>`).join('');
   el.innerHTML=hdr+`<div>${body||'<div style="padding:12px;color:var(--muted);">Sem dados de operadores.</div>'}</div>`;
 }
@@ -6021,8 +6029,8 @@ function _operSortBy(col){
 }
 function exportOperCsv(){
   if(!_operResults||!_operResults.length)return;
-  const hdr='Operador,ARR,DEP,LVL,ROT méd (s),Go-Arounds,Viols STAR,Viols APP\n';
-  const body=_operResults.map(r=>`${r.op},${r.arr},${r.dep},${r.lvl||0},${r.rotAvg!=null?r.rotAvg:''},${r.gaCount||0},${r.starViols||0},${r.appViols||0}`).join('\n');
+  const hdr='Operador,ARR,DEP,LVL,ROT méd (s),Go-Arounds,Viols STAR,Viols APP,Méd Viols\n';
+  const body=_operResults.map(r=>`${r.op},${r.arr},${r.dep},${r.lvl||0},${r.rotAvg!=null?r.rotAvg:''},${r.gaCount||0},${r.starViols||0},${r.appViols||0},${r.medViols!=null?r.medViols.toFixed(1):''}`).join('\n');
   dlBlob(hdr+body,'operadores.csv','text/csv');
 }
 
@@ -6094,8 +6102,7 @@ function _emailHtml(){
 
 <!-- INTRO -->
 <tr><td style="padding:30px 40px 10px;">
-  <p style="margin:0;color:#374151;font-size:14px;line-height:1.6;">Caros Carlos e Carolina,</p>
-  <p style="color:#374151;font-size:14px;line-height:1.6;margin-top:10px;">Está disponível a versão <strong>1.3</strong> do Flight Track Viewer com quatro novas funcionalidades operacionais. Esta versão pode ser instalada directamente sobre a anterior.</p>
+  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Está disponível a versão <strong>1.3</strong> do Flight Track Viewer com quatro novas funcionalidades operacionais. Esta versão pode ser instalada directamente sobre a anterior.</p>
 </td></tr>
 
 <!-- FEATURE 1 -->
