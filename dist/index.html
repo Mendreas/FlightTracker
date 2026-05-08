@@ -1377,14 +1377,6 @@ function finishLoading(){
   }
   $('sDot').classList.add('on');
   setTimeout(()=>_saveSession(),300);
-  setTimeout(async()=>{
-    if(!Object.keys(flights).length)return;
-    if(!finalResults.length)await runFinalAnalysis();
-    if(!_anaTabLoaded.rot){detectROT();_anaTabLoaded.rot=true;}
-    _computeAlerts();
-    if(!_anaTabLoaded.hold){await detectHoldings();_anaTabLoaded.hold=true;_computeAlerts();}
-    if(!_anaTabLoaded.ga){await detectGoArounds();_anaTabLoaded.ga=true;_computeAlerts();}
-  },800);
 }
 
 document.getElementById('fileIn').addEventListener('change',e=>{loadFiles(e.target.files);e.target.value='';});
@@ -1793,6 +1785,8 @@ async function applyFilter(){
   }else if(totalRows>50000){
     showWarn(null);
   }
+  // Auto-análise e alertas após cada applyFilter
+  _autoAnalyseAndAlert();
 }
 
 function renderSidebar(){
@@ -6038,6 +6032,15 @@ function exportOperCsv(){
 // v1.3 — ALERTAS AUTOMÁTICOS
 // ═══════════════════════════════════════════════════════════════════════════
 let _alerts=[];
+async function _autoAnalyseAndAlert(){
+  await new Promise(r=>setTimeout(r,400)); // esperar que applyFilter termine
+  if(!Object.keys(flights).length){_computeAlerts();return;}
+  if(!finalResults.length)await runFinalAnalysis();
+  if(!_anaTabLoaded.rot){detectROT();_anaTabLoaded.rot=true;}
+  _computeAlerts();
+  if(!_anaTabLoaded.hold){await detectHoldings();_anaTabLoaded.hold=true;_computeAlerts();}
+  if(!_anaTabLoaded.ga){await detectGoArounds();_anaTabLoaded.ga=true;_computeAlerts();}
+}
 function _computeAlerts(){
   _alerts=[];
   // ROT longo (>55s)
