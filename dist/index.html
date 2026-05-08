@@ -3727,6 +3727,7 @@ async function runIasCompliance(){
   const totalViol=violations.length;
   iasResults={perWp,violations,radius,tol,flightsTotal,flightsAnalysed,totalPasses,totalComp,totalViol,missing,skippedLegs,generatedAt:new Date()};
   renderIasResults();
+  setTimeout(()=>_computeAlerts(),300);
   // Evita freeze no fim da análise STAR por refresco pesado de KPIs.
   // O utilizador pode actualizar KPIs manualmente na aba própria.
 }
@@ -3943,6 +3944,7 @@ function runIasAppCompliance(){
   iasAppSelectedSet=new Set(filtered.length?[0]:[]);
   iasAppSortKey='time';iasAppSortDir='asc';
   renderIasAppResults();
+  setTimeout(()=>_computeAlerts(),300);
 }
 function selectIasAppRecord(idx){
   if(iasAppSelectedSet.has(idx))iasAppSelectedSet.delete(idx);
@@ -4797,6 +4799,11 @@ async function ensureAnaTabData(tab){
       renderRotResults();
     }
     if(tab==='oper'){
+      if(!finalResults.length)await runFinalAnalysis();
+      if(!_anaTabLoaded.rot){detectROT();_anaTabLoaded.rot=true;}
+      if(!_anaTabLoaded.ga){await detectGoArounds();_anaTabLoaded.ga=true;}
+      if(!iasResults)await runIasCompliance();
+      if(!iasAppResults)runIasAppCompliance();
       _anaTabLoaded.oper=true;
       runOperAnalysis();
     }
@@ -5855,12 +5862,26 @@ function _fillFlightModal(csn, color){
   if(chartWrap){
     try{
       const cls=fl?classifyFlight(fl.rows):null;
-      if(cls==='arr'&&fl&&typeof Chart!=='undefined'){
+      if(fl&&typeof Chart!=='undefined'){
         let thrLat,thrLon;
         const appRec=iasAppResults&&iasAppResults.records?iasAppResults.records.find(r=>r.csn===csn):null;
         const arptCfg=AIRPORT_CONFIGS[activeAirport];
         if(appRec&&arptCfg.rwys[appRec.rwy]){const rw=arptCfg.rwys[appRec.rwy];thrLat=rw.thr.lat;thrLon=rw.thr.lon;}
-        else{const rws=Object.values(arptCfg.rwys);if(rws.length){thrLat=rws[0].thr.lat;thrLon=rws[0].thr.lon;}}
+        else{
+          // Auto-detect runway: use last 30 rows, pick THR closest to flight path end
+          const rws=Object.entries(arptCfg.rwys);
+          if(rws.length){
+            const tail=fl.rows.slice(-30);
+            let bestRwy=null,bestDist=Infinity;
+            for(const [,rw] of rws){
+              let sumD=0,cnt=0;
+              for(const r of tail){const la=+r.latitude,lo=+r.longitude;if(!la||!lo||isNaN(la)||isNaN(lo))continue;sumD+=distNM(la,lo,rw.thr.lat,rw.thr.lon);cnt++;}
+              if(cnt>0){const avg=sumD/cnt;if(avg<bestDist){bestDist=avg;bestRwy=rw;}}
+            }
+            if(bestRwy){thrLat=bestRwy.thr.lat;thrLon=bestRwy.thr.lon;}
+            else{thrLat=rws[0][1].thr.lat;thrLon=rws[0][1].thr.lon;}
+          }
+        }
         if(thrLat&&thrLon){
           const pts=[];
           for(const r of fl.rows){
@@ -5901,7 +5922,6 @@ function _fillFlightModal(csn, color){
             });
           }else{chartWrap.style.display='none';}
         }else{chartWrap.style.display='none';}
-      }else{chartWrap.style.display='none';}
     }catch(e){if(chartWrap)chartWrap.style.display='none';}
   }
 }
@@ -6163,14 +6183,30 @@ function _openEmailModal(){
     prev.innerHTML='';prev.appendChild(iframe);
   }
 }
-function _sendEmailOutlook(){
+async function _sendEmailOutlook(){
   const to='carlos.jesus@nav.pt,carolina.rosa@nav.pt';
   const cc='paulo.leal@nav.pt';
-  const sub=encodeURIComponent('Flight Track Viewer v1.3 — Novas funcionalidades');
-  const body=encodeURIComponent('Caros Carlos e Carolina,\n\nEstá disponível a versão 1.3 do Flight Track Viewer.\n\nNovidades:\n• Perfil IAS/Altitude no modal de voo\n• Análise por Operador/Companhia\n• Alertas automáticos após carregamento\n• Email de novidades em Preferências\n\nDownload em: https://github.com/Mendreas/FlightTracker/releases/latest\n\nPaulo Leal');
-  const url=`mailto:${to}?cc=${cc}&subject=${sub}&body=${body}`;
-  if(window.__TAURI__&&window.__TAURI__.shell){window.__TAURI__.shell.open(url);}
-  else{window.open(url);}
+  const subject='Flight Track Viewer v1.3 — Novas funcionalidades';
+  const htmlBody=_emailHtml();
+  // Build RFC 2822 .eml with HTML body so Outlook renders it properly
+  const eml='MIME-Version: 1.0\r\nFrom: paulo.leal@nav.pt\r\nTo: '+to+'\r\nCC: '+cc+'\r\nSubject: '+subject+'\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+htmlBody;
+  if(window.__TAURI__&&window.__TAURI__.fs&&window.__TAURI__.path){
+    try{
+      const tmpDir=await window.__TAURI__.path.tempDir();
+      const sep=(tmpDir.endsWith('/')||tmpDir.endsWith('\\')?'':'/');
+      const emlPath=tmpDir+sep+'FlightTracker_v1.3_novidades.eml';
+      await window.__TAURI__.fs.writeTextFile(emlPath,eml);
+      await window.__TAURI__.shell.open(emlPath);
+      return;
+    }catch(e){console.warn('EML Tauri falhou:',e);}
+  }
+  // Fallback: download .eml via browser blob
+  const blob=new Blob([eml],{type:'message/rfc822'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='FlightTracker_v1.3_novidades.eml';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
 function _downloadEmailHtml(){
   const html=_emailHtml();
