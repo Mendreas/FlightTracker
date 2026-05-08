@@ -5863,13 +5863,12 @@ function _fillFlightModal(csn, color){
   if(chartWrap){
     try{
       const cls=fl?classifyFlight(fl.rows):null;
-      if(fl&&typeof Chart!=='undefined'){
+      if(fl){
         let thrLat,thrLon;
         const appRec=iasAppResults&&iasAppResults.records?iasAppResults.records.find(r=>r.csn===csn):null;
         const arptCfg=AIRPORT_CONFIGS[activeAirport];
         if(appRec&&arptCfg.rwys[appRec.rwy]){const rw=arptCfg.rwys[appRec.rwy];thrLat=rw.thr.lat;thrLon=rw.thr.lon;}
         else{
-          // Auto-detect runway: use last 30 rows, pick THR closest to flight path end
           const rws=Object.entries(arptCfg.rwys);
           if(rws.length){
             const tail=fl.rows.slice(-30);
@@ -5898,29 +5897,7 @@ function _fillFlightModal(csn, color){
           if(pts.length>3){
             chartWrap.style.display='';
             const canvas=$('fmProfileChart');
-            if(canvas._ftChart){canvas._ftChart.destroy();canvas._ftChart=null;}
-            canvas._ftChart=new Chart(canvas.getContext('2d'),{
-              type:'line',
-              data:{
-                labels:pts.map(p=>p.d.toFixed(1)),
-                datasets:[
-                  {label:'IAS (kt)',data:pts.map(p=>p.ias),borderColor:'#00c8ff',backgroundColor:'rgba(0,200,255,0.07)',yAxisID:'y',tension:0.3,pointRadius:0,borderWidth:2,fill:true,spanGaps:true},
-                  {label:'Alt (ft)',data:pts.map(p=>p.alt),borderColor:'#22d3a0',backgroundColor:'transparent',yAxisID:'y2',tension:0.3,pointRadius:0,borderWidth:1.5,borderDash:[4,2],spanGaps:true}
-                ]
-              },
-              options:{
-                animation:false,responsive:true,interaction:{mode:'index',intersect:false},
-                plugins:{
-                  legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:12,padding:8}},
-                  tooltip:{callbacks:{title:items=>items[0].label+' NM do THR'}}
-                },
-                scales:{
-                  x:{ticks:{color:'#64748b',font:{size:9},maxTicksLimit:10},grid:{color:'rgba(255,255,255,0.04)'},title:{display:true,text:'← THR     Distância (NM)',color:'#64748b',font:{size:9}}},
-                  y:{position:'left',ticks:{color:'#00c8ff',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},title:{display:true,text:'IAS kt',color:'#00c8ff',font:{size:9}}},
-                  y2:{position:'right',ticks:{color:'#22d3a0',font:{size:9}},grid:{drawOnChartArea:false},title:{display:true,text:'Alt ft',color:'#22d3a0',font:{size:9}}}
-                }
-              }
-            });
+            _drawProfileChart(canvas,pts);
           }else{chartWrap.style.display='none';}
         }else{chartWrap.style.display='none';}
       }
@@ -6032,6 +6009,88 @@ function exportOperCsv(){
 // v1.3 — ALERTAS AUTOMÁTICOS
 // ═══════════════════════════════════════════════════════════════════════════
 let _alerts=[];
+function _drawProfileChart(canvas,pts){
+  const W=canvas.parentElement?canvas.parentElement.clientWidth||400:400;
+  const H=150;
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const PAD={t:22,r:54,b:32,l:46};
+  const CW=W-PAD.l-PAD.r,CH=H-PAD.t-PAD.b;
+  // background
+  ctx.fillStyle='#080f18';ctx.fillRect(0,0,W,H);
+  // data ranges
+  const iasV=pts.map(p=>p.ias).filter(v=>v!=null);
+  const altV=pts.map(p=>p.alt).filter(v=>v!=null);
+  if(!iasV.length&&!altV.length){ctx.fillStyle='#64748b';ctx.font='11px sans-serif';ctx.fillText('Sem dados IAS/Alt',PAD.l+10,H/2);return;}
+  const iasMin=iasV.length?Math.max(0,Math.min(...iasV)-15):0;
+  const iasMax=iasV.length?Math.max(...iasV)+15:300;
+  const altMin=altV.length?Math.max(0,Math.min(...altV)-300):0;
+  const altMax=altV.length?Math.max(...altV)+500:5000;
+  const dMin=Math.min(...pts.map(p=>p.d));
+  const dMax=Math.max(...pts.map(p=>p.d));
+  const dR=dMax-dMin||1;
+  const xS=d=>PAD.l+(d-dMin)/dR*CW;
+  const yI=v=>PAD.t+CH-(v-iasMin)/(iasMax-iasMin||1)*CH;
+  const yA=v=>PAD.t+CH-(v-altMin)/(altMax-altMin||1)*CH;
+  // grid
+  ctx.strokeStyle='rgba(255,255,255,0.05)';ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){const y=PAD.t+i*CH/4;ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+CW,y);ctx.stroke();}
+  // altitude fill + line
+  if(altV.length>1){
+    ctx.beginPath();
+    let f=true;
+    for(const p of pts){if(p.alt==null)continue;const x=xS(p.d),y=yA(p.alt);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);}
+    ctx.strokeStyle='#22d3a0';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
+  }
+  // IAS fill + line
+  if(iasV.length>1){
+    ctx.beginPath();
+    let f=true;
+    for(const p of pts){if(p.ias==null)continue;const x=xS(p.d),y=yI(p.ias);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);}
+    const grad=ctx.createLinearGradient(0,PAD.t,0,PAD.t+CH);
+    grad.addColorStop(0,'rgba(0,200,255,0.18)');grad.addColorStop(1,'rgba(0,200,255,0.01)');
+    const fp=pts.filter(p=>p.ias!=null);
+    if(fp.length>1){
+      ctx.beginPath();ctx.moveTo(xS(fp[0].d),PAD.t+CH);
+      for(const p of fp)ctx.lineTo(xS(p.d),yI(p.ias));
+      ctx.lineTo(xS(fp[fp.length-1].d),PAD.t+CH);ctx.closePath();
+      ctx.fillStyle=grad;ctx.fill();
+    }
+    ctx.beginPath();f=true;
+    for(const p of pts){if(p.ias==null)continue;const x=xS(p.d),y=yI(p.ias);f?(ctx.moveTo(x,y),f=false):ctx.lineTo(x,y);}
+    ctx.strokeStyle='#00c8ff';ctx.lineWidth=2;ctx.stroke();
+  }
+  // X axis ticks
+  ctx.fillStyle='#64748b';ctx.font='9px sans-serif';ctx.textAlign='center';
+  const ticks=5;
+  for(let i=0;i<=ticks;i++){
+    const d=dMin+i*(dMax-dMin)/ticks;
+    const x=xS(d);
+    ctx.fillText(d.toFixed(1),x,H-3);
+    ctx.strokeStyle='rgba(255,255,255,0.08)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,PAD.t+CH);ctx.stroke();
+  }
+  // X label
+  ctx.fillStyle='#64748b';ctx.font='9px sans-serif';ctx.textAlign='center';
+  ctx.fillText('← THR   Distância (NM)',PAD.l+CW/2,H-3);
+  // Y left (IAS)
+  ctx.textAlign='right';ctx.fillStyle='#00c8ff';
+  const iSteps=4;
+  for(let i=0;i<=iSteps;i++){const v=iasMin+i*(iasMax-iasMin)/iSteps;ctx.fillText(Math.round(v),PAD.l-4,yI(v)+3);}
+  ctx.save();ctx.translate(10,PAD.t+CH/2);ctx.rotate(-Math.PI/2);ctx.fillStyle='#00c8ff';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('IAS kt',0,0);ctx.restore();
+  // Y right (Alt)
+  ctx.textAlign='left';ctx.fillStyle='#22d3a0';
+  const aSteps=4;
+  for(let i=0;i<=aSteps;i++){const v=altMin+i*(altMax-altMin)/aSteps;ctx.fillText(Math.round(v),PAD.l+CW+4,yA(v)+3);}
+  ctx.save();ctx.translate(W-8,PAD.t+CH/2);ctx.rotate(Math.PI/2);ctx.fillStyle='#22d3a0';ctx.font='9px sans-serif';ctx.textAlign='center';ctx.fillText('Alt ft',0,0);ctx.restore();
+  // Legend
+  ctx.setLineDash([]);ctx.strokeStyle='#00c8ff';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(PAD.l,14);ctx.lineTo(PAD.l+18,14);ctx.stroke();
+  ctx.fillStyle='#94a3b8';ctx.font='9px sans-serif';ctx.textAlign='left';ctx.fillText('IAS (kt)',PAD.l+22,17);
+  ctx.strokeStyle='#22d3a0';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+  ctx.beginPath();ctx.moveTo(PAD.l+70,14);ctx.lineTo(PAD.l+88,14);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#94a3b8';ctx.fillText('Alt (ft)',PAD.l+92,17);
+}
 async function _autoAnalyseAndAlert(){
   await new Promise(r=>setTimeout(r,400)); // esperar que applyFilter termine
   if(!Object.keys(flights).length){_computeAlerts();return;}
