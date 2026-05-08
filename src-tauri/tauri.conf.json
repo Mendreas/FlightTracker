@@ -1,13 +1,13 @@
 {
-"build": {
+  "build": {
     "beforeBuildCommand": "",
     "beforeDevCommand": "",
     "devPath": "../dist/",
     "distDir": "../dist/"
-},
+  },
   "package": {
     "productName": "Flight Track Viewer",
-    "version": "1.0.0"
+    "version": "1.3.0"
   },
   "tauri": {
     "allowlist": {
@@ -31,17 +31,17 @@
     "updater": {
       "active": false
     },
-"windows": [
-  {
-    "fullscreen": false,
-    "resizable": true,
-    "title": "Flight Track Viewer",
-    "width": 1400,
-    "height": 900,
-    "minWidth": 900,
-    "minHeight": 600,
-    "fileDropEnabled": false
-  }
-]
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "Flight Track Viewer",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 600,
+        "fileDropEnabled": false
+      }
+    ]
   }
 }

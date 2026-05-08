@@ -306,7 +306,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="upload-layout">
       <div>
         <span class="upload-plane">&#x2708;&#xFE0F;</span>
-        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v1.2</span></h2>
+        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v1.3</span></h2>
         <p style="margin-bottom:18px;color:#64748b;">Escolhe como queres carregar os dados de voo:</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
           <div class="upload-card">
@@ -427,6 +427,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
       <div class="si"><div class="si-lbl">Per&#237;odo</div><div class="si-val" id="stD">&#8212;</div></div>
     </div>
     <div class="warn-bar" id="warnBar"></div>
+    <div id="alertsPanel" style="display:none;margin:4px 10px 0;padding:8px 10px;background:rgba(248,113,113,0.06);border:1px solid rgba(248,113,113,0.25);border-radius:6px;"></div>
     <div class="tabs">
       <div class="tab on" onclick="switchTab('map',this)">&#x1F5FA; Mapa</div>
       <div class="tab" onclick="switchTab('tbl',this)">&#x1F4CB; Dados por tempo</div>
@@ -705,6 +706,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <button class="btn" id="anaTabHold" onclick="switchAnaTab('hold')" style="font-size:10px;padding:4px 14px;">&#x25CE; HOLDINGS</button>
         <button class="btn" id="anaTabGA" onclick="switchAnaTab('ga')" style="font-size:10px;padding:4px 14px;">&#x1F6A8; GO-AROUNDS</button>
         <button class="btn" id="anaTabRot" onclick="switchAnaTab('rot')" style="font-size:10px;padding:4px 14px;">&#x23F1; ROT</button>
+        <button class="btn" id="anaTabOper" onclick="switchAnaTab('oper')" style="font-size:10px;padding:4px 14px;">&#x1F3E2; OPERADORES</button>
         <button class="btn" style="font-size:10px;padding:4px 12px;margin-left:auto;" onclick="exportAnaActiveCsv()">&#x2193; CSV</button>
         <span id="anaSubSummary" style="font-size:11px;color:var(--muted);margin-left:12px;"></span>
       </div>
@@ -801,6 +803,22 @@ tr:hover td{background:rgba(0,200,255,.03);}
             </table>
           </div>
         </div>
+        <!-- Operadores sub-panel -->
+        <div id="anaSubOper" style="display:none;flex:1;overflow:auto;padding:10px 14px;">
+          <div class="empty" id="anaOperEmpty">
+            <div class="empty-ico">&#x1F3E2;</div>
+            <div class="empty-ttl">Análise por Operador</div>
+            <div class="empty-sub" style="font-size:10px;color:var(--muted);">Abre esta aba para calcular automaticamente</div>
+          </div>
+          <div id="anaOperContent" style="display:none;">
+            <div class="kpi-h" style="margin-bottom:8px;display:flex;align-items:center;gap:10px;">
+              <span style="color:#a78bfa;">&#x1F3E2;</span> Por Operador
+              <button class="btn" onclick="exportOperCsv()" style="margin-left:auto;font-size:10px;padding:3px 10px;">&#x2193; CSV</button>
+            </div>
+            <div id="anaOperKpi" class="kpi-grid" style="margin-bottom:10px;"></div>
+            <div style="overflow-x:auto;"><div id="anaOperTable" style="min-width:520px;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:11px;"></div></div>
+          </div>
+        </div>
         <!-- old empty (hidden, kept for compat) -->
         <div class="empty" id="anaEmpty" style="display:none;">
           <div class="empty-ico">&#x1F50D;</div>
@@ -821,6 +839,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <button class="btn" id="prefPastaBtn" onclick="document.getElementById('addDir').click()">&#x2191; Pasta</button>
           <button class="btn" id="prefFicheirosBtn" onclick="document.getElementById('addFiles').click()">&#x2191; Ficheiros</button>
           <button class="btn" style="color:#f87171;" onclick="_clearSession()">&#x1F5D1; Limpar sessão guardada</button>
+          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v1.3</button>
         </div>
       </div>
     </div>
@@ -1358,6 +1377,7 @@ function finishLoading(){
   }
   $('sDot').classList.add('on');
   setTimeout(()=>_saveSession(),300);
+  setTimeout(()=>_computeAlerts(),800);
 }
 
 document.getElementById('fileIn').addEventListener('change',e=>{loadFiles(e.target.files);e.target.value='';});
@@ -4728,17 +4748,18 @@ async function switchAnaTab(tab){
   _anaTab=tab;
   const ae=$('anaEmpty');if(ae)ae.style.display='none';
   const ac=$('anaContent');if(ac)ac.style.display='none';
-  const tabIds={fast:'anaTabFast',hold:'anaTabHold',ga:'anaTabGA',rot:'anaTabRot'};
-  ['fast','hold','ga','rot'].forEach(t=>{
+  const tabIds={fast:'anaTabFast',hold:'anaTabHold',ga:'anaTabGA',rot:'anaTabRot',oper:'anaTabOper'};
+  ['fast','hold','ga','rot','oper'].forEach(t=>{
     const el=$(tabIds[t]);
     if(el)el.classList.toggle('toggled',t===tab);
   });
   // Show/hide sub-panels
-  const sf=$('anaSubFast'),sh=$('anaSubHold'),sg=$('anaSubGA'),sr=$('anaSubRot');
+  const sf=$('anaSubFast'),sh=$('anaSubHold'),sg=$('anaSubGA'),sr=$('anaSubRot'),so=$('anaSubOper');
   if(sf){sf.style.display=tab==='fast'?'flex':'none';sf.style.flexDirection='column';}
   if(sh)sh.style.display=tab==='hold'?'block':'none';
   if(sg)sg.style.display=tab==='ga'?'block':'none';
   if(sr)sr.style.display=tab==='rot'?'block':'none';
+  if(so)so.style.display=tab==='oper'?'flex':'none';if(so&&tab==='oper')so.style.flexDirection='column';
   refreshAnaSubSummary();
   ensureAnaTabData(tab);
 }
@@ -4775,6 +4796,10 @@ async function ensureAnaTabData(tab){
       }
       renderRotResults();
     }
+    if(tab==='oper'){
+      _anaTabLoaded.oper=true;
+      runOperAnalysis();
+    }
   }finally{
     _anaBusy=false;
   }
@@ -4798,6 +4823,9 @@ function refreshAnaSubSummary(){
     if(!rr.length){el.textContent='Sem ROT calculados';return;}
     const mean=rr.reduce((s,r)=>s+r.rotS,0)/rr.length;
     el.textContent=`${rr.length} aterragens · ROT médio ${mean.toFixed(0)}s`;
+  } else if(_anaTab==='oper'){
+    const n=_operResults?_operResults.length:0;
+    el.textContent=n?`${n} operadores`:' ';
   } else {
     el.textContent='';
   }
@@ -5724,7 +5752,7 @@ function openFlightModal(csn, color){
   overlay.onclick=function(e){if(e.target===overlay)closeFlightModal();};
 
   var box=document.createElement('div');
-  box.style.cssText='background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:660px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.8);overflow:hidden;';
+  box.style.cssText='background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:720px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.8);overflow:hidden;';
   box.onclick=function(e){e.stopPropagation();};
 
   // Header
@@ -5741,7 +5769,7 @@ function openFlightModal(csn, color){
   body.innerHTML='<div id="fmStats" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"><span style="color:#64748b;font-size:12px;">A carregar...</span></div>'
     +'<div id="fmAppSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#00c8ff;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades APP</div><div id="fmAppTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:11px;color:#e2e8f0;"></div></div>'
     +'<div id="fmStarSection" style="display:none;margin-bottom:14px;"><div style="font-size:10px;color:#f59e0b;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Velocidades STAR</div><div id="fmStarTable" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;font-size:11px;color:#e2e8f0;"></div></div>'
-    +'<div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:#64748b;font-size:12px;"><span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>Sem violações de velocidade registadas.</div>';
+    +'<div id="fmNoViolations" style="display:none;text-align:center;padding:20px;color:#64748b;font-size:12px;"><span style="font-size:28px;display:block;margin-bottom:8px;">✓</span>Sem violações de velocidade registadas.</div>''<div id="fmChartWrap" style="display:none;margin-top:14px;border-top:1px solid #1e2d3d;padding-top:12px;"><div style="font-size:10px;color:#22d3a0;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">📈 Perfil IAS / Altitude</div><canvas id="fmProfileChart" height="150" style="width:100%;max-height:150px;border-radius:6px;background:#080f18;display:block;"></canvas></div>';
 
   box.appendChild(hdr);
   box.appendChild(body);
@@ -5821,6 +5849,61 @@ function _fillFlightModal(csn, color){
   // No violations message
   const noViol=$('fmNoViolations');
   if(noViol)noViol.style.display=(!hasApp&&!hasStar)?'':'none';
+
+  // ── Perfil IAS / Altitude ────────────────────────────────────────────────
+  const chartWrap=$('fmChartWrap');
+  if(chartWrap){
+    try{
+      const cls=fl?classifyFlight(fl.rows):null;
+      if(cls==='arr'&&fl&&typeof Chart!=='undefined'){
+        let thrLat,thrLon;
+        const appRec=iasAppResults&&iasAppResults.records?iasAppResults.records.find(r=>r.csn===csn):null;
+        const arptCfg=AIRPORT_CONFIGS[activeAirport];
+        if(appRec&&arptCfg.rwys[appRec.rwy]){const rw=arptCfg.rwys[appRec.rwy];thrLat=rw.thr.lat;thrLon=rw.thr.lon;}
+        else{const rws=Object.values(arptCfg.rwys);if(rws.length){thrLat=rws[0].thr.lat;thrLon=rws[0].thr.lon;}}
+        if(thrLat&&thrLon){
+          const pts=[];
+          for(const r of fl.rows){
+            const lat=+r.latitude,lon=+r.longitude;
+            if(!lat||!lon||isNaN(lat)||isNaN(lon))continue;
+            const d=distNM(lat,lon,thrLat,thrLon);
+            if(d>20)continue;
+            const ias=parseFloat(gv(r,'iar','iara'));
+            const alt=parseFloat(getAlt(r));
+            pts.push({d,ias:isFinite(ias)&&ias>0?ias:null,alt:isFinite(alt)?alt:null});
+          }
+          pts.sort((a,b)=>b.d-a.d);
+          if(pts.length>3){
+            chartWrap.style.display='';
+            const canvas=$('fmProfileChart');
+            if(canvas._ftChart){canvas._ftChart.destroy();canvas._ftChart=null;}
+            canvas._ftChart=new Chart(canvas.getContext('2d'),{
+              type:'line',
+              data:{
+                labels:pts.map(p=>p.d.toFixed(1)),
+                datasets:[
+                  {label:'IAS (kt)',data:pts.map(p=>p.ias),borderColor:'#00c8ff',backgroundColor:'rgba(0,200,255,0.07)',yAxisID:'y',tension:0.3,pointRadius:0,borderWidth:2,fill:true,spanGaps:true},
+                  {label:'Alt (ft)',data:pts.map(p=>p.alt),borderColor:'#22d3a0',backgroundColor:'transparent',yAxisID:'y2',tension:0.3,pointRadius:0,borderWidth:1.5,borderDash:[4,2],spanGaps:true}
+                ]
+              },
+              options:{
+                animation:false,responsive:true,interaction:{mode:'index',intersect:false},
+                plugins:{
+                  legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:12,padding:8}},
+                  tooltip:{callbacks:{title:items=>items[0].label+' NM do THR'}}
+                },
+                scales:{
+                  x:{ticks:{color:'#64748b',font:{size:9},maxTicksLimit:10},grid:{color:'rgba(255,255,255,0.04)'},title:{display:true,text:'← THR     Distância (NM)',color:'#64748b',font:{size:9}}},
+                  y:{position:'left',ticks:{color:'#00c8ff',font:{size:9}},grid:{color:'rgba(255,255,255,0.04)'},title:{display:true,text:'IAS kt',color:'#00c8ff',font:{size:9}}},
+                  y2:{position:'right',ticks:{color:'#22d3a0',font:{size:9}},grid:{drawOnChartArea:false},title:{display:true,text:'Alt ft',color:'#22d3a0',font:{size:9}}}
+                }
+              }
+            });
+          }else{chartWrap.style.display='none';}
+        }else{chartWrap.style.display='none';}
+      }else{chartWrap.style.display='none';}
+    }catch(e){if(chartWrap)chartWrap.style.display='none';}
+  }
 }
 
 function closeFlightModal(){
@@ -5830,6 +5913,290 @@ window.addEventListener('load',()=>{
   if(!Object.keys(loadedFiles).length) _restoreSession();
 });
 
+
+<div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
+  <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:min(700px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.9);">
+    <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;">
+      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v1.3</span>
+      <button onclick="document.getElementById('emailModal').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:16px 18px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="btn primary" onclick="_sendEmailOutlook()" style="font-size:11px;">📧 Abrir Outlook</button>
+        <button class="btn" onclick="_downloadEmailHtml()" style="font-size:11px;">⬇ Guardar HTML</button>
+        <span style="font-size:10px;color:#64748b;align-self:center;">Para: carlos.jesus@nav.pt, carolina.rosa@nav.pt · CC: paulo.leal@nav.pt</span>
+      </div>
+      <div id="emailPreview" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;"></div>
+    </div>
+  </div>
+</div>
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.3 — OPERADORES
+// ═══════════════════════════════════════════════════════════════════════════
+let _operResults=null,_operSort={col:'arr',dir:-1};
+function _operPrefix(csn){return (csn||'').replace(/\d.*/,'').substring(0,3).toUpperCase()||'???';}
+function runOperAnalysis(){
+  const map={};
+  for(const csn in flights){
+    const flt=flights[csn];
+    if(!flt||!flt.rows||!flt.rows.length)continue;
+    const op=_operPrefix(csn);
+    if(!map[op])map[op]={op,arr:0,dep:0,lvl:0,rotSum:0,rotN:0,gaCount:0,starViols:0,appViols:0};
+    const cls=classifyFlight(flt.rows);
+    if(cls==='arr')map[op].arr++;
+    else if(cls==='dep')map[op].dep++;
+    else map[op].lvl++;
+  }
+  for(const r of rotResults||[]){
+    const op=_operPrefix(r.csn);
+    if(map[op]&&r.rotS!=null){map[op].rotSum+=r.rotS;map[op].rotN++;}
+  }
+  for(const r of goAroundResults||[]){
+    const op=_operPrefix(r.csn);
+    if(map[op])map[op].gaCount++;
+  }
+  for(const v of(iasResults&&iasResults.violations)||[]){
+    const op=_operPrefix(v.csn);
+    if(map[op])map[op].starViols++;
+  }
+  const tol=(iasAppResults&&iasAppResults.tol)||0;
+  for(const rec of(iasAppResults&&iasAppResults.records)||[]){
+    const op=_operPrefix(rec.csn);
+    if(map[op]){const v=(rec.points||[]).filter(p=>Math.abs(p.deviation||0)>tol).length;map[op].appViols+=v;}
+  }
+  _operResults=Object.values(map).map(r=>({...r,rotAvg:r.rotN>0?Math.round(r.rotSum/r.rotN):null}));
+  const oe=$('anaOperEmpty'),oc=$('anaOperContent');
+  if(oe)oe.style.display='none';if(oc)oc.style.display='';
+  _renderOperKpis();
+  renderOperResults();
+}
+function _renderOperKpis(){
+  const el=$('anaOperKpi');if(!el||!_operResults)return;
+  const total=_operResults.length;
+  const topArr=[..._operResults].sort((a,b)=>b.arr-a.arr)[0];
+  const topGA=[..._operResults].sort((a,b)=>b.gaCount-a.gaCount)[0];
+  const c=(lbl,val,clr)=>`<div class="kpi-card"><div class="kpi-lbl">${lbl}</div><div class="kpi-val" style="color:${clr||'var(--accent)'};">${val}</div></div>`;
+  el.innerHTML=
+    c('Operadores',total,'#a78bfa')+
+    c('Maior volume ARR',topArr?`${topArr.op} (${topArr.arr})`:'—','#60a5fa')+
+    c('Mais Go-Arounds',topGA&&topGA.gaCount>0?`${topGA.op} (${topGA.gaCount})`:'—','#f59e0b');
+}
+function renderOperResults(){
+  const el=$('anaOperTable');if(!el||!_operResults)return;
+  const cols=[
+    {k:'op',l:'Operador',w:'80px'},
+    {k:'arr',l:'ARR',w:'50px'},{k:'dep',l:'DEP',w:'50px'},{k:'lvl',l:'LVL',w:'45px'},
+    {k:'rotAvg',l:'ROT méd',w:'70px'},{k:'gaCount',l:'GA',w:'42px'},
+    {k:'starViols',l:'Viols STAR',w:'80px'},{k:'appViols',l:'Viols APP',w:'78px'}
+  ];
+  const gtc=cols.map(c=>c.w).join(' ');
+  const sorted=[..._operResults].sort((a,b)=>{
+    const va=a[_operSort.col]??-1,vb=b[_operSort.col]??-1;
+    return _operSort.dir*(typeof va==='string'?va.localeCompare(vb):vb-va);
+  });
+  const hdr=`<div style="display:grid;grid-template-columns:${gtc};background:var(--panel);border-bottom:1px solid var(--border);">
+    ${cols.map(c=>`<div style="padding:6px 8px;cursor:pointer;color:#64748b;font-size:10px;letter-spacing:1px;text-transform:uppercase;user-select:none;" onclick="_operSortBy('${c.k}')">${c.l}${_operSort.col===c.k?(_operSort.dir>0?' ▲':' ▼'):''}</div>`).join('')}
+  </div>`;
+  const body=sorted.map(r=>`<div style="display:grid;grid-template-columns:${gtc};border-bottom:1px solid var(--border);">
+    <div style="padding:5px 8px;font-weight:700;color:#e2e8f0;font-family:monospace;">${r.op}</div>
+    <div style="padding:5px 8px;color:#60a5fa;">${r.arr}</div>
+    <div style="padding:5px 8px;color:#a78bfa;">${r.dep}</div>
+    <div style="padding:5px 8px;color:#64748b;">${r.lvl||0}</div>
+    <div style="padding:5px 8px;color:#22d3a0;">${r.rotAvg!=null?r.rotAvg+'s':'—'}</div>
+    <div style="padding:5px 8px;${r.gaCount>0?'color:#f59e0b;font-weight:700;':''}">${r.gaCount||0}</div>
+    <div style="padding:5px 8px;${r.starViols>0?'color:#f59e0b;font-weight:700;':''}">${r.starViols||0}</div>
+    <div style="padding:5px 8px;${r.appViols>0?'color:#f87171;font-weight:700;':''}">${r.appViols||0}</div>
+  </div>`).join('');
+  el.innerHTML=hdr+`<div>${body||'<div style="padding:12px;color:var(--muted);">Sem dados de operadores.</div>'}</div>`;
+}
+function _operSortBy(col){
+  _operSort=_operSort.col===col?{col,dir:_operSort.dir*-1}:{col,dir:-1};
+  renderOperResults();
+}
+function exportOperCsv(){
+  if(!_operResults||!_operResults.length)return;
+  const hdr='Operador,ARR,DEP,LVL,ROT méd (s),Go-Arounds,Viols STAR,Viols APP\n';
+  const body=_operResults.map(r=>`${r.op},${r.arr},${r.dep},${r.lvl||0},${r.rotAvg!=null?r.rotAvg:''},${r.gaCount||0},${r.starViols||0},${r.appViols||0}`).join('\n');
+  dlBlob(hdr+body,'operadores.csv','text/csv');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.3 — ALERTAS AUTOMÁTICOS
+// ═══════════════════════════════════════════════════════════════════════════
+let _alerts=[];
+function _computeAlerts(){
+  _alerts=[];
+  // ROT longo (>55s)
+  const ROT_THR=55;
+  const longRot=(rotResults||[]).filter(r=>r.rotS!=null&&r.rotS>ROT_THR);
+  if(longRot.length)_alerts.push({icon:'⏱',color:'#f59e0b',
+    msg:`${longRot.length} ROT${longRot.length>1?'s':''} acima de ${ROT_THR}s`,
+    detail:longRot.slice(0,3).map(r=>`${r.csn} (${r.rotS}s)`).join(', ')+(longRot.length>3?'…':'')});
+  // Go-arounds
+  const gaCount=(goAroundResults||[]).length;
+  if(gaCount)_alerts.push({icon:'🚨',color:'#f87171',
+    msg:`${gaCount} go-around${gaCount>1?'s':''}`,
+    detail:(goAroundResults||[]).slice(0,3).map(r=>r.csn).join(', ')+(gaCount>3?'…':'')});
+  // Holdings longos (>5min)
+  const longH=(holdingsResults||[]).filter(h=>h.durS>300);
+  if(longH.length)_alerts.push({icon:'◎',color:'#a78bfa',
+    msg:`${longH.length} holding${longH.length>1?'s':''} acima de 5 min`,
+    detail:longH.slice(0,3).map(h=>`${h.csn} (${Math.round(h.durS/60)}min)`).join(', ')+(longH.length>3?'…':'')});
+  // IAS STAR violations
+  const sv=(iasResults&&iasResults.violations)||[];
+  if(sv.length){const nf=[...new Set(sv.map(v=>v.csn))].length;
+    _alerts.push({icon:'⚡',color:'#fbbf24',msg:`${sv.length} violação(ões) IAS STAR em ${nf} voo(s)`,detail:''});}
+  // IAS APP violations
+  const tol=(iasAppResults&&iasAppResults.tol)||0;
+  const av=(iasAppResults&&iasAppResults.records||[]).filter(r=>(r.points||[]).some(p=>Math.abs(p.deviation||0)>tol));
+  if(av.length)_alerts.push({icon:'🛬',color:'#f87171',
+    msg:`${av.length} voo(s) com violações IAS na aproximação`,
+    detail:av.slice(0,3).map(r=>r.csn).join(', ')+(av.length>3?'…':'')});
+  _renderAlerts();
+}
+function _renderAlerts(){
+  const el=$('alertsPanel');if(!el)return;
+  if(!_alerts.length){el.style.display='none';return;}
+  el.style.display='';
+  el.innerHTML=_alerts.map((a,i)=>
+    `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-left:3px solid ${a.color};border-radius:3px;margin-bottom:4px;background:rgba(0,0,0,0.15);">
+      <span style="font-size:13px;flex-shrink:0;">${a.icon}</span>
+      <div style="flex:1;"><div style="font-size:11px;font-weight:600;color:${a.color};">${a.msg}</div>${a.detail?`<div style="font-size:10px;color:#64748b;margin-top:1px;">${a.detail}</div>`:''}</div>
+      <button onclick="this.closest('[style]').remove();if(!document.getElementById('alertsPanel').querySelector('[style]'))document.getElementById('alertsPanel').style.display='none';" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:14px;padding:0;line-height:1;flex-shrink:0;">×</button>
+    </div>`
+  ).join('')+`<div style="text-align:right;margin-top:2px;"><button onclick="$('alertsPanel').style.display='none'" style="background:none;border:none;color:#475569;cursor:pointer;font-size:10px;text-decoration:underline;">dispensar todos</button></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// v1.3 — EMAIL DE NOVIDADES
+// ═══════════════════════════════════════════════════════════════════════════
+function _emailHtml(){
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flight Track Viewer v1.3</title></head>
+<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:30px 0;">
+<tr><td align="center">
+<table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+
+<!-- HEADER -->
+<tr><td style="background:linear-gradient(135deg,#0f1923 0%,#1a2d45 60%,#0f2744 100%);padding:36px 40px 28px;text-align:center;">
+  <div style="font-size:32px;margin-bottom:8px;">✈</div>
+  <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">Flight Track Viewer</h1>
+  <div style="display:inline-block;background:rgba(99,102,241,0.25);border:1px solid rgba(99,102,241,0.5);color:#a5b4fc;padding:4px 16px;border-radius:20px;font-size:13px;margin-top:10px;letter-spacing:1px;">VERSÃO 1.3</div>
+  <p style="color:#94a3b8;font-size:13px;margin:14px 0 0;">Nova versão disponível com funcionalidades de análise avançadas</p>
+</td></tr>
+
+<!-- INTRO -->
+<tr><td style="padding:30px 40px 10px;">
+  <p style="margin:0;color:#374151;font-size:14px;line-height:1.6;">Caros Carlos e Carolina,</p>
+  <p style="color:#374151;font-size:14px;line-height:1.6;margin-top:10px;">Está disponível a versão <strong>1.3</strong> do Flight Track Viewer com quatro novas funcionalidades operacionais. Esta versão pode ser instalada directamente sobre a anterior.</p>
+</td></tr>
+
+<!-- FEATURE 1 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8faff;border:1px solid #e0e7ff;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#4f46e5;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">📈 Perfil IAS / Altitude por voo</span>
+    </td></tr>
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      No modal de detalhe de voo (clique numa linha no mapa), passa a aparecer um <strong>gráfico dual-axis</strong> com a evolução da <span style="color:#0891b2;font-weight:600;">IAS (kt)</span> e da <span style="color:#059669;font-weight:600;">altitude (ft)</span> em função da distância ao THR — nos últimos 20 NM de cada chegada. Permite ver visualmente se o voo estabilizou antes dos gates definidos.
+    </td></tr>
+  </table>
+</td></tr>
+
+<!-- FEATURE 2 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fff8;border:1px solid #d1fae5;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#059669;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">🏢 Análise por Operador / Companhia</span>
+    </td></tr>
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Nova sub-aba <strong>OPERADORES</strong> na aba Análise Op. Agrega automaticamente por prefixo ICAO (TAP, RYR, EZY…): volumes ARR/DEP, ROT médio, go-arounds, violações IAS STAR e APP. Tabela ordenável e exportável para CSV — ideal para feedback a companhias aéreas.
+    </td></tr>
+  </table>
+</td></tr>
+
+<!-- FEATURE 3 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbf0;border:1px solid #fde68a;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#d97706;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">🚨 Alertas Automáticos após carregamento</span>
+    </td></tr>
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Após carregar dados, um <strong>painel de alertas</strong> surge automaticamente com eventos notáveis: ROT acima de 55s, go-arounds, holdings acima de 5 minutos e violações IAS. Cada alerta é dispensável individualmente. Permite uma visão imediata do que merece atenção antes de entrar em qualquer aba de análise.
+    </td></tr>
+  </table>
+</td></tr>
+
+<!-- FEATURE 4 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#7c3aed;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">✉ Email de novidades (Preferências)</span>
+    </td></tr>
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Em <strong>Preferências → Email novidades v1.3</strong> é possível gerar este email directamente a partir da aplicação, com prévia visual e opções de abrir no Outlook ou guardar como ficheiro HTML.
+    </td></tr>
+  </table>
+</td></tr>
+
+<!-- DOWNLOAD -->
+<tr><td style="padding:24px 40px;">
+  <div style="background:linear-gradient(135deg,#1e3a5f,#0f2744);border-radius:10px;padding:24px;text-align:center;">
+    <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da versão 1.3</p>
+    <table cellpadding="0" cellspacing="0" align="center"><tr>
+      <td style="padding:0 8px;">
+        <a href="https://github.com/Mendreas/FlightTracker/releases/latest" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ Windows (.exe)</a>
+      </td>
+      <td style="padding:0 8px;">
+        <a href="https://github.com/Mendreas/FlightTracker/releases/latest" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ macOS (.dmg)</a>
+      </td>
+    </tr></table>
+    <p style="color:#64748b;font-size:11px;margin:14px 0 0;">Instalação directa sobre versão anterior · Dados e sessão preservados</p>
+  </div>
+</td></tr>
+
+<!-- FOOTER -->
+<tr><td style="background:#f8faff;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
+  <p style="color:#9ca3af;font-size:12px;margin:0;">Paulo Leal · NAV Portugal, E.P.E. · paulo.leal@nav.pt</p>
+  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">Flight Track Viewer é uma ferramenta interna de análise de tráfego aéreo</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body></html>`;
+}
+function _openEmailModal(){
+  const m=$('emailModal');if(!m)return;
+  m.style.display='flex';
+  const prev=$('emailPreview');
+  if(prev){
+    const iframe=document.createElement('iframe');
+    iframe.style.cssText='width:100%;height:500px;border:none;border-radius:6px;';
+    iframe.srcdoc=_emailHtml();
+    prev.innerHTML='';prev.appendChild(iframe);
+  }
+}
+function _sendEmailOutlook(){
+  const to='carlos.jesus@nav.pt,carolina.rosa@nav.pt';
+  const cc='paulo.leal@nav.pt';
+  const sub=encodeURIComponent('Flight Track Viewer v1.3 — Novas funcionalidades');
+  const body=encodeURIComponent('Caros Carlos e Carolina,\n\nEstá disponível a versão 1.3 do Flight Track Viewer.\n\nNovidades:\n• Perfil IAS/Altitude no modal de voo\n• Análise por Operador/Companhia\n• Alertas automáticos após carregamento\n• Email de novidades em Preferências\n\nDownload em: https://github.com/Mendreas/FlightTracker/releases/latest\n\nPaulo Leal');
+  const url=`mailto:${to}?cc=${cc}&subject=${sub}&body=${body}`;
+  if(window.__TAURI__&&window.__TAURI__.shell){window.__TAURI__.shell.open(url);}
+  else{window.open(url);}
+}
+function _downloadEmailHtml(){
+  const html=_emailHtml();
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='FlightTracker_v1.3_novidades.html';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+}
 
 </script>
 </html>
