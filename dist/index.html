@@ -5914,22 +5914,6 @@ window.addEventListener('load',()=>{
 });
 
 
-<div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
-  <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:min(700px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.9);">
-    <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;">
-      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v1.3</span>
-      <button onclick="document.getElementById('emailModal').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">✕</button>
-    </div>
-    <div style="flex:1;overflow:auto;padding:16px 18px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-        <button class="btn primary" onclick="_sendEmailOutlook()" style="font-size:11px;">📧 Abrir Outlook</button>
-        <button class="btn" onclick="_downloadEmailHtml()" style="font-size:11px;">⬇ Guardar HTML</button>
-        <span style="font-size:10px;color:#64748b;align-self:center;">Para: carlos.jesus@nav.pt, carolina.rosa@nav.pt · CC: paulo.leal@nav.pt</span>
-      </div>
-      <div id="emailPreview" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;"></div>
-    </div>
-  </div>
-</div>
 
 // ═══════════════════════════════════════════════════════════════════════════
 // v1.3 — OPERADORES
@@ -6197,6 +6181,21 @@ function _downloadEmailHtml(){
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
-
 </script>
+<div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
+  <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:min(700px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.9);">
+    <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;">
+      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v1.3</span>
+      <button onclick="document.getElementById('emailModal').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">✕</button>
+    </div>
+    <div style="flex:1;overflow:auto;padding:16px 18px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="btn primary" onclick="_sendEmailOutlook()" style="font-size:11px;">📧 Abrir Outlook</button>
+        <button class="btn" onclick="_downloadEmailHtml()" style="font-size:11px;">⬇ Guardar HTML</button>
+        <span style="font-size:10px;color:#64748b;align-self:center;">Para: carlos.jesus@nav.pt, carolina.rosa@nav.pt · CC: paulo.leal@nav.pt</span>
+      </div>
+      <div id="emailPreview" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;"></div>
+    </div>
+  </div>
+</div>
 </html>
