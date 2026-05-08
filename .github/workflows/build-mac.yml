@@ -35,9 +35,22 @@ jobs:
           TAURI_PRIVATE_KEY: ''
           TAURI_KEY_PASSWORD: ''
 
-      - name: Publicar DMG
+      - name: Guardar DMG como artifact
         uses: actions/upload-artifact@v4
         with:
           name: Flight-Track-Viewer-macOS-DMG
           path: src-tauri/target/release/bundle/dmg/*.dmg
           retention-days: 30
+
+      - name: Publicar GitHub Release (macOS)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Flight Track Viewer — versão mais recente
+          body: |
+            Instalador Windows e DMG macOS da versão mais recente.
+            Instala directamente sobre versão anterior — dados e sessão preservados.
+          files: src-tauri/target/release/bundle/dmg/*.dmg
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
