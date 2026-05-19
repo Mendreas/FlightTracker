@@ -894,7 +894,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         </button>
       </div>
       <div style="padding:6px 14px 8px;font-size:9px;color:var(--muted);opacity:.6;background:var(--panel);">
-        API KEY: defina <code>IA_KEY</code> no código &nbsp;·&nbsp; console.groq.com (gratuito)
+        Fornecedor: <span id="iaFooterProv">—</span> &nbsp;·&nbsp; Configura em <strong>Preferências → Análise IA</strong>
       </div>
     </div>
   </div>
@@ -6551,6 +6551,8 @@ function _iaUpdateStatus(){
     s.textContent='Chave configurada para '+IA_PROVIDERS[prov].name+'.';
     s.style.color='var(--green)';
     if(badge){ badge.textContent=IA_PROVIDERS[prov].name+' · '+iaGetModel(); badge.style.color='var(--green)'; }
+    var fp=document.getElementById('iaFooterProv');
+    if(fp) fp.textContent=(key?IA_PROVIDERS[prov].name+' · '+iaGetModel():'Sem chave — configura nas Preferências');
   } else {
     s.textContent='Sem chave configurada para '+IA_PROVIDERS[prov].name+'. Vai a console.'+(prov==='anthropic'?'anthropic':'groq')+'.com';
     s.style.color='var(--red,#f87171)';
@@ -6607,7 +6609,7 @@ function _iaBuildCtx(){
   csns.forEach(csn=>{
     const f=flights[csn];
     const cls=classifyFlight(f.rows);
-    if(cls==='ARR')arr++; else if(cls==='DEP')dep++; else nvl++;
+    if(cls==='arr')arr++; else if(cls==='dep')dep++; else nvl++;
     const pre=(csn.match(/^[A-Z]{2,3}/)||['?'])[0];
     opFreq[pre]=(opFreq[pre]||0)+1;
     f.rows.forEach(r=>{
@@ -6967,7 +6969,7 @@ function _iaAddMsg(role, text, _record){
   div.style.cssText='display:flex;flex-direction:column;gap:4px;';
   const lbl=document.createElement('div');
   lbl.style.cssText='font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:0 4px;color:'+(role==='user'?'var(--accent)':'var(--green)');
-  lbl.textContent=role==='user'?'◈ TU':'◈ GROQ IA';
+  lbl.textContent=role==='user'?'◈ TU':'◈ '+(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name||'IA').toUpperCase();
   const bubble=document.createElement('div');
   bubble.className='ia-bubble';
   bubble.style.cssText='padding:10px 13px;border-radius:6px;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;border:1px solid '+(role==='user'?'rgba(0,200,255,0.2)':'rgba(34,211,160,0.2)')+';background:'+(role==='user'?'rgba(0,200,255,0.06)':'rgba(34,211,160,0.06)');
