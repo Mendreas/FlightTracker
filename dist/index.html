@@ -6157,13 +6157,62 @@ function _drawProfileChart(canvas,pts){
   ctx.fillStyle='#94a3b8';ctx.fillText('Alt (ft)',PAD.l+92,19);
 }
 async function _autoAnalyseAndAlert(){
-  await new Promise(r=>setTimeout(r,400)); // esperar que applyFilter termine
+  await new Promise(r=>setTimeout(r,400));
   if(!Object.keys(flights).length){_computeAlerts();return;}
-  if(!finalResults.length)await runFinalAnalysis();
+
+  // 1. Final (necessário para FAST e IAS APP)
+  if(!finalResults.length) await runFinalAnalysis();
+
+  // 2. ROT
   if(!_anaTabLoaded.rot){detectROT();_anaTabLoaded.rot=true;}
   _computeAlerts();
+
+  // 3. Holdings
   if(!_anaTabLoaded.hold){await detectHoldings();_anaTabLoaded.hold=true;_computeAlerts();}
+
+  // 4. Go-Arounds
   if(!_anaTabLoaded.ga){await detectGoArounds();_anaTabLoaded.ga=true;_computeAlerts();}
+
+  // 5. IAS STAR (usa defaults da UI — raio 1NM, tolerância 0)
+  if(!iasResults) await runIasCompliance();
+  _computeAlerts();
+
+  // 6. IAS APP — garantir pista TODAS + defaults
+  if(!iasAppResults){
+    const finRwyEl=$('finRwy');
+    if(finRwyEl && finRwyEl.value==='') finRwyEl.value='BOTH';
+    runIasAppCompliance();
+    await new Promise(r=>setTimeout(r,800));
+  }
+  _computeAlerts();
+
+  // 7. Pontos e Sequência — PESEX por defeito
+  const pts=allPoints();
+  const pesex=pts.find(function(p){return p.name.toUpperCase()==='PESEX';});
+  if(pesex){
+    // Aba Pontos — só correr se selectedPoint ainda não estiver definido
+    if(!selectedPoint){
+      selectedPoint=pesex;
+      const selName=$('ptSelName');
+      if(selName) selName.textContent=pesex.name;
+      document.querySelectorAll('.pt-item').forEach(function(el){
+        el.classList.toggle('sel', el.textContent.indexOf('PESEX')>=0);
+      });
+      if(!ptQueryResults.length) queryPoint();
+    }
+
+    // Aba Sequência — garantir que a lista está populada antes de correr
+    refreshSeqPointList(); // preenche o selector com todos os pontos
+    await new Promise(r=>setTimeout(r,100));
+    const seqSel=$('seqPointSel');
+    if(seqSel && !seqResults.length){
+      seqSel.value='PESEX';
+      if(seqSel.value==='PESEX'){
+        querySequence();
+      }
+    }
+  }
+  _computeAlerts();
 }
 function _computeAlerts(){
   _alerts=[];
@@ -6212,113 +6261,114 @@ function _renderAlerts(){
 // v2.0 — EMAIL DE NOVIDADES
 // ═══════════════════════════════════════════════════════════════════════════
 function _emailHtml(){
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  return `<!DOCTYPE html><html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
 <title>Flight Track Viewer v2.0</title></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:30px 0;">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f0f4f8" style="background:#f0f4f8;padding:30px 0;">
 <tr><td align="center">
 <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
 
 <!-- HEADER -->
-<tr><td style="background:linear-gradient(135deg,#0f1923 0%,#1a2d45 60%,#0f2744 100%);padding:36px 40px 28px;text-align:center;">
-  <div style="font-size:32px;margin-bottom:8px;">✈</div>
+<tr><td bgcolor="#0f1923" style="background:#0f1923;padding:36px 40px 28px;text-align:center;">
+  <div style="font-size:32px;margin-bottom:8px;">&#9992;</div>
   <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">Flight Track Viewer</h1>
-  <div style="display:inline-block;background:rgba(0,200,255,0.2);border:1px solid rgba(0,200,255,0.5);color:#7ee8fa;padding:4px 16px;border-radius:20px;font-size:13px;margin-top:10px;letter-spacing:1px;">VERSÃO 2.0</div>
-  <p style="color:#94a3b8;font-size:13px;margin:14px 0 0;">Análise de tráfego aéreo com Inteligência Artificial integrada</p>
+  <div style="display:inline-block;background:#1a3a5c;border:1px solid #3a7ab5;color:#7ee8fa;padding:4px 16px;border-radius:20px;font-size:13px;margin-top:10px;letter-spacing:1px;">VERS&#195;O 2.0</div>
+  <p style="color:#94a3b8;font-size:13px;margin:14px 0 0;">An&#225;lise de tr&#225;fego a&#233;reo com Intelig&#234;ncia Artificial integrada</p>
 </td></tr>
 
 <!-- INTRO -->
-<tr><td style="padding:30px 40px 10px;">
-  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Está disponível a versão <strong>2.0</strong> do Flight Track Viewer. Esta versão acrescenta à base sólida da v1.3 uma nova aba de <strong>Análise por Inteligência Artificial</strong>, que permite interrogar os dados carregados em linguagem natural e obter respostas com texto e gráficos automáticos.</p>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:30px 40px 10px;">
+  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Est&#225; dispon&#237;vel a vers&#227;o <strong>2.0</strong> do Flight Track Viewer. Esta vers&#227;o acrescenta &#224; base s&#243;lida da v1.3 uma nova aba de <strong>An&#225;lise por Intelig&#234;ncia Artificial</strong>, que permite interrogar os dados carregados em linguagem natural e obter respostas com texto e gr&#225;ficos autom&#225;ticos.</p>
 </td></tr>
 
 <!-- FEATURE 1 — IA tab -->
-<tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdff;border:1px solid #bae6fd;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#0284c7;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">🤖 Nova aba — Análise IA</span>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #bae6fd;">
+    <tr><td bgcolor="#0284c7" style="background:#0284c7;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#129302; Nova aba &#8212; An&#225;lise IA</span>
     </td></tr>
-    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Nova aba <strong>Análise IA</strong> no final da barra de navegação com um chat em linguagem natural. Permite fazer perguntas sobre os voos carregados — por exemplo <em>"Quais os operadores com mais violações IAS?"</em>, <em>"Faz um gráfico de chegadas vs descolagens"</em> ou <em>"Resume os go-arounds do dia"</em>. A IA responde em português com texto e, quando aplicável, gera automaticamente um gráfico (barras, pizza, linha, doughnut).
+    <tr><td bgcolor="#f0fdff" style="background:#f0fdff;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Nova aba <strong>An&#225;lise IA</strong> no final da barra de navega&#231;&#227;o com um chat em linguagem natural. Permite fazer perguntas sobre os voos carregados &#8212; por exemplo <em>"Quais os operadores com mais viola&#231;&#245;es IAS?"</em>, <em>"Faz um gr&#225;fico de chegadas vs descolagens"</em> ou <em>"Resume os go-arounds do dia"</em>. A IA responde em portugu&#234;s com texto e, quando aplic&#225;vel, gera automaticamente um gr&#225;fico (barras, pizza, linha, doughnut).
     </td></tr>
   </table>
 </td></tr>
 
 <!-- FEATURE 2 — Claude por defeito -->
-<tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#16a34a;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">⚡ Claude (Anthropic) por defeito — já configurado</span>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #bbf7d0;">
+    <tr><td bgcolor="#16a34a" style="background:#16a34a;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#9889; Claude (Anthropic) por defeito &#8212; j&#225; configurado</span>
     </td></tr>
-    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Esta versão inclui o modelo <strong>Claude Sonnet 4.5</strong> da Anthropic já configurado — a IA arranca sem necessidade de configuração adicional. Para quem preferir usar a sua própria chave ou outro fornecedor, basta ir a <strong>Preferências → Análise IA → Configuração</strong>.
+    <tr><td bgcolor="#f0fdf4" style="background:#f0fdf4;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Esta vers&#227;o inclui o modelo <strong>Claude Sonnet 4.5</strong> da Anthropic j&#225; configurado &#8212; a IA arranca sem necessidade de configura&#231;&#227;o adicional. Para quem preferir usar a sua pr&#243;pria chave ou outro fornecedor, basta ir a <strong>Prefer&#234;ncias &#8594; An&#225;lise IA &#8594; Configura&#231;&#227;o</strong>.
     </td></tr>
   </table>
 </td></tr>
 
 <!-- FEATURE 3 — 5 fornecedores -->
-<tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbf0;border:1px solid #fde68a;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#d97706;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">🔧 5 fornecedores de IA disponíveis</span>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #fde68a;">
+    <tr><td bgcolor="#d97706" style="background:#d97706;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128295; 5 fornecedores de IA dispon&#237;veis</span>
     </td></tr>
-    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Nas Preferências é possível escolher entre <strong>Claude (Anthropic)</strong>, <strong>OpenAI (GPT-4o)</strong>, <strong>Mistral AI</strong>, <strong>Azure OpenAI</strong> e <strong>Groq (Llama 3.3)</strong>. Basta colar a API Key do fornecedor pretendido e guardar — sem necessidade de alterar código.
+    <tr><td bgcolor="#fffbf0" style="background:#fffbf0;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Nas Prefer&#234;ncias &#233; poss&#237;vel escolher entre <strong>Claude (Anthropic)</strong>, <strong>OpenAI (GPT-4o)</strong>, <strong>Mistral AI</strong>, <strong>Azure OpenAI</strong> e <strong>Groq (Llama 3.3)</strong>. Basta colar a API Key do fornecedor pretendido e guardar &#8212; sem necessidade de alterar c&#243;digo.
     </td></tr>
   </table>
 </td></tr>
 
 <!-- FEATURE 4 — Contexto completo -->
-<tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#7c3aed;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">🧠 Contexto completo da sessão</span>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e9d5ff;">
+    <tr><td bgcolor="#7c3aed" style="background:#7c3aed;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#129504; Contexto completo da sess&#227;o</span>
     </td></tr>
-    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      A IA tem acesso automático a todos os dados calculados na app: <strong>violações IAS STAR e APP</strong> (por waypoint, companhia e distribuição), <strong>pares FAST</strong> com separação e DEP intercalares, <strong>holdings</strong>, <strong>go-arounds</strong>, <strong>ROT</strong>, <strong>sequência</strong> e estatísticas gerais — sem enviar dados brutos para o exterior.
+    <tr><td bgcolor="#fdf4ff" style="background:#fdf4ff;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      A IA tem acesso autom&#225;tico a todos os dados calculados na app: <strong>viola&#231;&#245;es IAS STAR e APP</strong> (por waypoint, companhia e distribui&#231;&#227;o), <strong>pares FAST</strong> com separa&#231;&#227;o e DEP intercalares, <strong>holdings</strong>, <strong>go-arounds</strong>, <strong>ROT</strong>, <strong>sequ&#234;ncia</strong> e estat&#237;sticas gerais &#8212; sem enviar dados brutos para o exterior.
     </td></tr>
   </table>
 </td></tr>
 
 <!-- FEATURE 5 — Exportação -->
-<tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#ea580c;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">📊 Exportação da conversa IA</span>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #fed7aa;">
+    <tr><td bgcolor="#ea580c" style="background:#ea580c;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128202; Exporta&#231;&#227;o da conversa IA</span>
     </td></tr>
-    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Botões <strong>CSV</strong>, <strong>XLS</strong> e <strong>DOC</strong> no cabeçalho do painel IA para exportar toda a conversa, incluindo os dados dos gráficos gerados.
+    <tr><td bgcolor="#fff7ed" style="background:#fff7ed;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Bot&#245;es <strong>CSV</strong>, <strong>XLS</strong> e <strong>DOC</strong> no cabe&#231;alho do painel IA para exportar toda a conversa, incluindo os dados dos gr&#225;ficos gerados.
     </td></tr>
   </table>
 </td></tr>
 
-<!-- O QUE VEM DA V1.3 -->
-<tr><td style="padding:10px 40px;">
-  <p style="color:#6b7280;font-size:12px;margin:6px 0 4px;text-transform:uppercase;letter-spacing:1px;">Mantido da versão 1.3</p>
-  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;color:#374151;font-size:13px;line-height:1.7;">
-    Mapa Leaflet com todas as tracks · Análise de sequência e separação em Final · Conformidade IAS STAR e Velocidades APP · KPIs operacionais · Análise Op. (FAST / Holdings / Go-Arounds / ROT / Operadores) · Alertas automáticos após carregamento · Sessão persistente
-  </div>
+<!-- MANTIDO DA V1.3 -->
+<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
+  <p style="color:#6b7280;font-size:12px;margin:6px 0 4px;text-transform:uppercase;letter-spacing:1px;">Mantido da vers&#227;o 1.3</p>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr><td bgcolor="#f8fafc" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;color:#374151;font-size:13px;line-height:1.7;">
+      Mapa Leaflet com todas as tracks &middot; An&#225;lise de sequ&#234;ncia e separa&#231;&#227;o em Final &middot; Conformidade IAS STAR e Velocidades APP &middot; KPIs operacionais &middot; An&#225;lise Op. (FAST / Holdings / Go-Arounds / ROT / Operadores) &middot; Alertas autom&#225;ticos ap&#243;s carregamento &middot; Sess&#227;o persistente
+    </td></tr>
+  </table>
 </td></tr>
 
 <!-- DOWNLOAD -->
-<tr><td style="padding:24px 40px;">
-  <div style="background:linear-gradient(135deg,#1e3a5f,#0f2744);border-radius:10px;padding:24px;text-align:center;">
-    <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da versão 2.0</p>
-    <table cellpadding="0" cellspacing="0" align="center"><tr>
-      <td style="padding:0 8px;">
-        <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_2.0.0_x64-setup.exe" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ Windows (.exe)</a>
-      </td>
-      <td style="padding:0 8px;">
-        <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_2.0.0_aarch64.dmg" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ macOS (.dmg)</a>
-      </td>
-    </tr></table>
-    <p style="color:#64748b;font-size:11px;margin:14px 0 0;">Instalação directa sobre versão anterior · Dados e sessão preservados</p>
-  </div>
+<tr><td bgcolor="#0f2744" style="background:#0f2744;padding:24px 40px;text-align:center;">
+  <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da vers&#227;o 2.0</p>
+  <table cellpadding="0" cellspacing="0" align="center"><tr>
+    <td style="padding:0 8px;">
+      <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_2.0.0_x64-setup.exe" style="display:inline-block;background:#3b82f6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; Windows (.exe)</a>
+    </td>
+    <td style="padding:0 8px;">
+      <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_2.0.0_aarch64.dmg" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; macOS (.dmg)</a>
+    </td>
+  </tr></table>
+  <p style="color:#64748b;font-size:11px;margin:14px 0 0;">Instala&#231;&#227;o directa sobre vers&#227;o anterior &middot; Dados e sess&#227;o preservados</p>
 </td></tr>
 
 <!-- FOOTER -->
-<tr><td style="padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-  <p style="color:#9ca3af;font-size:11px;margin:0;">Flight Track Viewer v2.0 · NAV Portugal · Desenvolvido para análise interna de tráfego aéreo</p>
+<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
+  <p style="color:#9ca3af;font-size:11px;margin:0;">Flight Track Viewer v2.0 &middot; NAV Portugal &middot; Desenvolvido para an&#225;lise interna de tr&#225;fego a&#233;reo</p>
   <p style="color:#d1d5db;font-size:10px;margin:4px 0 0;"><a href="https://github.com/Mendreas/FlightTracker" style="color:#60a5fa;text-decoration:none;">github.com/Mendreas/FlightTracker</a></p>
 </td></tr>
 
