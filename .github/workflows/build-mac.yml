@@ -16,6 +16,16 @@ jobs:
       - name: Download do código
         uses: actions/checkout@v4
 
+      - name: Injectar API Key no HTML
+        run: |
+          KEY="${{ secrets.ANTHROPIC_API_KEY }}"
+          if [ -n "$KEY" ]; then
+            sed -i '' "s|__ANTHROPIC_API_KEY__|${KEY}|g" dist/index.html
+            echo "API Key injectada com sucesso."
+          else
+            echo "Secret ANTHROPIC_API_KEY nao definido — placeholder mantido."
+          fi
+
       - name: Instalar Rust
         uses: dtolnay/rust-toolchain@stable
 
