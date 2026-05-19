@@ -6229,53 +6229,65 @@ function _emailHtml(){
 
 <!-- INTRO -->
 <tr><td style="padding:30px 40px 10px;">
-  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Está disponível a versão <strong>2.0</strong> do Flight Track Viewer. Esta versão acrescenta à base sólida da v1.3 uma nova aba de <strong>Análise por Inteligência Artificial</strong>, permitindo interrogar os dados carregados em linguagem natural e obter respostas com texto e gráficos automáticos.</p>
+  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Está disponível a versão <strong>2.0</strong> do Flight Track Viewer. Esta versão acrescenta à base sólida da v1.3 uma nova aba de <strong>Análise por Inteligência Artificial</strong>, que permite interrogar os dados carregados em linguagem natural e obter respostas com texto e gráficos automáticos.</p>
 </td></tr>
 
-<!-- FEATURE 1 — IA -->
+<!-- FEATURE 1 — IA tab -->
 <tr><td style="padding:10px 40px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdff;border:1px solid #bae6fd;border-radius:10px;overflow:hidden;">
     <tr><td style="background:#0284c7;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">🤖 Nova aba — Análise IA (Groq / Llama 3.3 70B)</span>
+      <span style="color:#fff;font-size:13px;font-weight:700;">🤖 Nova aba — Análise IA</span>
     </td></tr>
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Nova aba <strong>Análise IA</strong> no final da barra de navegação. Permite fazer perguntas em linguagem natural sobre os voos carregados — por exemplo <em>"Quais os operadores com mais violações IAS?"</em> ou <em>"Resume os go-arounds do dia"</em>. A IA responde com texto em português e, quando aplicável, gera automaticamente um gráfico (barras, pizza, linha).
+      Nova aba <strong>Análise IA</strong> no final da barra de navegação com um chat em linguagem natural. Permite fazer perguntas sobre os voos carregados — por exemplo <em>"Quais os operadores com mais violações IAS?"</em>, <em>"Faz um gráfico de chegadas vs descolagens"</em> ou <em>"Resume os go-arounds do dia"</em>. A IA responde em português com texto e, quando aplicável, gera automaticamente um gráfico (barras, pizza, linha, doughnut).
     </td></tr>
   </table>
 </td></tr>
 
-<!-- FEATURE 2 — Groq API -->
+<!-- FEATURE 2 — Claude por defeito -->
 <tr><td style="padding:10px 40px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;overflow:hidden;">
     <tr><td style="background:#16a34a;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">⚡ Integração Groq API — gratuita, sem cartão</span>
+      <span style="color:#fff;font-size:13px;font-weight:700;">⚡ Claude (Anthropic) por defeito — já configurado</span>
     </td></tr>
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      A análise IA usa a <strong>Groq API</strong> (console.groq.com) com o modelo <strong>Llama 3.3 70B</strong> — rápido, gratuito até ~14 400 pedidos/dia, sem necessidade de cartão de crédito. Os dados brutos <strong>nunca saem da aplicação</strong>: é enviado apenas um sumário estatístico calculado localmente (total ARR/DEP, operadores, médias de altitude/velocidade/ROC).
+      Esta versão inclui o modelo <strong>Claude Sonnet 4.5</strong> da Anthropic já configurado — a IA arranca sem necessidade de configuração adicional. Para quem preferir usar a sua própria chave ou outro fornecedor, basta ir a <strong>Preferências → Análise IA → Configuração</strong>.
     </td></tr>
   </table>
 </td></tr>
 
-<!-- FEATURE 3 — Gráficos automáticos -->
+<!-- FEATURE 3 — 5 fornecedores -->
 <tr><td style="padding:10px 40px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbf0;border:1px solid #fde68a;border-radius:10px;overflow:hidden;">
     <tr><td style="background:#d97706;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">📊 Gráficos automáticos com Chart.js</span>
+      <span style="color:#fff;font-size:13px;font-weight:700;">🔧 5 fornecedores de IA disponíveis</span>
     </td></tr>
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Quando a IA detecta que a resposta beneficia de uma visualização, gera automaticamente um <strong>gráfico integrado na conversa</strong>: barras, pizza, linha ou doughnut. O tipo de gráfico é escolhido pela IA consoante o contexto da pergunta — sem configuração manual.
+      Nas Preferências é possível escolher entre <strong>Claude (Anthropic)</strong>, <strong>OpenAI (GPT-4o)</strong>, <strong>Mistral AI</strong>, <strong>Azure OpenAI</strong> e <strong>Groq (Llama 3.3)</strong>. Basta colar a API Key do fornecedor pretendido e guardar — sem necessidade de alterar código.
     </td></tr>
   </table>
 </td></tr>
 
-<!-- FEATURE 4 — Selector de modelo -->
+<!-- FEATURE 4 — Contexto completo -->
 <tr><td style="padding:10px 40px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;overflow:hidden;">
     <tr><td style="background:#7c3aed;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">🔧 Selector de modelo IA</span>
+      <span style="color:#fff;font-size:13px;font-weight:700;">🧠 Contexto completo da sessão</span>
     </td></tr>
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Na barra do painel IA é possível escolher entre <strong>Llama 3.3 70B</strong> (recomendado — mais preciso), <strong>Llama 3.1 8B</strong> (mais rápido) e <strong>Mixtral 8x7B</strong>. Útil para ajustar entre velocidade de resposta e profundidade de análise.
+      A IA tem acesso automático a todos os dados calculados na app: <strong>violações IAS STAR e APP</strong> (por waypoint, companhia e distribuição), <strong>pares FAST</strong> com separação e DEP intercalares, <strong>holdings</strong>, <strong>go-arounds</strong>, <strong>ROT</strong>, <strong>sequência</strong> e estatísticas gerais — sem enviar dados brutos para o exterior.
+    </td></tr>
+  </table>
+</td></tr>
+
+<!-- FEATURE 5 — Exportação -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#ea580c;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">📊 Exportação da conversa IA</span>
+    </td></tr>
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Botões <strong>CSV</strong>, <strong>XLS</strong> e <strong>DOC</strong> no cabeçalho do painel IA para exportar toda a conversa, incluindo os dados dos gráficos gerados.
     </td></tr>
   </table>
 </td></tr>
@@ -6284,23 +6296,8 @@ function _emailHtml(){
 <tr><td style="padding:10px 40px;">
   <p style="color:#6b7280;font-size:12px;margin:6px 0 4px;text-transform:uppercase;letter-spacing:1px;">Mantido da versão 1.3</p>
   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;color:#374151;font-size:13px;line-height:1.7;">
-    Mapa Leaflet com todas as tracks · Análise de sequência e separação em Final · Conformidade IAS STAR e Velocidades APP · KPIs operacionais · Análise Op. com sub-abas FAST / Holdings / Go-Arounds / ROT / Operadores · Alertas automáticos após carregamento · Sessão persistente e restauro de dados
+    Mapa Leaflet com todas as tracks · Análise de sequência e separação em Final · Conformidade IAS STAR e Velocidades APP · KPIs operacionais · Análise Op. (FAST / Holdings / Go-Arounds / ROT / Operadores) · Alertas automáticos após carregamento · Sessão persistente
   </div>
-</td></tr>
-
-<!-- COMO CONFIGURAR -->
-<tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#ea580c;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">⚙ Como activar a IA</span>
-    </td></tr>
-    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      1. Criar conta gratuita em <strong>console.groq.com</strong><br>
-      2. Gerar uma API Key (secção <em>API Keys</em>)<br>
-      3. Abrir o ficheiro <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">dist/index.html</code> e substituir <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">gsk_SEU_KEY_AQUI</code> pela chave obtida<br>
-      4. Carregar dados CSV → clicar na aba <strong>🤖 Análise IA</strong>
-    </td></tr>
-  </table>
 </td></tr>
 
 <!-- DOWNLOAD -->
