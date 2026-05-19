@@ -843,13 +843,39 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <button class="btn" style="color:#f87171;" onclick="_clearSession()">&#x1F5D1; Limpar sessão guardada</button>
           <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v2.0</button>
         </div>
+        <div class="kpi-h" style="margin-top:16px;margin-bottom:8px;">&#x1F916; Análise IA — Configuração</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+          <select id="prefIaProvider" onchange="_iaOnProviderChange()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;">
+            <option value="anthropic">Claude (Anthropic) — recomendado</option>
+            <option value="openai">OpenAI (ChatGPT)</option>
+            <option value="mistral">Mistral AI</option>
+            <option value="azure">Azure OpenAI</option>
+            <option value="groq">Groq (Llama)</option>
+          </select>
+          <select id="prefIaModel" onchange="iaSaveKey()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;min-width:180px;"></select>
+        </div>
+        <div id="prefAzureEndpointRow" style="display:none;margin-bottom:6px;">
+          <input type="text" id="prefAzureEndpoint" placeholder="https://SEU-RECURSO.openai.azure.com/openai/deployments/SEU-DEPLOYMENT" onchange="iaSaveKey()" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:6px 10px;outline:none;" autocomplete="off">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="password" id="prefIaKey" placeholder="Cola aqui a tua API Key..." onchange="iaSaveKey()" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:6px 10px;outline:none;" autocomplete="off">
+          <button class="btn" onclick="iaSaveKey(true)" style="white-space:nowrap;">&#x2713; Guardar</button>
+          <button class="btn" onclick="iaClearKey()" style="color:#f87171;white-space:nowrap;">&#x1F5D1; Limpar</button>
+        </div>
+        <div id="prefIaStatus" style="font-size:10px;color:var(--muted);margin-top:5px;padding:0 2px;"></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7;">A chave é guardada localmente neste dispositivo e nunca vai para o GitHub.</div>
       </div>
     </div>
     <div class="panel" id="panel-ia" style="flex-direction:column;overflow:hidden;">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
         <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">&#x1F916; Análise IA</span>
         <select id="iaModelSel" style="margin-left:auto;background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:4px 8px;outline:none;cursor:pointer;"></select>
-        <span id="iaStatusBadge" style="font-size:10px;color:var(--muted);padding:3px 8px;border:1px solid var(--border);border-radius:12px;">Groq · Llama 3.3 70B</span>
+        <span id="iaStatusBadge" style="font-size:10px;color:var(--muted);padding:3px 8px;border:1px solid var(--border);border-radius:12px;">A configurar...</span>
+        <div style="display:flex;gap:4px;">
+          <button onclick="iaExportar('csv')" title="Exportar CSV" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">CSV</button>
+          <button onclick="iaExportar('excel')" title="Exportar Excel" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">XLS</button>
+          <button onclick="iaExportar('word')" title="Exportar Word" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--blue)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">DOC</button>
+        </div>
       </div>
       <div id="iaChat" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;">
         <div class="ia-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--border);text-align:center;gap:10px;min-height:200px;">
@@ -6271,7 +6297,7 @@ function _emailHtml(){
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
       1. Criar conta gratuita em <strong>console.groq.com</strong><br>
       2. Gerar uma API Key (secção <em>API Keys</em>)<br>
-      3. Abrir o ficheiro <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">dist/index.html</code> e substituir <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">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</code> pela chave obtida<br>
+      3. Abrir o ficheiro <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">dist/index.html</code> e substituir <code style="background:#f1f5f9;padding:1px 5px;border-radius:3px;">gsk_SEU_KEY_AQUI</code> pela chave obtida<br>
       4. Carregar dados CSV → clicar na aba <strong>🤖 Análise IA</strong>
     </td></tr>
   </table>
@@ -6360,23 +6386,168 @@ function _downloadEmailHtml(){
 }
 
 // ═══════════════════════════════════════════════════════
-// ANÁLISE IA — Groq API
+// ANÁLISE IA — Multi-fornecedor
 // ═══════════════════════════════════════════════════════
-const IA_KEY = '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';
-document.addEventListener('DOMContentLoaded', function(){ setTimeout(_iaInit, 500); }); // ← Cola aqui a tua chave Groq (console.groq.com)
-const IA_MODELS = [
-  ['llama-3.3-70b-versatile','Llama 3.3 70B (recomendado)'],
-  ['llama-3.1-8b-instant','Llama 3.1 8B (mais rápido)'],
-  ['mixtral-8x7b-32768','Mixtral 8x7B']
-];
+const IA_PROVIDERS = {
+  anthropic: {
+    name: 'Claude (Anthropic)',
+    url: 'https://api.anthropic.com/v1/messages',
+    type: 'anthropic',
+    models: [
+      ['claude-sonnet-4-5','Claude Sonnet 4.5 (recomendado)'],
+      ['claude-haiku-4-5','Claude Haiku 4.5 (mais rápido)'],
+      ['claude-opus-4-5','Claude Opus 4.5 (mais potente)']
+    ]
+  },
+  openai: {
+    name: 'OpenAI (ChatGPT)',
+    url: 'https://api.openai.com/v1/chat/completions',
+    type: 'openai',
+    models: [
+      ['gpt-4o','GPT-4o (recomendado)'],
+      ['gpt-4o-mini','GPT-4o Mini (mais rápido)'],
+      ['gpt-4-turbo','GPT-4 Turbo']
+    ]
+  },
+  mistral: {
+    name: 'Mistral AI',
+    url: 'https://api.mistral.ai/v1/chat/completions',
+    type: 'openai',
+    models: [
+      ['mistral-large-latest','Mistral Large (recomendado)'],
+      ['mistral-small-latest','Mistral Small (mais rápido)'],
+      ['open-mixtral-8x22b','Mixtral 8x22B']
+    ]
+  },
+  azure: {
+    name: 'Azure OpenAI',
+    url: '',
+    type: 'azure',
+    models: [
+      ['gpt-4o','GPT-4o'],
+      ['gpt-4','GPT-4'],
+      ['gpt-35-turbo','GPT-3.5 Turbo']
+    ]
+  },
+  groq: {
+    name: 'Groq (Llama)',
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    type: 'openai',
+    models: [
+      ['llama-3.3-70b-versatile','Llama 3.3 70B'],
+      ['llama-3.1-8b-instant','Llama 3.1 8B (mais rápido)'],
+      ['mixtral-8x7b-32768','Mixtral 8x7B']
+    ]
+  }
+};
+
+// Placeholder substituído pelo GitHub Actions durante o build
+// Se não vazio, é usado como chave por defeito (apenas na primeira execução)
+const _IA_BAKED_KEY = '__ANTHROPIC_API_KEY__';
+const _IA_BAKED_PROV = 'anthropic';
+
 let _iaLoading = false;
 let _iaCharts = [];
+let _iaHistory = [];
+
+function iaGetProvider(){ return localStorage.getItem('ia_provider')||'anthropic'; }
+function iaGetKey(){
+  var k=localStorage.getItem('ia_key_'+iaGetProvider())||'';
+  // Se não há chave guardada, usar a baked-in (injectada no build)
+  if(!k && iaGetProvider()===_IA_BAKED_PROV && _IA_BAKED_KEY && !_IA_BAKED_KEY.startsWith('__')) k=_IA_BAKED_KEY;
+  return k;
+}
+function iaGetModel(){ return localStorage.getItem('ia_model_'+iaGetProvider())||(IA_PROVIDERS[iaGetProvider()].models[0][0]); }
+function iaGetAzureEndpoint(){ return localStorage.getItem('ia_azure_endpoint')||''; }
+
+function _iaOnProviderChange(){
+  var prov=document.getElementById('prefIaProvider').value;
+  var azRow=document.getElementById('prefAzureEndpointRow');
+  if(azRow) azRow.style.display=(prov==='azure'?'block':'none');
+  _iaPopulatePrefModels();
+  // Preencher chave já guardada para este fornecedor
+  var keyEl=document.getElementById('prefIaKey');
+  if(keyEl){ keyEl.value=''; keyEl.placeholder='Cola aqui a API Key do '+IA_PROVIDERS[prov].name+'...'; }
+  var azEl=document.getElementById('prefAzureEndpoint');
+  if(azEl && prov==='azure') azEl.value=iaGetAzureEndpoint()||'';
+}
+
+function iaSaveKey(show){
+  var prov=document.getElementById('prefIaProvider').value;
+  var key=document.getElementById('prefIaKey').value.trim();
+  var model=document.getElementById('prefIaModel').value;
+  var azEl=document.getElementById('prefAzureEndpoint');
+  localStorage.setItem('ia_provider', prov);
+  if(key) localStorage.setItem('ia_key_'+prov, key);
+  if(model) localStorage.setItem('ia_model_'+prov, model);
+  if(azEl && prov==='azure' && azEl.value.trim()) localStorage.setItem('ia_azure_endpoint', azEl.value.trim());
+  _iaUpdateStatus();
+  _iaUpdateChatBar();
+  if(show===true){ var s=document.getElementById('prefIaStatus'); s.textContent='Chave guardada.'; s.style.color='var(--green)'; setTimeout(function(){s.textContent='';},2000); }
+}
+
+function iaClearKey(){
+  var prov=document.getElementById('prefIaProvider').value;
+  localStorage.removeItem('ia_key_'+prov);
+  if(prov==='azure') localStorage.removeItem('ia_azure_endpoint');
+  document.getElementById('prefIaKey').value='';
+  _iaUpdateStatus();
+}
+
+function _iaUpdateStatus(){
+  var prov=iaGetProvider();
+  var key=iaGetKey();
+  var s=document.getElementById('prefIaStatus');
+  var badge=document.getElementById('iaStatusBadge');
+  if(!s) return;
+  if(key){
+    s.textContent='Chave configurada para '+IA_PROVIDERS[prov].name+'.';
+    s.style.color='var(--green)';
+    if(badge){ badge.textContent=IA_PROVIDERS[prov].name+' · '+iaGetModel(); badge.style.color='var(--green)'; }
+  } else {
+    s.textContent='Sem chave configurada para '+IA_PROVIDERS[prov].name+'. Vai a console.'+(prov==='anthropic'?'anthropic':'groq')+'.com';
+    s.style.color='var(--red,#f87171)';
+    if(badge){ badge.textContent='Sem chave — configura nas Preferências'; badge.style.color='var(--red,#f87171)'; }
+  }
+}
+
+function _iaUpdateChatBar(){
+  var prov=iaGetProvider();
+  var provObj=IA_PROVIDERS[prov];
+  var sel=document.getElementById('iaModelSel');
+  var badge=document.getElementById('iaStatusBadge');
+  if(!sel) return;
+  sel.innerHTML='';
+  provObj.models.forEach(function(m){ var o=document.createElement('option'); o.value=m[0]; o.textContent=m[1]; if(m[0]===iaGetModel()) o.selected=true; sel.appendChild(o); });
+  if(badge) badge.textContent=provObj.name+' · '+(sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:provObj.models[0][1]);
+}
+
+function _iaPopulatePrefModels(){
+  var prov=(document.getElementById('prefIaProvider')||{value:'anthropic'}).value||iaGetProvider();
+  var sel=document.getElementById('prefIaModel');
+  if(!sel) return;
+  sel.innerHTML='';
+  IA_PROVIDERS[prov].models.forEach(function(m){ var o=document.createElement('option'); o.value=m[0]; o.textContent=m[1]; if(m[0]===iaGetModel()) o.selected=true; sel.appendChild(o); });
+  var keyEl=document.getElementById('prefIaKey');
+  if(keyEl && !keyEl.value) keyEl.placeholder='Cola aqui a API Key do '+ IA_PROVIDERS[prov].name+'...';
+}
 
 function _iaInit(){
-  const sel = document.getElementById('iaModelSel');
-  if(!sel||sel.options.length) return;
-  IA_MODELS.forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; sel.appendChild(o); });
+  // Sincronizar painel preferências
+  var provSel=document.getElementById('prefIaProvider');
+  var prov0=iaGetProvider();
+  if(provSel){ provSel.value=prov0; }
+  var azRow=document.getElementById('prefAzureEndpointRow');
+  if(azRow) azRow.style.display=(prov0==='azure'?'block':'none');
+  _iaPopulatePrefModels();
+  _iaUpdateChatBar();
+  _iaUpdateStatus();
+  // Chat bar model selector
+  var chatSel=document.getElementById('iaModelSel');
+  if(chatSel) chatSel.addEventListener('change',function(){ localStorage.setItem('ia_model_'+iaGetProvider(),chatSel.value); });
 }
+
+document.addEventListener('DOMContentLoaded', function(){ setTimeout(_iaInit, 400); });
 
 function _iaBuildCtx(){
   const csns = Object.keys(flights);
@@ -6418,6 +6589,219 @@ function _iaBuildCtx(){
   if(sa) ctx+='Altitude (FL/100ft): min='+sa.min+' max='+sa.max+' media='+sa.mean+'\n';
   if(st) ctx+='Velocidade (TAS/kt): min='+st.min+' max='+st.max+' media='+st.mean+'\n';
   if(sr) ctx+='ROC (ft/min): min='+sr.min+' max='+sr.max+' media='+sr.mean+'\n';
+
+  // IAS STAR violations
+  if(typeof iasResults!=='undefined' && iasResults && iasResults.totalViol>0){
+    ctx+='Violacoes IAS STAR: total='+iasResults.totalViol+' em '+iasResults.totalPasses+' passagens\n';
+    if(iasResults.perWp){
+      var wpViol=Object.entries(iasResults.perWp).filter(function(e){return e[1].viol>0;}).sort(function(a,b){return b[1].viol-a[1].viol;}).slice(0,8).map(function(e){return e[0]+'('+e[1].viol+'viol/'+e[1].passes+'pass)';}).join(', ');
+      if(wpViol) ctx+='Waypoints STAR com mais violacoes: '+wpViol+'\n';
+    }
+    var violPorVoo={};
+    iasResults.violations.forEach(function(v){ var c=v.csn||'?'; violPorVoo[c]=(violPorVoo[c]||0)+1; });
+    var d1=0,d2=0,d3=0,d4=0,d5=0;
+    Object.values(violPorVoo).forEach(function(n){ if(n>=5)d5++; else if(n===4)d4++; else if(n===3)d3++; else if(n===2)d2++; else d1++; });
+    ctx+='Distribuicao violacoes IAS STAR por voo: 1viol='+d1+' voos | 2viol='+d2+' voos | 3viol='+d3+' voos | 4viol='+d4+' voos | 5+viol='+d5+' voos\n';
+    var topVV=Object.entries(violPorVoo).sort(function(a,b){return b[1]-a[1];}).slice(0,5).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ');
+    if(topVV) ctx+='Top voos com mais violacoes STAR: '+topVV+'\n';
+    // Por companhia (prefixo)
+    var opViolStar={};
+    Object.entries(violPorVoo).forEach(function(e){
+      var pre=(e[0].match(/^[A-Z]{2,3}/)||['?'])[0];
+      opViolStar[pre]=(opViolStar[pre]||0)+e[1];
+    });
+    var topStarOp=Object.entries(opViolStar).sort(function(a,b){return b[1]-a[1];}).slice(0,8).map(function(e){return e[0]+'('+e[1]+'viol)';}).join(', ');
+    if(topStarOp) ctx+='Top companhias com violacoes IAS STAR: '+topStarOp+'\n';
+  } else if(typeof iasResults!=='undefined' && !iasResults){
+    ctx+='Violacoes IAS STAR: analise nao efectuada (usa aba Velocidades STAR)\n';
+  }
+
+  // IAS APP violations
+  if(typeof iasAppResults!=='undefined' && iasAppResults && iasAppResults.records){
+    // Cada record em iasAppResults.records JA e uma violacao (so sao incluidos voos com violCount>0)
+    var appRecs=iasAppResults.records;
+    var totalViolApp=appRecs.reduce(function(s,r){return s+(r.violCount||0);},0);
+    var maxDev=appRecs.reduce(function(s,r){return Math.max(s,r.maxAbsDeviation||0);},0);
+    ctx+='Violacoes IAS APP: '+appRecs.length+' voos com violacoes de '+iasAppResults.arrAnalysed+' chegadas analisadas | Total pontos violados: '+totalViolApp+' | Desvio maximo: '+maxDev.toFixed(0)+' kt\n';
+    // Distribuicao por companhia
+    var opViolApp={};
+    appRecs.forEach(function(r){
+      var pre=(r.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
+      if(!opViolApp[pre]) opViolApp[pre]={voos:0,pontos:0,maxDev:0};
+      opViolApp[pre].voos++;
+      opViolApp[pre].pontos+=(r.violCount||0);
+      opViolApp[pre].maxDev=Math.max(opViolApp[pre].maxDev,r.maxAbsDeviation||0);
+    });
+    var topAppOp=Object.entries(opViolApp).sort(function(a,b){return b[1].voos-a[1].voos;}).slice(0,10)
+      .map(function(e){return e[0]+'('+e[1].voos+'voos/'+e[1].pontos+'pts/max'+e[1].maxDev.toFixed(0)+'kt)';}).join(', ');
+    ctx+='Top companhias com violacoes IAS APP: '+topAppOp+'\n';
+    // Distribuicao por numero de violacoes por voo
+    var dApp={1:0,2:0,3:0,4:0,5:0};
+    appRecs.forEach(function(r){ var n=r.violCount||0; if(n>=5)dApp[5]++; else if(n>=4)dApp[4]++; else if(n>=3)dApp[3]++; else if(n>=2)dApp[2]++; else dApp[1]++; });
+    ctx+='Distribuicao violacoes IAS APP por voo: 1pt='+dApp[1]+' | 2pt='+dApp[2]+' | 3pt='+dApp[3]+' | 4pt='+dApp[4]+' | 5+pt='+dApp[5]+'\n';
+    // Distribuicao por pista
+    var rwViol={};
+    appRecs.forEach(function(r){ rwViol[r.rwy]=(rwViol[r.rwy]||0)+1; });
+    ctx+='Violacoes IAS APP por pista: '+Object.entries(rwViol).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
+  } else if(typeof iasAppResults!=='undefined' && !iasAppResults){
+    ctx+='Violacoes IAS APP: analise nao efectuada (usa aba Velocidades APP para analisar)\n';
+  }
+
+  // ── HOLDINGS ─────────────────────────────────────────────────────────────
+  if(typeof holdingsResults!=='undefined' && holdingsResults.length){
+    ctx+='\n=== HOLDINGS DETECTADOS ===\n';
+    ctx+='Total: '+holdingsResults.length+'\n';
+    var holdFix={}, holdDur=[], holdOp={};
+    holdingsResults.forEach(function(h){
+      var fix=h.fix||'sem fix'; holdFix[fix]=(holdFix[fix]||0)+1;
+      holdDur.push(h.durS||0);
+      var pre=(h.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
+      if(!holdOp[pre]) holdOp[pre]={n:0,durS:0};
+      holdOp[pre].n++; holdOp[pre].durS+=(h.durS||0);
+    });
+    var durSum=holdDur.reduce(function(a,b){return a+b;},0);
+    var durMin=Math.min.apply(null,holdDur), durMax=Math.max.apply(null,holdDur);
+    ctx+='Duração: min='+Math.round(durMin)+'s | max='+Math.round(durMax)+'s | média='+Math.round(durSum/holdDur.length)+'s\n';
+    ctx+='Por fix: '+Object.entries(holdFix).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ')+'\n';
+    ctx+='Por companhia: '+Object.entries(holdOp).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,8).map(function(e){return e[0]+'('+e[1].n+'x/'+Math.round(e[1].durS/60)+'min)';}).join(', ')+'\n';
+    ctx+='Lista: '+holdingsResults.map(function(h){return h.csn+'('+h.date+' '+h.startStr+'-'+h.endStr+'/'+Math.round(h.durS)+'s'+(h.fix?'/fix:'+h.fix:'')+')';}).join(', ')+'\n';
+  }
+
+  // ── GO-AROUNDS ────────────────────────────────────────────────────────────
+  if(typeof goAroundResults!=='undefined' && goAroundResults.length){
+    ctx+='\n=== GO-AROUNDS DETECTADOS ===\n';
+    ctx+='Total: '+goAroundResults.length+'\n';
+    var gaOp={};
+    goAroundResults.forEach(function(g){
+      var pre=(g.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
+      gaOp[pre]=(gaOp[pre]||0)+1;
+    });
+    ctx+='Por companhia: '+Object.entries(gaOp).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ')+'\n';
+    ctx+='Lista: '+goAroundResults.map(function(g){return g.csn+'('+g.date+' '+g.tMinStr+' alt='+Math.round(g.altMin||0)+'ft climb='+Math.round(g.climb||0)+'ft)';}).join(', ')+'\n';
+  }
+
+  // ── ROT (Runway Occupancy Time) ─────────────────────────────────────────
+  if(typeof rotResults!=='undefined' && rotResults.length){
+    ctx+='\n=== ROT — TEMPO DE OCUPAÇÃO DE PISTA ===\n';
+    ctx+='Total registos: '+rotResults.length+'\n';
+    var rotByRwy={}, rotSecs=[];
+    rotResults.forEach(function(r){
+      var k='RWY'+(r.rwy||'?');
+      if(!rotByRwy[k]) rotByRwy[k]={n:0,sum:0,min:9999,max:0};
+      rotByRwy[k].n++; rotByRwy[k].sum+=r.rotS||0;
+      if(r.rotS<rotByRwy[k].min) rotByRwy[k].min=r.rotS;
+      if(r.rotS>rotByRwy[k].max) rotByRwy[k].max=r.rotS;
+      rotSecs.push(r.rotS||0);
+    });
+    var rotSum=rotSecs.reduce(function(a,b){return a+b;},0);
+    ctx+='Média geral: '+Math.round(rotSum/rotSecs.length)+'s | Min: '+Math.min.apply(null,rotSecs)+'s | Max: '+Math.max.apply(null,rotSecs)+'s\n';
+    Object.entries(rotByRwy).forEach(function(e){
+      ctx+='  '+e[0]+': '+e[1].n+' registos | média='+Math.round(e[1].sum/e[1].n)+'s | min='+e[1].min+'s | max='+e[1].max+'s\n';
+    });
+    // Distribuição por faixas
+    var rotD={u30:0,u45:0,u60:0,u90:0,u120:0,mais:0};
+    rotSecs.forEach(function(s){if(s<30)rotD.u30++;else if(s<45)rotD.u45++;else if(s<60)rotD.u60++;else if(s<90)rotD.u90++;else if(s<120)rotD.u120++;else rotD.mais++;});
+    ctx+='Distribuicao: <30s='+rotD.u30+' | 30-44s='+rotD.u45+' | 45-59s='+rotD.u60+' | 60-89s='+rotD.u90+' | 90-119s='+rotD.u120+' | >=120s='+rotD.mais+'\n';
+  }
+
+  // ── SEQUÊNCIA (aba Pontos/Sequência) ──────────────────────────────────────
+  if(typeof seqResults!=='undefined' && seqResults.length){
+    ctx+='\n=== SEQUÊNCIA / PONTOS ===\n';
+    ctx+='Aeronaves na sequência: '+seqResults.length+'\n';
+    var seqDists=seqResults.filter(function(r){return r.antD!=null;}).map(function(r){return r.antD;});
+    if(seqDists.length){
+      var dSum=seqDists.reduce(function(a,b){return a+b;},0);
+      ctx+='Distância ao anterior: min='+Math.min.apply(null,seqDists).toFixed(1)+'NM | max='+Math.max.apply(null,seqDists).toFixed(1)+'NM | média='+(dSum/seqDists.length).toFixed(1)+'NM\n';
+    }
+    var seqAlts=seqResults.filter(function(r){return r.alt!=null&&r.alt>0;}).map(function(r){return r.alt;});
+    if(seqAlts.length){
+      var aSum=seqAlts.reduce(function(a,b){return a+b;},0);
+      ctx+='Altitude no ponto: min='+Math.min.apply(null,seqAlts).toFixed(0)+'ft | max='+Math.max.apply(null,seqAlts).toFixed(0)+'ft | média='+(aSum/seqAlts.length).toFixed(0)+'ft\n';
+    }
+  }
+
+  // ── FAST (Separação entre chegadas consecutivas) ──────────────────────────
+  if(typeof _fastPairs!=='undefined' && _fastPairs.length){
+    // Reconstruir depEpochs para detectar intercalares
+    var depEpochs=[];
+    Object.values(flights).forEach(function(f){
+      if(!f||!f.rows||classifyFlight(f.rows)!=='dep')return;
+      var firstT=Infinity;
+      for(var i=0;i<f.rows.length;i++){var t=rowEpoch(f.rows[i]);if(!isNaN(t)&&t<firstT)firstT=t;}
+      if(isFinite(firstT)&&firstT>0)depEpochs.push(firstT);
+    });
+    depEpochs.sort(function(a,b){return a-b;});
+
+    var totalPares=_fastPairs.length;
+    // Separação 160s ±5s (155–165s)
+    var pares160=_fastPairs.filter(function(p){return p.sep>=155&&p.sep<=165;});
+    var pares160ComDep=pares160.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
+    var pares160SemDep=pares160.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
+    // Abaixo de 160s
+    var paresMenos160=_fastPairs.filter(function(p){return p.sep<155;});
+    var paresMenos160ComDep=paresMenos160.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
+    // Acima de 160s
+    var paresAcima160=_fastPairs.filter(function(p){return p.sep>165;});
+    var paresAcima160ComDep=paresAcima160.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
+    // Todos com dep intercalar
+    var todosComDep=_fastPairs.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
+    var todosSemDep=_fastPairs.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
+    // Distribuição por faixas
+    var fx={u60:0,u90:0,u120:0,u160:0,r160:0,u240:0,acima:0};
+    _fastPairs.forEach(function(p){
+      if(p.sep<60)fx.u60++; else if(p.sep<90)fx.u90++; else if(p.sep<120)fx.u120++;
+      else if(p.sep<155)fx.u160++; else if(p.sep<=165)fx.r160++;
+      else if(p.sep<=240)fx.u240++; else fx.acima++;
+    });
+    // Sep min/max/média
+    var sepSum=0,sepMin=_fastPairs[0].sep,sepMax=_fastPairs[0].sep;
+    _fastPairs.forEach(function(p){sepSum+=p.sep;if(p.sep<sepMin)sepMin=p.sep;if(p.sep>sepMax)sepMax=p.sep;});
+    var sepMean=(sepSum/_fastPairs.length).toFixed(1);
+    // Por pista
+    var byRwy={};
+    _fastPairs.forEach(function(p){var r=p.lead&&p.lead.rwy?'RWY'+p.lead.rwy:'?';byRwy[r]=(byRwy[r]||0)+1;});
+
+    ctx+='\n=== DADOS DE SEPARAÇÃO ENTRE CHEGADAS CONSECUTIVAS (FAST) ===\n';
+    ctx+='Total de pares de chegadas analisados: '+totalPares+'\n';
+    ctx+='Separação: min='+sepMin+'s | max='+sepMax+'s | média='+sepMean+'s\n';
+    ctx+='Por pista: '+Object.entries(byRwy).map(function(e){return e[0]+'='+e[1];}).join(' | ')+'\n';
+    ctx+='\nPARES COM SEPARAÇÃO ≈160s (155-165s): '+pares160.length+'\n';
+    ctx+='  - Com descolagem intercalar: '+pares160ComDep.length+'\n';
+    ctx+='  - Sem descolagem intercalar: '+pares160SemDep.length+'\n';
+    ctx+='\nPARES ABAIXO DE 155s (inferiores a 160s): '+paresMenos160.length+'\n';
+    ctx+='  - Com descolagem intercalar: '+paresMenos160ComDep.length+'\n';
+    ctx+='  - Sem descolagem intercalar: '+(paresMenos160.length-paresMenos160ComDep.length)+'\n';
+    ctx+='\nPARES ACIMA DE 165s: '+paresAcima160.length+'\n';
+    ctx+='  - Com descolagem intercalar: '+paresAcima160ComDep.length+'\n';
+    ctx+='  - Sem descolagem intercalar: '+(paresAcima160.length-paresAcima160ComDep.length)+'\n';
+    ctx+='\nTOTAL COM descolagem intercalar (qualquer sep): '+todosComDep.length+'\n';
+    ctx+='TOTAL SEM descolagem intercalar (qualquer sep): '+todosSemDep.length+'\n';
+    ctx+='\nDistribuicao por faixas de separacao:\n';
+    ctx+='  <60s='+fx.u60+' | 60-89s='+fx.u90+' | 90-119s='+fx.u120+' | 120-154s='+fx.u160+' | 155-165s(≈160s)='+fx.r160+' | 166-240s='+fx.u240+' | >240s='+fx.acima+'\n';
+
+    // Detalhe dos pares ≈160s
+    if(pares160.length){
+      ctx+='\nDetalhe dos pares ≈160s (lista completa):\n';
+      pares160.forEach(function(p,i){
+        var comDep=_pairHasIntercalDep(p,depEpochs)?'COM DEP intercalar':'SEM DEP intercalar';
+        ctx+='  '+(i+1)+'. '+p.lead.csn+' → '+p.trail.csn+' | RWY'+(p.lead.rwy||'?')+' | '+(p.lead.tTHRstr||'')+' | sep='+p.sep+'s | '+comDep+'\n';
+      });
+    }
+  } else if(typeof finalResults!=='undefined' && finalResults.length){
+    ctx+='\nSeparacao entre chegadas (FAST): dados da aba Final disponiveis ('+finalResults.length+' chegadas) mas pares nao foram calculados. O utilizador deve ir a aba Analise Op. > FAST e clicar em Analisar.\n';
+  } else {
+    ctx+='\nSeparacao entre chegadas (FAST): sem dados. Vai a aba Final e clica Analisar, depois Analise Op. > FAST.\n';
+  }
+
+  // ── FINAL (chegadas analisadas) ───────────────────────────────────────────
+  if(typeof finalResults!=='undefined' && finalResults.length){
+    ctx+='\n=== CHEGADAS ANALISADAS (ABA FINAL) ===\n';
+    ctx+='Total chegadas analisadas: '+finalResults.length+'\n';
+    var rwyCnt={};
+    finalResults.forEach(function(r){rwyCnt[r.rwy]=(rwyCnt[r.rwy]||0)+1;});
+    ctx+='Por pista: '+Object.entries(rwyCnt).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
+  }
+
   return ctx;
 }
 
@@ -6432,27 +6816,59 @@ async function iaPerguntar(){
   _iaAddMsg('user', q);
   const aiDiv = _iaAddMsg('ai', '⏳ A analisar...');
   const bubble = aiDiv.querySelector('.ia-bubble');
-  const model = document.getElementById('iaModelSel').value;
+  var _model = document.getElementById('iaModelSel').value || iaGetModel();
   const ctx = _iaBuildCtx();
   if(!ctx){ bubble.textContent='⚠ Sem dados carregados.'; _iaLoading=false; document.getElementById('iaSendBtn').disabled=false; return; }
-  const SYSTEM = 'Es um especialista em analise de dados de trafego aereo e radar. Responde SEMPRE em JSON valido, sem markdown, sem texto fora do JSON. Estrutura: {"texto":"explicacao em portugues de Portugal sem asteriscos","grafico":{"tipo":"bar|pie|line|doughnut","titulo":"titulo","dados":[{"nome":"label","valor":numero}]}} O campo grafico e OPCIONAL. Para listas usa hifen (-).';
+  var _key = iaGetKey();
+  if(!_key){ bubble.textContent='⚠ Sem API Key configurada. Vai às Preferências e cola a tua chave.'; bubble.style.background='rgba(248,113,113,0.1)'; bubble.style.borderColor='var(--red,#f87171)'; _iaLoading=false; document.getElementById('iaSendBtn').disabled=false; return; }
+  var _prov = iaGetProvider();
+  const SYSTEM = 'Es um especialista em analise de dados de trafego aereo e radar. Responde SEMPRE em JSON valido, sem markdown, sem texto fora do JSON. Estrutura: {"texto":"explicacao em portugues de Portugal sem asteriscos","grafico":{"tipo":"bar|pie|line|doughnut","titulo":"titulo","dados":[{"nome":"label","valor":numero}]}} O campo grafico e OPCIONAL. Os valores em valor devem ser SEMPRE numeros inteiros ou decimais, NUNCA strings. Para listas usa hifen (-).';
   try{
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+IA_KEY},
-      body:JSON.stringify({
-        model,
-        messages:[{role:'system',content:SYSTEM},{role:'user',content:ctx+'\nPERGUNTA: '+q}],
-        temperature:0.2, max_tokens:2048,
-        response_format:{type:'json_object'}
-      })
-    });
-    const data=await res.json();
-    if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
-    const raw=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content?data.choices[0].message.content:'{}';
+    var res, raw='{}';
+    var _provObj=IA_PROVIDERS[_prov]||IA_PROVIDERS.anthropic;
+    var _type=_provObj.type||'openai';
+
+    if(_type==='anthropic'){
+      res = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':_key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:_model,max_tokens:2048,system:SYSTEM,messages:[{role:'user',content:ctx+'\nPERGUNTA: '+q}]})
+      });
+      const data=await res.json();
+      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
+      raw=data&&data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'{}';
+
+    } else if(_type==='azure'){
+      var _azEndpoint=iaGetAzureEndpoint();
+      if(!_azEndpoint) throw new Error('Endpoint Azure não configurado. Vai às Preferências.');
+      var _azUrl=_azEndpoint.replace(/\/+$/,'')+'?api-version=2024-02-01';
+      res = await fetch(_azUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','api-key':_key},
+        body:JSON.stringify({messages:[{role:'system',content:SYSTEM},{role:'user',content:ctx+'\nPERGUNTA: '+q}],temperature:0.2,max_tokens:2048,response_format:{type:'json_object'}})
+      });
+      const data=await res.json();
+      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
+      raw=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content?data.choices[0].message.content:'{}';
+
+    } else {
+      // OpenAI-compatible: OpenAI, Groq, Mistral
+      var _oaiUrl=_provObj.url;
+      res = await fetch(_oaiUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_key},
+        body:JSON.stringify({model:_model,messages:[{role:'system',content:SYSTEM},{role:'user',content:ctx+'\nPERGUNTA: '+q}],temperature:0.2,max_tokens:2048,response_format:{type:'json_object'}})
+      });
+      const data=await res.json();
+      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
+      raw=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content?data.choices[0].message.content:'{}';
+    }
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
     bubble.textContent=parsed.texto||'(sem resposta)';
-    if(parsed.grafico&&parsed.grafico.dados&&parsed.grafico.dados.length) _iaRenderChart(aiDiv,parsed.grafico);
+    if(parsed.grafico&&parsed.grafico.dados&&parsed.grafico.dados.length){
+      _iaRenderChart(aiDiv,parsed.grafico);
+      if(_iaHistory.length) _iaHistory[_iaHistory.length-1].grafico=parsed.grafico;
+    }
   }catch(err){
     bubble.textContent='⚠ Erro: '+err.message;
     bubble.style.background='rgba(248,113,113,0.1)';
@@ -6471,7 +6887,8 @@ function _iaRenderChart(container, grafico){
   const tipoRaw=(grafico.tipo||'bar').toLowerCase().trim();
   const tipo=_iaTipoMap[tipoRaw]||(['bar','line','pie','doughnut'].includes(tipoRaw)?tipoRaw:'bar');
   const titulo=grafico.titulo, dados=grafico.dados;
-  const labels=dados.map(function(d){return d.nome;}), values=dados.map(function(d){return d.valor;});
+  const labels=dados.map(function(d){return d.nome;}), values=dados.map(function(d){return parseFloat(d.valor)||0;});
+  if(values.every(function(v){return v===0;})) return; // nao renderizar grafico com dados a zero
   const isPie=tipo==='pie'||tipo==='doughnut';
   const COLORS=['#00c8ff','#22d3a0','#a78bfa','#f59e0b','#f87171','#60a5fa','#ec4899','#14b8a6','#fb923c','#818cf8'];
   const wrap=document.createElement('div');
@@ -6494,7 +6911,8 @@ function _iaRenderChart(container, grafico){
   _iaCharts.push(ch);
 }
 
-function _iaAddMsg(role, text){
+function _iaAddMsg(role, text, _record){
+  if(_record!==false) _iaHistory.push({role, text, grafico:null});
   const chat=document.getElementById('iaChat');
   if(!chat) return document.createElement('div');
   const empt=chat.querySelector('.ia-empty'); if(empt) empt.remove();
@@ -6511,6 +6929,78 @@ function _iaAddMsg(role, text){
   chat.appendChild(div);
   chat.scrollTop=99999;
   return div;
+}
+
+function iaExportar(fmt){
+  if(!_iaHistory.length){ alert('Sem conversa para exportar.'); return; }
+  const now=new Date();
+  const stamp=now.toISOString().replace('T',' ').substring(0,16);
+
+  if(fmt==='csv'){
+    let rows=[['Hora','Tipo','Mensagem']];
+    _iaHistory.forEach(function(e,i){
+      rows.push([stamp, e.role==='user'?'Pergunta':'Resposta', '"'+e.text.replace(/"/g,'""')+'"']);
+      if(e.grafico&&e.grafico.dados){
+        rows.push([stamp,'Gráfico — '+e.grafico.titulo,'']);
+        rows.push([stamp,'Nome','Valor']);
+        e.grafico.dados.forEach(function(d){ rows.push([stamp,d.nome,d.valor]); });
+      }
+    });
+    const csv=rows.map(function(r){return r.join(';');}).join('\r\n');
+    _iaDownload(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.csv');
+  }
+
+  else if(fmt==='excel'){
+    // Build HTML table — Excel abre .xls com HTML interno
+    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Análise IA</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
+    html+='<table border="1"><thead><tr><th>Tipo</th><th>Mensagem</th></tr></thead><tbody>';
+    _iaHistory.forEach(function(e){
+      var tipo=e.role==='user'?'Pergunta':'Resposta';
+      html+='<tr><td>'+tipo+'</td><td>'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
+      if(e.grafico&&e.grafico.dados){
+        html+='<tr><td colspan="2"><strong>Gráfico: '+e.grafico.titulo+'</strong></td></tr>';
+        html+='<tr><td>Nome</td><td>Valor</td></tr>';
+        e.grafico.dados.forEach(function(d){ html+='<tr><td>'+d.nome+'</td><td>'+d.valor+'</td></tr>'; });
+        html+='<tr><td colspan="2"></td></tr>';
+      }
+    });
+    html+='</tbody></table></body></html>';
+    _iaDownload(new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.xls');
+  }
+
+  else if(fmt==='word'){
+    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Análise IA — FlightTracker</title></head><body>';
+    html+='<h1 style="font-family:Arial;color:#0f2744;">Análise IA — Flight Track Viewer</h1>';
+    html+='<p style="font-family:Arial;font-size:11pt;color:#64748b;">Exportado em: '+stamp+'</p><hr>';
+    _iaHistory.forEach(function(e,i){
+      if(e.role==='user'){
+        html+='<p style="font-family:Arial;font-size:10pt;color:#0284c7;font-weight:bold;margin-top:16pt;">▸ Pergunta</p>';
+        html+='<p style="font-family:Arial;font-size:11pt;color:#1e293b;background:#f0f9ff;padding:8pt 10pt;border-left:3pt solid #0284c7;">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';
+      } else {
+        html+='<p style="font-family:Arial;font-size:10pt;color:#16a34a;font-weight:bold;">◈ Resposta IA</p>';
+        html+='<p style="font-family:Arial;font-size:11pt;color:#1e293b;white-space:pre-wrap;">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';
+        if(e.grafico&&e.grafico.dados){
+          html+='<p style="font-family:Arial;font-size:10pt;color:#d97706;font-weight:bold;">Dados do gráfico: '+e.grafico.titulo+'</p>';
+          html+='<table border="1" cellpadding="4" style="font-family:Arial;font-size:10pt;border-collapse:collapse;"><tr style="background:#0f2744;color:#fff;"><th>Item</th><th>Valor</th></tr>';
+          e.grafico.dados.forEach(function(d,j){
+            html+='<tr style="background:'+(j%2?'#f8faff':'#ffffff')+'"><td>'+d.nome+'</td><td>'+d.valor+'</td></tr>';
+          });
+          html+='</table>';
+        }
+        html+='<hr style="border:none;border-top:1px solid #e2e8f0;margin:12pt 0;">';
+      }
+    });
+    html+='</body></html>';
+    _iaDownload(new Blob([html],{type:'application/msword;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.doc');
+  }
+}
+
+function _iaDownload(blob,filename){
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1000);
 }
 </script>
 <div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
