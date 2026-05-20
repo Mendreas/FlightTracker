@@ -7016,25 +7016,62 @@ function iaExportar(fmt){
   }
 
   else if(fmt==='word'){
-    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Análise IA — FlightTracker</title></head><body>';
-    html+='<h1 style="font-family:Arial;color:#0f2744;">Análise IA — Flight Track Viewer</h1>';
-    html+='<p style="font-family:Arial;font-size:11pt;color:#64748b;">Exportado em: '+stamp+'</p><hr>';
+    // Capturar imagens dos gráficos já renderizados na página
+    var chartImgs={};
+    var chat=document.getElementById('iaChat');
+    if(chat){
+      var chartDivs=chat.querySelectorAll('canvas');
+      var chartIdx=0;
+      // Associar cada canvas ao índice de mensagem IA correspondente
+      var aiMsgIdx=0;
+      chat.querySelectorAll('[style*="flex-direction:column"]').forEach(function(msgDiv){
+        var lbl=msgDiv.querySelector('div');
+        if(!lbl||lbl.textContent.indexOf('TU')>=0) return;
+        var canvas=msgDiv.querySelector('canvas');
+        if(canvas){
+          try{ chartImgs[aiMsgIdx]=canvas.toDataURL('image/png'); }catch(e){}
+        }
+        aiMsgIdx++;
+      });
+    }
+
+    var provName=(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name)||'IA';
+    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Arial;font-size:11pt;color:#1e293b;margin:2cm;} h1{color:#0f2744;font-size:16pt;border-bottom:2px solid #0f2744;padding-bottom:6pt;} .pergunta-label{color:#0284c7;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:16pt 0 4pt;} .pergunta-box{background:#f0f9ff;border-left:4px solid #0284c7;padding:8pt 12pt;margin:0 0 12pt;font-size:11pt;} .ia-label{color:#16a34a;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:8pt 0 4pt;} .ia-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:8pt 12pt;margin:0 0 6pt;font-size:11pt;white-space:pre-wrap;line-height:1.6;} .grafico-titulo{color:#d97706;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:8pt 0 4pt;} table{border-collapse:collapse;width:auto;min-width:200pt;margin:6pt 0 12pt;} th{background:#0f2744;color:#fff;padding:5pt 10pt;font-size:9pt;text-align:left;} td{padding:4pt 10pt;font-size:10pt;border:1px solid #e2e8f0;} tr:nth-child(even) td{background:#f8faff;} .separator{border:none;border-top:1px solid #e2e8f0;margin:14pt 0;} img{max-width:500pt;height:auto;display:block;margin:6pt 0 12pt;}</style></head><body>';
+    html+='<h1>&#128736; An&#225;lise IA &#8212; Flight Track Viewer</h1>';
+    html+='<p style="color:#64748b;font-size:9pt;">Exportado em: '+stamp+' &nbsp;&middot;&nbsp; Fornecedor: '+provName+'</p>';
+
+    var aiCount=0;
     _iaHistory.forEach(function(e,i){
       if(e.role==='user'){
-        html+='<p style="font-family:Arial;font-size:10pt;color:#0284c7;font-weight:bold;margin-top:16pt;">▸ Pergunta</p>';
-        html+='<p style="font-family:Arial;font-size:11pt;color:#1e293b;background:#f0f9ff;padding:8pt 10pt;border-left:3pt solid #0284c7;">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';
+        html+='<p class="pergunta-label">&#9658; Pergunta</p>';
+        html+='<div class="pergunta-box">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
       } else {
-        html+='<p style="font-family:Arial;font-size:10pt;color:#16a34a;font-weight:bold;">◈ Resposta IA</p>';
-        html+='<p style="font-family:Arial;font-size:11pt;color:#1e293b;white-space:pre-wrap;">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</p>';
-        if(e.grafico&&e.grafico.dados){
-          html+='<p style="font-family:Arial;font-size:10pt;color:#d97706;font-weight:bold;">Dados do gráfico: '+e.grafico.titulo+'</p>';
-          html+='<table border="1" cellpadding="4" style="font-family:Arial;font-size:10pt;border-collapse:collapse;"><tr style="background:#0f2744;color:#fff;"><th>Item</th><th>Valor</th></tr>';
-          e.grafico.dados.forEach(function(d,j){
-            html+='<tr style="background:'+(j%2?'#f8faff':'#ffffff')+'"><td>'+d.nome+'</td><td>'+d.valor+'</td></tr>';
+        html+='<p class="ia-label">&#9672; '+provName+'</p>';
+        // Texto da resposta — preservar listas com bullets
+        var textoHtml=e.text
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+          .replace(/^- (.+)$/gm,'&bull; $1')
+          .replace(/
+/g,'<br>');
+        html+='<div class="ia-box">'+textoHtml+'</div>';
+        // Gráfico como imagem PNG (capturado do canvas)
+        if(chartImgs[aiCount]){
+          html+='<p class="grafico-titulo">&#128202; '+(e.grafico&&e.grafico.titulo?e.grafico.titulo:'Gr&#225;fico')+'</p>';
+          html+='<img src="'+chartImgs[aiCount]+'">';
+        }
+        // Tabela de dados do gráfico
+        if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
+          if(!chartImgs[aiCount]){
+            html+='<p class="grafico-titulo">&#128202; '+(e.grafico.titulo||'Gr&#225;fico')+'</p>';
+          }
+          html+='<table><tr><th>Item</th><th>Valor</th></tr>';
+          e.grafico.dados.forEach(function(d){
+            html+='<tr><td>'+String(d.nome).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</td><td>'+d.valor+'</td></tr>';
           });
           html+='</table>';
         }
-        html+='<hr style="border:none;border-top:1px solid #e2e8f0;margin:12pt 0;">';
+        html+='<hr class="separator">';
+        aiCount++;
       }
     });
     html+='</body></html>';
