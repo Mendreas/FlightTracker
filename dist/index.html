@@ -6771,7 +6771,7 @@ function _iaBuildCtx(){
 
   // ── FAST (Separação entre chegadas consecutivas) ──────────────────────────
   if(typeof _fastPairs!=='undefined' && _fastPairs.length){
-    // Reconstruir depEpochs para detectar intercalares
+    // Reconstruir depEpochs (mesma lógica da aba FAST)
     var depEpochs=[];
     Object.values(flights).forEach(function(f){
       if(!f||!f.rows||classifyFlight(f.rows)!=='dep')return;
@@ -6781,63 +6781,61 @@ function _iaBuildCtx(){
     });
     depEpochs.sort(function(a,b){return a-b;});
 
-    var totalPares=_fastPairs.length;
-    // Separação 160s ±5s (155–165s)
-    var pares160=_fastPairs.filter(function(p){return p.sep>=155&&p.sep<=165;});
-    var pares160ComDep=pares160.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
-    var pares160SemDep=pares160.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
-    // Abaixo de 160s
-    var paresMenos160=_fastPairs.filter(function(p){return p.sep<155;});
-    var paresMenos160ComDep=paresMenos160.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
-    // Acima de 160s
-    var paresAcima160=_fastPairs.filter(function(p){return p.sep>165;});
-    var paresAcima160ComDep=paresAcima160.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
-    // Todos com dep intercalar
+    // Limiar da aba FAST (usa o valor actual do input, default 160)
+    var fastThr=parseInt($('fastThreshold')&&$('fastThreshold').value)||160;
+
+    // ATENÇÃO: a aba FAST mostra sep < fastThr (strict)
+    var paresAbaixo=_fastPairs.filter(function(p){return p.sep<fastThr;});
+    var paresAbaixoComDep=paresAbaixo.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
+    var paresAbaixoSemDep=paresAbaixo.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
+
+    // Todos os pares (sem filtro de limiar)
     var todosComDep=_fastPairs.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
     var todosSemDep=_fastPairs.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
-    // Distribuição por faixas
-    var fx={u60:0,u90:0,u120:0,u160:0,r160:0,u240:0,acima:0};
-    _fastPairs.forEach(function(p){
-      if(p.sep<60)fx.u60++; else if(p.sep<90)fx.u90++; else if(p.sep<120)fx.u120++;
-      else if(p.sep<155)fx.u160++; else if(p.sep<=165)fx.r160++;
-      else if(p.sep<=240)fx.u240++; else fx.acima++;
-    });
+
     // Sep min/max/média
     var sepSum=0,sepMin=_fastPairs[0].sep,sepMax=_fastPairs[0].sep;
     _fastPairs.forEach(function(p){sepSum+=p.sep;if(p.sep<sepMin)sepMin=p.sep;if(p.sep>sepMax)sepMax=p.sep;});
     var sepMean=(sepSum/_fastPairs.length).toFixed(1);
+
     // Por pista
     var byRwy={};
     _fastPairs.forEach(function(p){var r=p.lead&&p.lead.rwy?'RWY'+p.lead.rwy:'?';byRwy[r]=(byRwy[r]||0)+1;});
 
+    // Distribuição por faixas de 30s
+    var fx={};
+    var faixas=[30,60,90,120,150,180,210,240,270,300,360,600];
+    faixas.forEach(function(f){fx[f]=0;});
+    _fastPairs.forEach(function(p){
+      for(var i=0;i<faixas.length;i++){if(p.sep<faixas[i]){fx[faixas[i]]++;break;}}
+    });
+
     ctx+='\n=== DADOS DE SEPARAÇÃO ENTRE CHEGADAS CONSECUTIVAS (FAST) ===\n';
-    ctx+='Total de pares de chegadas analisados: '+totalPares+'\n';
+    ctx+='IMPORTANTE: os números abaixo espelham exactamente o que a aba FAST mostra.\n';
+    ctx+='Limiar configurado na aba FAST: '+fastThr+'s (mostra pares com sep < '+fastThr+'s)\n';
+    ctx+='Total de pares calculados (todos): '+_fastPairs.length+'\n';
     ctx+='Separação: min='+sepMin+'s | max='+sepMax+'s | média='+sepMean+'s\n';
     ctx+='Por pista: '+Object.entries(byRwy).map(function(e){return e[0]+'='+e[1];}).join(' | ')+'\n';
-    ctx+='\nPARES COM SEPARAÇÃO ≈160s (155-165s): '+pares160.length+'\n';
-    ctx+='  - Com descolagem intercalar: '+pares160ComDep.length+'\n';
-    ctx+='  - Sem descolagem intercalar: '+pares160SemDep.length+'\n';
-    ctx+='\nPARES ABAIXO DE 155s (inferiores a 160s): '+paresMenos160.length+'\n';
-    ctx+='  - Com descolagem intercalar: '+paresMenos160ComDep.length+'\n';
-    ctx+='  - Sem descolagem intercalar: '+(paresMenos160.length-paresMenos160ComDep.length)+'\n';
-    ctx+='\nPARES ACIMA DE 165s: '+paresAcima160.length+'\n';
-    ctx+='  - Com descolagem intercalar: '+paresAcima160ComDep.length+'\n';
-    ctx+='  - Sem descolagem intercalar: '+(paresAcima160.length-paresAcima160ComDep.length)+'\n';
-    ctx+='\nTOTAL COM descolagem intercalar (qualquer sep): '+todosComDep.length+'\n';
-    ctx+='TOTAL SEM descolagem intercalar (qualquer sep): '+todosSemDep.length+'\n';
-    ctx+='\nDistribuicao por faixas de separacao:\n';
-    ctx+='  <60s='+fx.u60+' | 60-89s='+fx.u90+' | 90-119s='+fx.u120+' | 120-154s='+fx.u160+' | 155-165s(≈160s)='+fx.r160+' | 166-240s='+fx.u240+' | >240s='+fx.acima+'\n';
+    ctx+='\nPARES COM sep < '+fastThr+'s (= o que a aba FAST mostra sem filtro A/C intercalar): '+paresAbaixo.length+'\n';
+    ctx+='  - Com descolagem intercalar (= aba FAST com filtro A/C INTERCALAR activo): '+paresAbaixoComDep.length+'\n';
+    ctx+='  - Sem descolagem intercalar: '+paresAbaixoSemDep.length+'\n';
+    ctx+='\nTodos os pares (sem filtro de limiar):\n';
+    ctx+='  - Com descolagem intercalar: '+todosComDep.length+'\n';
+    ctx+='  - Sem descolagem intercalar: '+todosSemDep.length+'\n';
+    ctx+='\nDistribuicao por faixas:\n';
+    ctx+='  <30s='+fx[30]+' | 30-59s='+fx[60]+' | 60-89s='+fx[90]+' | 90-119s='+fx[120]+' | 120-149s='+fx[150]+' | 150-179s='+fx[180]+' | 180-209s='+fx[210]+' | 210-239s='+fx[240]+' | 240-269s='+fx[270]+' | 270-299s='+fx[300]+' | 300-359s='+fx[360]+' | >=360s='+fx[600]+'\n';
 
-    // Detalhe dos pares ≈160s
-    if(pares160.length){
-      ctx+='\nDetalhe dos pares ≈160s (lista completa):\n';
-      pares160.forEach(function(p,i){
+    // Detalhe dos pares abaixo do limiar (max 50 para não sobrecarregar)
+    if(paresAbaixo.length){
+      ctx+='\nDetalhe dos pares abaixo de '+fastThr+'s:\n';
+      paresAbaixo.slice(0,50).forEach(function(p,i){
         var comDep=_pairHasIntercalDep(p,depEpochs)?'COM DEP intercalar':'SEM DEP intercalar';
-        ctx+='  '+(i+1)+'. '+p.lead.csn+' → '+p.trail.csn+' | RWY'+(p.lead.rwy||'?')+' | '+(p.lead.tTHRstr||'')+' | sep='+p.sep+'s | '+comDep+'\n';
+        ctx+='  '+(i+1)+'. '+p.lead.csn+' → '+p.trail.csn+' | RWY'+(p.lead.rwy||'?')+' | '+((p.lead.tTHRstr)||'')+' | sep='+p.sep+'s | '+comDep+'\n';
       });
+      if(paresAbaixo.length>50) ctx+='  ... ('+( paresAbaixo.length-50)+' pares adicionais omitidos)\n';
     }
   } else if(typeof finalResults!=='undefined' && finalResults.length){
-    ctx+='\nSeparacao entre chegadas (FAST): dados da aba Final disponiveis ('+finalResults.length+' chegadas) mas pares nao foram calculados. O utilizador deve ir a aba Analise Op. > FAST e clicar em Analisar.\n';
+    ctx+='\nSeparacao entre chegadas (FAST): dados da aba Final disponiveis ('+finalResults.length+' chegadas) mas pares nao foram calculados. O utilizador deve ir a aba Analise Op. > FAST.\n';
   } else {
     ctx+='\nSeparacao entre chegadas (FAST): sem dados. Vai a aba Final e clica Analisar, depois Analise Op. > FAST.\n';
   }
