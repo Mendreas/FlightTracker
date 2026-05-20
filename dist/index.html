@@ -7048,11 +7048,11 @@ function iaExportar(fmt){
       } else {
         html+='<p class="ia-label">&#9672; '+provName+'</p>';
         // Texto da resposta — preservar listas com bullets
-        var textoHtml=e.text
-          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-          .replace(/^- (.+)$/gm,'&bull; $1')
-          .replace(/
-/g,'<br>');
+        var textoHtml=e.text.split('\n').map(function(ln){
+          var s=ln.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          if(s.match(/^- /)) s='&bull; '+s.slice(2);
+          return s;
+        }).join('<br>');
         html+='<div class="ia-box">'+textoHtml+'</div>';
         // Gráfico como imagem PNG (capturado do canvas)
         if(chartImgs[aiCount]){
