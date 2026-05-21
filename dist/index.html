@@ -6629,11 +6629,27 @@ function _iaBuildCtx(){
   for(var i=0;i<a.length;i++){if(a[i]<mn)mn=a[i];if(a[i]>mx)mx=a[i];sum+=a[i];}
   return {min:mn.toFixed(1),max:mx.toFixed(1),mean:(sum/a.length).toFixed(1)};
 }
-  const topOp=Object.entries(opFreq).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>k+'('+v+'x)').join(', ');
+  // Detalhe completo por operador
+  var opDetail={};
+  csns.forEach(function(csn){
+    var f=flights[csn];
+    var cls=classifyFlight(f.rows);
+    var pre=(csn.match(/^[A-Z]{2,3}/)||['?'])[0];
+    if(!opDetail[pre]) opDetail[pre]={total:0,arr:0,dep:0,nvl:0};
+    opDetail[pre].total++;
+    if(cls==='arr') opDetail[pre].arr++;
+    else if(cls==='dep') opDetail[pre].dep++;
+    else opDetail[pre].nvl++;
+  });
+  var opDetailSorted=Object.entries(opDetail).sort(function(a,b){return b[1].total-a[1].total;});
+
   let ctx='DADOS CARREGADOS NO FLIGHTTRACKER:\n';
   ctx+='Total aeronaves: '+total+' | ARR: '+arr+' | DEP: '+dep+' | NVL: '+nvl+'\n';
   ctx+='Periodo: '+minTod+'-'+maxTod+'\n';
-  ctx+='Top operadores: '+topOp+'\n';
+  ctx+='\nVoos por operador (lista completa):\n';
+  opDetailSorted.forEach(function(e){
+    ctx+='  '+e[0]+': total='+e[1].total+' | ARR='+e[1].arr+' | DEP='+e[1].dep+' | NVL='+e[1].nvl+'\n';
+  });
   const sa=stat(altVals), st=stat(tasVals), sr=stat(rocVals);
   if(sa) ctx+='Altitude (FL/100ft): min='+sa.min+' max='+sa.max+' media='+sa.mean+'\n';
   if(st) ctx+='Velocidade (TAS/kt): min='+st.min+' max='+st.max+' media='+st.mean+'\n';
@@ -6878,6 +6894,77 @@ function _iaBuildCtx(){
     var rwyCnt={};
     finalResults.forEach(function(r){rwyCnt[r.rwy]=(rwyCnt[r.rwy]||0)+1;});
     ctx+='Por pista: '+Object.entries(rwyCnt).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
+  }
+
+  // ── DATAS E TRÁFEGO POR DIA ────────────────────────────────────────────────
+  var perDay={};
+  Object.entries(flights).forEach(function(kv){
+    var csn=kv[0], f=kv[1];
+    var cls=classifyFlight(f.rows);
+    var dates={};
+    f.rows.forEach(function(r){ if(r._date&&r._date!=='??') dates[r._date]=1; });
+    Object.keys(dates).forEach(function(d){
+      if(!perDay[d]) perDay[d]={arr:0,dep:0,nvl:0,total:0};
+      perDay[d].total++;
+      if(cls==='arr') perDay[d].arr++;
+      else if(cls==='dep') perDay[d].dep++;
+      else perDay[d].nvl++;
+    });
+  });
+  var dayKeys=Object.keys(perDay).sort();
+  if(dayKeys.length){
+    ctx+='\n=== TRÁFEGO POR DIA ===\n';
+    ctx+='Dias carregados: '+dayKeys.length+'\n';
+    dayKeys.forEach(function(d){
+      var dv=perDay[d];
+      // formatar data AAAAMMDD → DD/MM/AAAA
+      var df=d.length===8?(d.slice(6,8)+'/'+d.slice(4,6)+'/'+d.slice(0,4)):d;
+      ctx+='  '+df+': total='+dv.total+' | ARR='+dv.arr+' | DEP='+dv.dep+' | NVL='+dv.nvl+'\n';
+    });
+    // Top 3 dias com mais tráfego
+    var top3=dayKeys.slice().sort(function(a,b){return perDay[b].total-perDay[a].total;}).slice(0,3);
+    ctx+='Top 3 dias com mais trafego: '+top3.map(function(d){
+      var df=d.length===8?(d.slice(6,8)+'/'+d.slice(4,6)+'/'+d.slice(0,4)):d;
+      return df+'('+perDay[d].total+')';
+    }).join(', ')+'\n';
+  }
+
+  // ── PONTOS — resultados da aba Pontos ──────────────────────────────────────
+  if(typeof ptQueryResults!=='undefined' && ptQueryResults.length && typeof selectedPoint!=='undefined' && selectedPoint){
+    var ptRad=typeof $!=='undefined'&&$('ptRadius')?parseFloat($('ptRadius').value)||1:1;
+    ctx+='\n=== ABA PONTOS — PASSAGENS NO RAIO DE '+ptRad+'NM ===\n';
+    ctx+='Ponto seleccionado: '+selectedPoint.name+'\n';
+    ctx+='Total passagens: '+ptQueryResults.length+'\n';
+    // Por tipo
+    var ptTipo={ARR:0,DEP:0,NVL:0};
+    ptQueryResults.forEach(function(r){ ptTipo[r.tipo]=(ptTipo[r.tipo]||0)+1; });
+    ctx+='Por tipo: ARR='+ptTipo.ARR+' | DEP='+ptTipo.DEP+' | NVL='+ptTipo.NVL+'\n';
+    // Por companhia
+    var ptOp={};
+    ptQueryResults.forEach(function(r){ var pre=(r.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?'; ptOp[pre]=(ptOp[pre]||0)+1; });
+    var topPtOp=Object.entries(ptOp).sort(function(a,b){return b[1]-a[1];}).slice(0,8).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ');
+    ctx+='Top operadores: '+topPtOp+'\n';
+    // Por dia
+    var ptDay={};
+    ptQueryResults.forEach(function(r){ if(r.date) ptDay[r.date]=(ptDay[r.date]||0)+1; });
+    var ptDayKeys=Object.keys(ptDay).sort();
+    if(ptDayKeys.length>1){
+      ctx+='Por dia: '+ptDayKeys.map(function(d){return d+'='+ptDay[d];}).join(' | ')+'\n';
+      var topPtDay=ptDayKeys.slice().sort(function(a,b){return ptDay[b]-ptDay[a];}).slice(0,3);
+      ctx+='Top 3 dias com mais passagens: '+topPtDay.map(function(d){return d+'('+ptDay[d]+'x)';}).join(', ')+'\n';
+    }
+    // Estatísticas IAS e altitude
+    var ptIas=ptQueryResults.filter(function(r){return r.ias&&r.ias!=='—'&&!isNaN(parseFloat(r.ias));}).map(function(r){return parseFloat(r.ias);});
+    if(ptIas.length){
+      var iSum=ptIas.reduce(function(a,b){return a+b;},0);
+      var iMin=Math.min.apply(null,ptIas), iMax=Math.max.apply(null,ptIas);
+      ctx+='IAS no ponto: min='+iMin.toFixed(0)+'kt | max='+iMax.toFixed(0)+'kt | media='+(iSum/ptIas.length).toFixed(0)+'kt\n';
+    }
+    var ptAlt=ptQueryResults.filter(function(r){return r.alt&&r.alt!=='—'&&!isNaN(parseFloat(r.alt));}).map(function(r){return parseFloat(r.alt);});
+    if(ptAlt.length){
+      var aSum=ptAlt.reduce(function(a,b){return a+b;},0);
+      ctx+='Altitude no ponto: min='+Math.min.apply(null,ptAlt).toFixed(0)+'ft | max='+Math.max.apply(null,ptAlt).toFixed(0)+'ft | media='+(aSum/ptAlt.length).toFixed(0)+'ft\n';
+    }
   }
 
   return ctx;
