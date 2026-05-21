@@ -872,7 +872,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <select id="iaModelSel" style="margin-left:auto;background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:4px 8px;outline:none;cursor:pointer;"></select>
         <span id="iaStatusBadge" style="font-size:10px;color:var(--muted);padding:3px 8px;border:1px solid var(--border);border-radius:12px;">A configurar...</span>
         <div style="display:flex;gap:4px;">
-          <button onclick="iaExportar('csv')" title="Exportar CSV" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">CSV</button>
+          <button onclick="iaExportar('html')" title="Exportar HTML (abre no browser com gráficos)" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">HTML</button>
           <button onclick="iaExportar('excel')" title="Exportar Excel" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">XLS</button>
           <button onclick="iaExportar('word')" title="Exportar Word" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--blue)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">DOC</button>
         </div>
@@ -6671,8 +6671,37 @@ function _iaBuildCtx(){
     var appRecs=iasAppResults.records;
     var totalViolApp=appRecs.reduce(function(s,r){return s+(r.violCount||0);},0);
     var maxDev=appRecs.reduce(function(s,r){return Math.max(s,r.maxAbsDeviation||0);},0);
-    ctx+='Violacoes IAS APP: '+appRecs.length+' voos com violacoes de '+iasAppResults.arrAnalysed+' chegadas analisadas | Total pontos violados: '+totalViolApp+' | Desvio maximo: '+maxDev.toFixed(0)+' kt\n';
-    // Distribuicao por companhia
+    ctx+='\n=== VIOLAÇÕES IAS APP (Velocidades Aproximação) ===\n';
+    ctx+='Voos com violacoes: '+appRecs.length+' de '+iasAppResults.arrAnalysed+' chegadas analisadas\n';
+    ctx+='Total pontos violados: '+totalViolApp+' | Desvio maximo: '+maxDev.toFixed(0)+' kt\n';
+
+    // Por waypoint (usar campo points de cada record)
+    var wpViolApp={};
+    appRecs.forEach(function(r){
+      if(!r.points) return;
+      r.points.forEach(function(p){
+        if(p.ias==null) return;
+        var dev=Math.abs(p.deviation||0);
+        if(dev<=0) return; // sem violacao
+        var wn=(p.point||'?').toUpperCase();
+        if(!wpViolApp[wn]) wpViolApp[wn]={voos:0,pontos:0,maxDev:0,totalExcesso:0,voosList:[]};
+        wpViolApp[wn].pontos++;
+        wpViolApp[wn].maxDev=Math.max(wpViolApp[wn].maxDev,dev);
+        wpViolApp[wn].totalExcesso+=dev;
+        if(wpViolApp[wn].voosList.indexOf(r.csn)<0){
+          wpViolApp[wn].voos++;
+          wpViolApp[wn].voosList.push(r.csn);
+        }
+      });
+    });
+    if(Object.keys(wpViolApp).length){
+      ctx+='\nViolacoes por waypoint APP (ordenado por numero de voos):\n';
+      Object.entries(wpViolApp).sort(function(a,b){return b[1].voos-a[1].voos;}).forEach(function(e){
+        ctx+='  '+e[0]+': '+e[1].voos+' voos | '+e[1].pontos+' pontos violados | max='+e[1].maxDev.toFixed(0)+'kt | mediaExcesso='+(e[1].totalExcesso/e[1].pontos).toFixed(1)+'kt\n';
+      });
+    }
+
+    // Por companhia
     var opViolApp={};
     appRecs.forEach(function(r){
       var pre=(r.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
@@ -6683,15 +6712,17 @@ function _iaBuildCtx(){
     });
     var topAppOp=Object.entries(opViolApp).sort(function(a,b){return b[1].voos-a[1].voos;}).slice(0,10)
       .map(function(e){return e[0]+'('+e[1].voos+'voos/'+e[1].pontos+'pts/max'+e[1].maxDev.toFixed(0)+'kt)';}).join(', ');
-    ctx+='Top companhias com violacoes IAS APP: '+topAppOp+'\n';
-    // Distribuicao por numero de violacoes por voo
-    var dApp={1:0,2:0,3:0,4:0,5:0};
-    appRecs.forEach(function(r){ var n=r.violCount||0; if(n>=5)dApp[5]++; else if(n>=4)dApp[4]++; else if(n>=3)dApp[3]++; else if(n>=2)dApp[2]++; else dApp[1]++; });
-    ctx+='Distribuicao violacoes IAS APP por voo: 1pt='+dApp[1]+' | 2pt='+dApp[2]+' | 3pt='+dApp[3]+' | 4pt='+dApp[4]+' | 5+pt='+dApp[5]+'\n';
+    ctx+='\nTop companhias: '+topAppOp+'\n';
+
     // Distribuicao por pista
     var rwViol={};
     appRecs.forEach(function(r){ rwViol[r.rwy]=(rwViol[r.rwy]||0)+1; });
-    ctx+='Violacoes IAS APP por pista: '+Object.entries(rwViol).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
+    ctx+='Por pista: '+Object.entries(rwViol).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
+
+    // Distribuicao violacoes por voo
+    var dApp={1:0,2:0,3:0,4:0,5:0};
+    appRecs.forEach(function(r){ var n=r.violCount||0; if(n>=5)dApp[5]++; else if(n>=4)dApp[4]++; else if(n>=3)dApp[3]++; else if(n>=2)dApp[2]++; else dApp[1]++; });
+    ctx+='Distribuicao por voo: 1pt='+dApp[1]+' | 2pt='+dApp[2]+' | 3pt='+dApp[3]+' | 4pt='+dApp[4]+' | 5+pt='+dApp[5]+'\n';
   } else if(typeof iasAppResults!=='undefined' && !iasAppResults){
     ctx+='Violacoes IAS APP: analise nao efectuada (usa aba Velocidades APP para analisar)\n';
   }
@@ -6861,7 +6892,7 @@ async function iaPerguntar(){
   _iaLoading=true;
   document.getElementById('iaSendBtn').disabled=true;
   _iaAddMsg('user', q);
-  const aiDiv = _iaAddMsg('ai', '⏳ A analisar...');
+  const aiDiv = _iaAddMsg('ai', '⏳ A analisar...', false); // false = nao guardar no historico
   const bubble = aiDiv.querySelector('.ia-bubble');
   var _model = document.getElementById('iaModelSel').value || iaGetModel();
   const ctx = _iaBuildCtx();
@@ -6911,10 +6942,14 @@ async function iaPerguntar(){
       raw=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content?data.choices[0].message.content:'{}';
     }
     const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    bubble.textContent=parsed.texto||'(sem resposta)';
+    var textoResposta=parsed.texto||'(sem resposta)';
+    bubble.textContent=textoResposta;
+    // Gravar resposta real no histórico (o loading foi criado com _record=false)
+    var histEntry={role:'ai', text:textoResposta, grafico:null, graficoImg:null};
+    _iaHistory.push(histEntry);
     if(parsed.grafico&&parsed.grafico.dados&&parsed.grafico.dados.length){
-      _iaRenderChart(aiDiv,parsed.grafico);
-      if(_iaHistory.length) _iaHistory[_iaHistory.length-1].grafico=parsed.grafico;
+      _iaRenderChart(aiDiv,parsed.grafico,histEntry);
+      histEntry.grafico=parsed.grafico;
     }
   }catch(err){
     bubble.textContent='⚠ Erro: '+err.message;
@@ -6930,14 +6965,14 @@ async function iaPerguntar(){
 
 const _iaTipoMap={'histograma':'bar','barras':'bar','barra':'bar','colunas':'bar','coluna':'bar','linha':'line','linhas':'line','circular':'pie','pizza':'pie','rosca':'doughnut','anel':'doughnut'};
 
-function _iaRenderChart(container, grafico){
+function _iaRenderChart(container, grafico, histEntry){
   const tipoRaw=(grafico.tipo||'bar').toLowerCase().trim();
   const tipo=_iaTipoMap[tipoRaw]||(['bar','line','pie','doughnut'].includes(tipoRaw)?tipoRaw:'bar');
   const titulo=grafico.titulo, dados=grafico.dados;
   const labels=dados.map(function(d){return d.nome;}), values=dados.map(function(d){return parseFloat(d.valor)||0;});
   if(values.every(function(v){return v===0;})) return; // nao renderizar grafico com dados a zero
   const isPie=tipo==='pie'||tipo==='doughnut';
-  const COLORS=['#00c8ff','#22d3a0','#a78bfa','#f59e0b','#f87171','#60a5fa','#ec4899','#14b8a6','#fb923c','#818cf8'];
+  const COLORS=['#2563eb','#16a34a','#dc2626','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#0f766e','#6d28d9','#b45309','#be123c','#047857','#1d4ed8'];
   const wrap=document.createElement('div');
   wrap.style.cssText='margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px';
   const ttl=document.createElement('div');
@@ -6945,20 +6980,17 @@ function _iaRenderChart(container, grafico){
   ttl.textContent='▸ '+(titulo||'Grafico');
   wrap.appendChild(ttl);
   const cw=document.createElement('div');
-  cw.style.cssText='position:relative;height:240px';
+  cw.style.cssText='position:relative;height:200px;max-width:480px;';
   const canvas=document.createElement('canvas');
   cw.appendChild(canvas); wrap.appendChild(cw); container.appendChild(wrap);
-  var _histIdx=_iaHistory.length-1; // índice da mensagem IA actual
   const ch=new Chart(canvas,{
     type:tipo,
     data:{labels:labels,datasets:[{label:titulo||'',data:values,backgroundColor:isPie?COLORS.slice(0,values.length):COLORS[0]+'cc',borderColor:isPie?COLORS.slice(0,values.length):COLORS[0],borderWidth:isPie?2:1,borderRadius:tipo==='bar'?4:0}]},
     options:{responsive:true,maintainAspectRatio:false,
       animation:{onComplete:function(){
-        // Guardar PNG no histórico assim que a animação terminar
+        // Guardar PNG directamente no histEntry passado por referência
         try{
-          if(_histIdx>=0 && _iaHistory[_histIdx]){
-            _iaHistory[_histIdx].graficoImg=canvas.toDataURL('image/png');
-          }
+          if(histEntry) histEntry.graficoImg=canvas.toDataURL('image/png');
         }catch(e){}
       }},
       plugins:{legend:{display:isPie,position:'right',labels:{color:'var(--text)',font:{size:10},boxWidth:10}},tooltip:{bodyColor:'var(--text)',titleColor:'var(--accent)'}},
@@ -6992,32 +7024,79 @@ function iaExportar(fmt){
   const now=new Date();
   const stamp=now.toISOString().replace('T',' ').substring(0,16);
 
-  if(fmt==='csv'){
-    let rows=[['Hora','Tipo','Mensagem']];
-    _iaHistory.forEach(function(e,i){
-      rows.push([stamp, e.role==='user'?'Pergunta':'Resposta', '"'+e.text.replace(/"/g,'""')+'"']);
-      if(e.grafico&&e.grafico.dados){
-        rows.push([stamp,'Gráfico — '+e.grafico.titulo,'']);
-        rows.push([stamp,'Nome','Valor']);
-        e.grafico.dados.forEach(function(d){ rows.push([stamp,d.nome,d.valor]); });
+  if(fmt==='html'){
+    var provName=(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name)||'IA';
+    var h='<!DOCTYPE html><html><head><meta charset="utf-8"><title>An\u00e1lise IA \u2014 Flight Track Viewer</title>';
+    h+='<style>*{box-sizing:border-box;}body{margin:0;padding:24px;background:#f0f4f8;font-family:Segoe UI,Arial,sans-serif;color:#1e293b;}';
+    h+='.wrap{max-width:860px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.10);}';
+    h+='h1{font-size:22px;color:#0f2744;border-bottom:2px solid #0f2744;padding-bottom:8px;margin-bottom:4px;}';
+    h+='.meta{font-size:11px;color:#64748b;margin-bottom:28px;}';
+    h+='.msg{margin-bottom:20px;}';
+    h+='.lbl-user{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0284c7;margin-bottom:4px;}';
+    h+='.lbl-ai{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#16a34a;margin-bottom:4px;}';
+    h+='.box-user{background:#f0f9ff;border-left:4px solid #0284c7;padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;line-height:1.6;}';
+    h+='.box-ai{background:#f0fdf4;border-left:4px solid #16a34a;padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;line-height:1.6;white-space:pre-wrap;}';
+    h+='.chart-wrap{margin:12px 0 4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;}';
+    h+='.chart-ttl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#d97706;margin-bottom:8px;}';
+    h+='.chart-img{max-width:100%;height:auto;display:block;border-radius:4px;}';
+    h+='.tbl{border-collapse:collapse;margin-top:8px;font-size:12px;width:auto;min-width:200px;}';
+    h+='.tbl th{background:#0f2744;color:#fff;padding:5px 12px;text-align:left;}';
+    h+='.tbl td{padding:4px 12px;border:1px solid #e2e8f0;}';
+    h+='.tbl tr:nth-child(even) td{background:#f8faff;}';
+    h+='.sep{border:none;border-top:1px solid #e2e8f0;margin:20px 0;}';
+    h+='@media print{body{padding:0;}@page{margin:2cm;}}';
+    h+='</style></head><body><div class="wrap">';
+    h+='<h1>&#9881; An&#225;lise IA &#8212; Flight Track Viewer</h1>';
+    h+='<div class="meta">Exportado em: '+stamp+' &nbsp;&middot;&nbsp; Fornecedor: '+provName+'</div>';
+    _iaHistory.forEach(function(e){
+      if(!e||!e.text||e.text==='⏳ A analisar...') return;
+      if(e.role==='user'){
+        h+='<div class="msg"><div class="lbl-user">&#9658; Pergunta</div>';
+        h+='<div class="box-user">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div></div>';
+      } else {
+        h+='<div class="msg"><div class="lbl-ai">&#9672; '+provName+'</div>';
+        var txt=e.text.split('\n').map(function(l){
+          var s=l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          if(s.match(/^- /)) s='&bull; '+s.slice(2);
+          return s;
+        }).join('<br>');
+        h+='<div class="box-ai">'+txt+'</div>';
+        if(e.grafico||e.graficoImg){
+          h+='<div class="chart-wrap"><div class="chart-ttl">&#128202; '+(e.grafico&&e.grafico.titulo?e.grafico.titulo.replace(/&/g,'&amp;'):'Gr&#225;fico')+'</div>';
+          if(e.graficoImg) h+='<img class="chart-img" src="'+e.graficoImg+'">';
+          if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
+            h+='<table class="tbl" style="margin-top:'+(e.graficoImg?'12px':'0')+';"><tr><th>Item</th><th>Valor</th></tr>';
+            e.grafico.dados.forEach(function(d){
+              h+='<tr><td>'+String(d.nome).replace(/&/g,'&amp;')+'</td><td style="text-align:right;">'+d.valor+'</td></tr>';
+            });
+            h+='</table>';
+          }
+          h+='</div>';
+        }
+        h+='<hr class="sep"></div>';
       }
     });
-    const csv=rows.map(function(r){return r.join(';');}).join('\r\n');
-    _iaDownload(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.csv');
+    h+='</div></body></html>';
+    _iaDownload(new Blob([h],{type:'text/html;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.html');
   }
 
   else if(fmt==='excel'){
-    // Build HTML table — Excel abre .xls com HTML interno
-    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Análise IA</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
-    html+='<table border="1"><thead><tr><th>Tipo</th><th>Mensagem</th></tr></thead><tbody>';
+    // Excel: tabela + imagem do gráfico (base64 inline)
+    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>An&#225;lise IA</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
+    html+='<table border="1" style="font-family:Arial;font-size:10pt;"><thead><tr style="background:#0f2744;color:#fff;"><th>Tipo</th><th>Conte&#250;do</th></tr></thead><tbody>';
     _iaHistory.forEach(function(e){
-      var tipo=e.role==='user'?'Pergunta':'Resposta';
-      html+='<tr><td>'+tipo+'</td><td>'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</td></tr>';
-      if(e.grafico&&e.grafico.dados){
-        html+='<tr><td colspan="2"><strong>Gráfico: '+e.grafico.titulo+'</strong></td></tr>';
-        html+='<tr><td>Nome</td><td>Valor</td></tr>';
-        e.grafico.dados.forEach(function(d){ html+='<tr><td>'+d.nome+'</td><td>'+d.valor+'</td></tr>'; });
-        html+='<tr><td colspan="2"></td></tr>';
+      if(!e||!e.text||e.text==='⏳ A analisar...') return;
+      var tipo=e.role==='user'?'Pergunta':'Resposta IA';
+      var bg=e.role==='user'?'#f0f9ff':'#f0fdf4';
+      html+='<tr style="background:'+bg+';vertical-align:top;"><td style="font-weight:bold;white-space:nowrap;padding:4pt 8pt;">'+tipo+'</td><td style="padding:4pt 8pt;">'+e.text.split('\n').map(function(l){return l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}).join('<br>')+'</td></tr>';
+      if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
+        html+='<tr><td colspan="2" style="padding:4pt 8pt;background:#fffbf0;"><strong>Gr&#225;fico: '+e.grafico.titulo+'</strong></td></tr>';
+        // Nota: Excel não suporta base64 inline — imagem omitida; ver exportação DOC para gráficos.
+        html+='<tr><td style="background:#e2e8f0;font-weight:bold;padding:3pt 8pt;">Item</td><td style="background:#e2e8f0;font-weight:bold;padding:3pt 8pt;">Valor</td></tr>';
+        e.grafico.dados.forEach(function(d,i){
+          html+='<tr style="background:'+(i%2?'#f8faff':'#fff')+';"><td style="padding:3pt 8pt;">'+String(d.nome).replace(/&/g,'&amp;')+'</td><td style="padding:3pt 8pt;text-align:right;">'+d.valor+'</td></tr>';
+        });
+        html+='<tr><td colspan="2" style="padding:2pt;"></td></tr>';
       }
     });
     html+='</tbody></table></body></html>';
@@ -7034,6 +7113,7 @@ function iaExportar(fmt){
 
     var aiCount=0;
     _iaHistory.forEach(function(e,i){
+      if(!e||!e.text||e.text==='⏳ A analisar...') return;
       if(e.role==='user'){
         html+='<p class="pergunta-label">&#9658; Pergunta</p>';
         html+='<div class="pergunta-box">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
@@ -7049,7 +7129,7 @@ function iaExportar(fmt){
         // Gráfico: imagem PNG se disponível, senão tabela de dados
         if(e.graficoImg){
           html+='<p class="grafico-titulo">&#128202; '+(e.grafico&&e.grafico.titulo?e.grafico.titulo:'Gr&#225;fico')+'</p>';
-          html+='<img src="'+e.graficoImg+'" style="max-width:480pt;height:auto;display:block;margin:6pt 0 12pt;">';
+          html+='<img src="'+e.graficoImg+'" style="width:380pt;height:auto;display:block;margin:6pt 0 12pt;">';
         } else if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
           html+='<p class="grafico-titulo">&#128202; '+(e.grafico.titulo||'Gr&#225;fico')+'</p>';
           html+='<table><tr><th>Item</th><th>Valor</th></tr>';
