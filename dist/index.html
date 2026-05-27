@@ -4945,8 +4945,32 @@ function buildFastPairs(){
     for(let i=1;i<arr.length;i++){
       const lead=arr[i-1],trail=arr[i];
       const sep=(trail.epochTHR||0)-(lead.epochTHR||0);
-      if(sep<=0||sep>600)continue; // ignore negative or >10 min
-      _fastPairs.push({lead,trail,sep});
+      if(sep<=0||sep>600)continue;
+      // Calcular distância real do seguidor à THR no momento em que o líder cruzou
+      const t0=lead.epochTHR;
+      let trailDistActual=null;
+      const trailFlight=flights[trail.csn];
+      if(trailFlight&&trailFlight.rows&&trailFlight.rows.length){
+        const rows=trailFlight.rows;
+        const sorted=rows.filter(r=>rowEpoch(r)>0).sort((a,b)=>rowEpoch(a)-rowEpoch(b));
+        for(let j=1;j<sorted.length;j++){
+          const rA=sorted[j-1],rB=sorted[j];
+          const tA=rowEpoch(rA),tB=rowEpoch(rB);
+          if(tA<=t0&&tB>=t0&&(tB-tA)<60){
+            const k=(t0-tA)/(tB-tA);
+            const latI=+rA.latitude+k*(+rB.latitude-+rA.latitude);
+            const lonI=+rA.longitude+k*(+rB.longitude-+rA.longitude);
+            if(!isNaN(latI)&&!isNaN(lonI)){
+              const rwyObj=getActiveRwy()[lead.rwy];
+              const thrLat=rwyObj?rwyObj.thr.lat:38.766428;
+              const thrLon=rwyObj?rwyObj.thr.lon:-9.143903;
+              trailDistActual=distNM(latI,lonI,thrLat,thrLon);
+            }
+            break;
+          }
+        }
+      }
+      _fastPairs.push({lead,trail,sep,trailDistActual});
     }
   }
   _fastPairs.sort((a,b)=>a.sep-b.sep);
@@ -5034,7 +5058,7 @@ function showFastDetail(idx){
   // sep seconds before THR crossing → distance = sep * 140 / 3600 NM
   const ktGs=140;
   const nmPerSec=ktGs/3600;
-  const trailDistNM=p.sep*nmPerSec; // NM from THR when lead was at THR
+  const trailDistNM=(p.trailDistActual!=null?p.trailDistActual:p.sep*nmPerSec); // distância real ou estimada
   // SVG diagram
   const svgH=500,svgW=360;
   const thrY=svgH-28,topY=18;
@@ -5124,7 +5148,7 @@ function showFastDetail(idx){
             <span>IAS: <b style="color:#a78bfa;">${p.trail.iasTHR!=null?Math.round(p.trail.iasTHR)+' kt':'\u2014'}</b></span>
             <span>Alt THR: <b style="color:#60a5fa;">${p.trail.altTHR!=null?Math.round(p.trail.altTHR)+' ft':'\u2014'}</b></span>
           </div>
-          <div style="margin-top:8px;font-size:13px;"><span style="color:var(--muted);">Distância aprox. quando líder cruzou THR:</span> <b style="color:${p.sep<120?'#f87171':p.sep<160?'#f59e0b':'#22d3a0'};">${(p.sep*(140/3600)).toFixed(1)} NM</b></div>
+          <div style="margin-top:8px;font-size:13px;"><span style="color:var(--muted);">Distância quando líder cruzou THR:</span> <b style="color:${p.sep<120?'#f87171':p.sep<160?'#f59e0b':'#22d3a0'};">${p.trailDistActual!=null?p.trailDistActual.toFixed(2)+' NM':( p.sep*(140/3600)).toFixed(2)+' NM (est.)'}</b></div>
         </div>
         ${deps.length?`<div style="margin-top:10px;font-size:12px;color:#f59e0b;">&#x26A0; ${deps.length} descolagem(ns) entre as duas aterragens</div>`:''}
       </div>
