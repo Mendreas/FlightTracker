@@ -3127,14 +3127,18 @@ function analyzeFlightApproach(csn,flight,rwy,rwyId,fafNM,corrNM,altThrMax){
   pts.sort((a,b)=>a.t-b.t);
   if(pts.length<3)return null;
 
-  // Find THR crossing: along transitions from positive to <= 0.3 NM, alt low, inside corridor.
+  // Find THR crossing: procura TODOS os candidatos e escolhe o de menor altitude (= THR real)
+  // Evita falsos positivos durante a curva de base onde along pode transitar prematuramente
   const altThrAbsMax=rwy.elev+altThrMax;
   let thrIdx=-1;
+  let thrBestAlt=Infinity;
   for(let i=1;i<pts.length;i++){
     const a=pts[i-1],b=pts[i];
     if(a.along>0&&b.along<=0.3){
       const loAlt=Math.min(a.alt,b.alt);
-      if(loAlt<=altThrAbsMax&&Math.abs(a.cross)<corrNM&&Math.abs(b.cross)<corrNM){thrIdx=i;break;}
+      if(loAlt<=altThrAbsMax&&Math.abs(a.cross)<corrNM&&Math.abs(b.cross)<corrNM){
+        if(loAlt<thrBestAlt){thrBestAlt=loAlt;thrIdx=i;}
+      }
     }
   }
   if(thrIdx<0)return null;
