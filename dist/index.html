@@ -455,7 +455,8 @@ tr:hover td{background:rgba(0,200,255,.03);}
       <div class="tab" onclick="switchTab('ias',this)">&#x26A1; Velocidades STAR</div>
       <div class="tab" onclick="switchTab('iasapp',this)">&#x1F6EC; Velocidades APP</div>
       <div class="tab" onclick="switchTab('ana',this)">&#x1F50D; An&aacute;lise Op.</div>
-      <div class="tab" onclick="switchTab('pref',this)">&#x2699; Preferencias</div>
+      <div class="tab" <div class="tab" onclick="switchTab('ia',this)">&#x1F916; An&aacute;lise IA</div>
+      onclick="switchTab('pref',this)">&#x2699; Preferencias</div>
     </div>
     <div class="panel on" id="panel-map"><div id="map"></div></div>
     <div class="panel" id="panel-tbl">
@@ -1001,8 +1002,63 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <div id="anaSubOper" style="display:none;"></div>
         <div class="empty" id="anaEmpty" style="display:none;"><div class="empty-ico">&#x1F50D;</div><div class="empty-ttl">Abre uma sub-aba para analisar</div></div>
         <div id="anaContent" style="display:none;"></div>
+      
+        <div class="kpi-h" style="margin-top:16px;margin-bottom:8px;">&#x1F916; Análise IA — Configuração</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+          <select id="prefIaProvider" onchange="_iaOnProviderChange()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;">
+            <option value="anthropic">Claude (Anthropic) — recomendado</option>
+            <option value="openai">OpenAI (ChatGPT)</option>
+            <option value="mistral">Mistral AI</option>
+            <option value="azure">Azure OpenAI</option>
+            <option value="groq">Groq (Llama)</option>
+          </select>
+          <select id="prefIaModel" onchange="iaSaveKey()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;min-width:180px;"></select>
+        </div>
+        <div id="prefAzureEndpointRow" style="display:none;margin-bottom:6px;">
+          <input type="text" id="prefAzureEndpoint" placeholder="https://SEU-RECURSO.openai.azure.com/openai/deployments/SEU-DEPLOYMENT" onchange="iaSaveKey()" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:6px 10px;outline:none;" autocomplete="off">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="password" id="prefIaKey" placeholder="Cola aqui a tua API Key..." onchange="iaSaveKey()" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:6px 10px;outline:none;" autocomplete="off">
+          <button class="btn" onclick="iaSaveKey(true)" style="white-space:nowrap;">&#x2713; Guardar</button>
+          <button class="btn" onclick="iaClearKey()" style="color:#f87171;white-space:nowrap;">&#x1F5D1; Limpar</button>
+        </div>
+        <div id="prefIaStatus" style="font-size:10px;color:var(--muted);margin-top:5px;padding:0 2px;"></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7;">A chave é guardada localmente neste dispositivo e nunca vai para o GitHub.</div>
+      </div></div>
+    </div>
+    <div class="panel" id="panel-ia" style="flex-direction:column;overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
+        <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">&#x1F916; Análise IA</span>
+        <select id="iaModelSel" style="margin-left:auto;background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:4px 8px;outline:none;cursor:pointer;"></select>
+        <span id="iaStatusBadge" style="font-size:10px;color:var(--muted);padding:3px 8px;border:1px solid var(--border);border-radius:12px;">A configurar...</span>
+        <div style="display:flex;gap:4px;">
+          <button onclick="iaExportar('html')" title="Exportar HTML (abre no browser com gráficos)" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">HTML</button>
+          <button onclick="iaExportar('excel')" title="Exportar Excel" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">XLS</button>
+          <button onclick="iaExportar('word')" title="Exportar Word" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--blue)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">DOC</button>
+        </div>
+      </div>
+      <div id="iaChat" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;">
+        <div class="ia-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--border);text-align:center;gap:10px;min-height:200px;">
+          <div style="font-size:32px;">&#x25CE;</div>
+          <div style="font-size:11px;letter-spacing:1px;color:var(--muted);">CARREGA DADOS E FAZ UMA PERGUNTA</div>
+          <div style="font-size:10px;color:var(--muted);opacity:.6;">A IA analisa os voos já carregados no FlightTracker</div>
+        </div>
+      </div>
+      <div style="padding:10px 14px;background:var(--panel);border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;">
+        <input type="text" id="iaInput" placeholder="Faz uma pergunta sobre os voos carregados..."
+          style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:12px;padding:8px 12px;outline:none;"
+          onkeydown="if(event.key==='Enter')iaPerguntar()">
+        <button id="iaSendBtn" onclick="iaPerguntar()"
+          style="padding:8px 18px;background:var(--accent);border:none;border-radius:4px;color:var(--bg);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px;white-space:nowrap;">
+          ENVIAR
+        </button>
+      </div>
+      <div style="padding:6px 14px 8px;font-size:9px;color:var(--muted);opacity:.6;background:var(--panel);">
+        Fornecedor: <span id="iaFooterProv">—</span> &nbsp;·&nbsp; Configura em <strong>Preferências → Análise IA</strong>
       </div>
     </div>
+  </div>
+</div>
     <div class="panel" id="panel-pref">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
         <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">Preferencias</span>
@@ -2383,6 +2439,7 @@ function switchTab(id,el){
         }
         renderPointList();
       }
+      if(id==='ia'){_iaInit();}
       if(id==='ias'){if(!iasLimits)loadIasLimits();renderIasManage();}
       if(id==='iasapp'){buildIasAppRwyButtons();renderIasAppResults();}
       if(id==='ana')renderAnaResults();
@@ -7498,6 +7555,740 @@ function sep_reportActiveFilters(){
     ['Seguidor no DEP até', getSel('anaDepNm')],
     ['Mostrar', getSel('sep_anaCrit')]
   ];
+}
+
+function _iaOnProviderChange(){
+  var prov=document.getElementById('prefIaProvider').value;
+  var azRow=document.getElementById('prefAzureEndpointRow');
+  if(azRow) azRow.style.display=(prov==='azure'?'block':'none');
+  _iaPopulatePrefModels();
+  // Preencher chave já guardada para este fornecedor
+  var keyEl=document.getElementById('prefIaKey');
+  if(keyEl){ keyEl.value=''; keyEl.placeholder='Cola aqui a API Key do '+IA_PROVIDERS[prov].name+'...'; }
+  var azEl=document.getElementById('prefAzureEndpoint');
+  if(azEl && prov==='azure') azEl.value=iaGetAzureEndpoint()||'';
+}
+
+function iaSaveKey(show){
+  var prov=document.getElementById('prefIaProvider').value;
+  var key=document.getElementById('prefIaKey').value.trim();
+  var model=document.getElementById('prefIaModel').value;
+  var azEl=document.getElementById('prefAzureEndpoint');
+  localStorage.setItem('ia_provider', prov);
+  if(key) localStorage.setItem('ia_key_'+prov, key);
+  if(model) localStorage.setItem('ia_model_'+prov, model);
+  if(azEl && prov==='azure' && azEl.value.trim()) localStorage.setItem('ia_azure_endpoint', azEl.value.trim());
+  _iaUpdateStatus();
+  _iaUpdateChatBar();
+  if(show===true){ var s=document.getElementById('prefIaStatus'); s.textContent='Chave guardada.'; s.style.color='var(--green)'; setTimeout(function(){s.textContent='';},2000); }
+}
+
+function iaClearKey(){
+  var prov=document.getElementById('prefIaProvider').value;
+  localStorage.removeItem('ia_key_'+prov);
+  if(prov==='azure') localStorage.removeItem('ia_azure_endpoint');
+  document.getElementById('prefIaKey').value='';
+  _iaUpdateStatus();
+}
+
+function _iaUpdateStatus(){
+  var prov=iaGetProvider();
+  var key=iaGetKey();
+  var s=document.getElementById('prefIaStatus');
+  var badge=document.getElementById('iaStatusBadge');
+  if(!s) return;
+  if(key){
+    s.textContent='Chave configurada para '+IA_PROVIDERS[prov].name+'.';
+    s.style.color='var(--green)';
+    if(badge){ badge.textContent=IA_PROVIDERS[prov].name+' · '+iaGetModel(); badge.style.color='var(--green)'; }
+    var fp=document.getElementById('iaFooterProv');
+    if(fp) fp.textContent=(key?IA_PROVIDERS[prov].name+' · '+iaGetModel():'Sem chave — configura nas Preferências');
+  } else {
+    s.textContent='Sem chave configurada para '+IA_PROVIDERS[prov].name+'. Vai a console.'+(prov==='anthropic'?'anthropic':'groq')+'.com';
+    s.style.color='var(--red,#f87171)';
+    if(badge){ badge.textContent='Sem chave — configura nas Preferências'; badge.style.color='var(--red,#f87171)'; }
+  }
+}
+
+function _iaUpdateChatBar(){
+  var prov=iaGetProvider();
+  var provObj=IA_PROVIDERS[prov];
+  var sel=document.getElementById('iaModelSel');
+  var badge=document.getElementById('iaStatusBadge');
+  if(!sel) return;
+  sel.innerHTML='';
+  provObj.models.forEach(function(m){ var o=document.createElement('option'); o.value=m[0]; o.textContent=m[1]; if(m[0]===iaGetModel()) o.selected=true; sel.appendChild(o); });
+  if(badge) badge.textContent=provObj.name+' · '+(sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:provObj.models[0][1]);
+}
+
+function _iaPopulatePrefModels(){
+  var prov=(document.getElementById('prefIaProvider')||{value:'anthropic'}).value||iaGetProvider();
+  var sel=document.getElementById('prefIaModel');
+  if(!sel) return;
+  sel.innerHTML='';
+  IA_PROVIDERS[prov].models.forEach(function(m){ var o=document.createElement('option'); o.value=m[0]; o.textContent=m[1]; if(m[0]===iaGetModel()) o.selected=true; sel.appendChild(o); });
+  var keyEl=document.getElementById('prefIaKey');
+  if(keyEl && !keyEl.value) keyEl.placeholder='Cola aqui a API Key do '+ IA_PROVIDERS[prov].name+'...';
+}
+
+function _iaInit(){
+  // Sincronizar painel preferências
+  var provSel=document.getElementById('prefIaProvider');
+  var prov0=iaGetProvider();
+  if(provSel){ provSel.value=prov0; }
+  var azRow=document.getElementById('prefAzureEndpointRow');
+  if(azRow) azRow.style.display=(prov0==='azure'?'block':'none');
+  _iaPopulatePrefModels();
+  _iaUpdateChatBar();
+  _iaUpdateStatus();
+  // Chat bar model selector
+  var chatSel=document.getElementById('iaModelSel');
+  if(chatSel) chatSel.addEventListener('change',function(){ localStorage.setItem('ia_model_'+iaGetProvider(),chatSel.value); });
+}
+
+document.addEventListener('DOMContentLoaded', function(){ setTimeout(_iaInit, 400); });
+
+function _iaBuildCtx(){
+  const csns = Object.keys(flights);
+  if(!csns.length) return null;
+  const total = csns.length;
+  let arr=0,dep=0,nvl=0;
+  const opFreq={};
+  const altVals=[], tasVals=[], rocVals=[];
+  let minTod='99:99', maxTod='00:00';
+  csns.forEach(csn=>{
+    const f=flights[csn];
+    const cls=classifyFlight(f.rows);
+    if(cls==='arr')arr++; else if(cls==='dep')dep++; else nvl++;
+    const pre=(csn.match(/^[A-Z]{2,3}/)||['?'])[0];
+    opFreq[pre]=(opFreq[pre]||0)+1;
+    f.rows.forEach(r=>{
+      const alt=parseFloat(r.modeC||r.baroH||r.alt);
+      const tas=parseFloat(r.tas||r.ias||r.gspA);
+      const roc=parseFloat(r.roc);
+      const tod=String(r.tod||'').substring(0,5);
+      if(!isNaN(alt)&&alt>0) altVals.push(alt);
+      if(!isNaN(tas)&&tas>0) tasVals.push(tas);
+      if(!isNaN(roc)) rocVals.push(roc);
+      if(tod&&tod>'00:00'){ if(tod<minTod)minTod=tod; if(tod>maxTod)maxTod=tod; }
+    });
+  });
+  function stat(a){
+  if(!a.length) return null;
+  var mn=a[0],mx=a[0],sum=0;
+  for(var i=0;i<a.length;i++){if(a[i]<mn)mn=a[i];if(a[i]>mx)mx=a[i];sum+=a[i];}
+  return {min:mn.toFixed(1),max:mx.toFixed(1),mean:(sum/a.length).toFixed(1)};
+}
+  // Detalhe completo por operador
+  var opDetail={};
+  csns.forEach(function(csn){
+    var f=flights[csn];
+    var cls=classifyFlight(f.rows);
+    var pre=(csn.match(/^[A-Z]{2,3}/)||['?'])[0];
+    if(!opDetail[pre]) opDetail[pre]={total:0,arr:0,dep:0,nvl:0};
+    opDetail[pre].total++;
+    if(cls==='arr') opDetail[pre].arr++;
+    else if(cls==='dep') opDetail[pre].dep++;
+    else opDetail[pre].nvl++;
+  });
+  var opDetailSorted=Object.entries(opDetail).sort(function(a,b){return b[1].total-a[1].total;});
+
+  let ctx='DADOS CARREGADOS NO FLIGHTTRACKER:\n';
+  ctx+='Total aeronaves: '+total+' | ARR: '+arr+' | DEP: '+dep+' | NVL: '+nvl+'\n';
+  ctx+='Periodo: '+minTod+'-'+maxTod+'\n';
+  ctx+='\nVoos por operador (lista completa):\n';
+  opDetailSorted.forEach(function(e){
+    ctx+='  '+e[0]+': total='+e[1].total+' | ARR='+e[1].arr+' | DEP='+e[1].dep+' | NVL='+e[1].nvl+'\n';
+  });
+  const sa=stat(altVals), st=stat(tasVals), sr=stat(rocVals);
+  if(sa) ctx+='Altitude (FL/100ft): min='+sa.min+' max='+sa.max+' media='+sa.mean+'\n';
+  if(st) ctx+='Velocidade (TAS/kt): min='+st.min+' max='+st.max+' media='+st.mean+'\n';
+  if(sr) ctx+='ROC (ft/min): min='+sr.min+' max='+sr.max+' media='+sr.mean+'\n';
+
+  // IAS STAR violations
+  if(typeof iasResults!=='undefined' && iasResults && iasResults.totalViol>0){
+    ctx+='Violacoes IAS STAR: total='+iasResults.totalViol+' em '+iasResults.totalPasses+' passagens\n';
+    if(iasResults.perWp){
+      var wpViol=Object.entries(iasResults.perWp).filter(function(e){return e[1].viol>0;}).sort(function(a,b){return b[1].viol-a[1].viol;}).slice(0,8).map(function(e){return e[0]+'('+e[1].viol+'viol/'+e[1].passes+'pass)';}).join(', ');
+      if(wpViol) ctx+='Waypoints STAR com mais violacoes: '+wpViol+'\n';
+    }
+    var violPorVoo={};
+    iasResults.violations.forEach(function(v){ var c=v.csn||'?'; violPorVoo[c]=(violPorVoo[c]||0)+1; });
+    var d1=0,d2=0,d3=0,d4=0,d5=0;
+    Object.values(violPorVoo).forEach(function(n){ if(n>=5)d5++; else if(n===4)d4++; else if(n===3)d3++; else if(n===2)d2++; else d1++; });
+    ctx+='Distribuicao violacoes IAS STAR por voo: 1viol='+d1+' voos | 2viol='+d2+' voos | 3viol='+d3+' voos | 4viol='+d4+' voos | 5+viol='+d5+' voos\n';
+    var topVV=Object.entries(violPorVoo).sort(function(a,b){return b[1]-a[1];}).slice(0,5).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ');
+    if(topVV) ctx+='Top voos com mais violacoes STAR: '+topVV+'\n';
+    // Por companhia (prefixo)
+    var opViolStar={};
+    Object.entries(violPorVoo).forEach(function(e){
+      var pre=(e[0].match(/^[A-Z]{2,3}/)||['?'])[0];
+      opViolStar[pre]=(opViolStar[pre]||0)+e[1];
+    });
+    var topStarOp=Object.entries(opViolStar).sort(function(a,b){return b[1]-a[1];}).slice(0,8).map(function(e){return e[0]+'('+e[1]+'viol)';}).join(', ');
+    if(topStarOp) ctx+='Top companhias com violacoes IAS STAR: '+topStarOp+'\n';
+  } else if(typeof iasResults!=='undefined' && !iasResults){
+    ctx+='Violacoes IAS STAR: analise nao efectuada (usa aba Velocidades STAR)\n';
+  }
+
+  // IAS APP violations
+  if(typeof iasAppResults!=='undefined' && iasAppResults && iasAppResults.records){
+    // Cada record em iasAppResults.records JA e uma violacao (so sao incluidos voos com violCount>0)
+    var appRecs=iasAppResults.records;
+    var totalViolApp=appRecs.reduce(function(s,r){return s+(r.violCount||0);},0);
+    var maxDev=appRecs.reduce(function(s,r){return Math.max(s,r.maxAbsDeviation||0);},0);
+    ctx+='\n=== VIOLAÇÕES IAS APP (Velocidades Aproximação) ===\n';
+    ctx+='Voos com violacoes: '+appRecs.length+' de '+iasAppResults.arrAnalysed+' chegadas analisadas\n';
+    ctx+='Total pontos violados: '+totalViolApp+' | Desvio maximo: '+maxDev.toFixed(0)+' kt\n';
+
+    // Por waypoint (usar campo points de cada record)
+    var wpViolApp={};
+    appRecs.forEach(function(r){
+      if(!r.points) return;
+      r.points.forEach(function(p){
+        if(p.ias==null) return;
+        var dev=Math.abs(p.deviation||0);
+        if(dev<=0) return; // sem violacao
+        var wn=(p.point||'?').toUpperCase();
+        if(!wpViolApp[wn]) wpViolApp[wn]={voos:0,pontos:0,maxDev:0,totalExcesso:0,voosList:[]};
+        wpViolApp[wn].pontos++;
+        wpViolApp[wn].maxDev=Math.max(wpViolApp[wn].maxDev,dev);
+        wpViolApp[wn].totalExcesso+=dev;
+        if(wpViolApp[wn].voosList.indexOf(r.csn)<0){
+          wpViolApp[wn].voos++;
+          wpViolApp[wn].voosList.push(r.csn);
+        }
+      });
+    });
+    if(Object.keys(wpViolApp).length){
+      ctx+='\nViolacoes por waypoint APP (ordenado por numero de voos):\n';
+      Object.entries(wpViolApp).sort(function(a,b){return b[1].voos-a[1].voos;}).forEach(function(e){
+        ctx+='  '+e[0]+': '+e[1].voos+' voos | '+e[1].pontos+' pontos violados | max='+e[1].maxDev.toFixed(0)+'kt | mediaExcesso='+(e[1].totalExcesso/e[1].pontos).toFixed(1)+'kt\n';
+      });
+    }
+
+    // Por companhia
+    var opViolApp={};
+    appRecs.forEach(function(r){
+      var pre=(r.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
+      if(!opViolApp[pre]) opViolApp[pre]={voos:0,pontos:0,maxDev:0};
+      opViolApp[pre].voos++;
+      opViolApp[pre].pontos+=(r.violCount||0);
+      opViolApp[pre].maxDev=Math.max(opViolApp[pre].maxDev,r.maxAbsDeviation||0);
+    });
+    var topAppOp=Object.entries(opViolApp).sort(function(a,b){return b[1].voos-a[1].voos;}).slice(0,10)
+      .map(function(e){return e[0]+'('+e[1].voos+'voos/'+e[1].pontos+'pts/max'+e[1].maxDev.toFixed(0)+'kt)';}).join(', ');
+    ctx+='\nTop companhias: '+topAppOp+'\n';
+
+    // Distribuicao por pista
+    var rwViol={};
+    appRecs.forEach(function(r){ rwViol[r.rwy]=(rwViol[r.rwy]||0)+1; });
+    ctx+='Por pista: '+Object.entries(rwViol).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
+
+    // Distribuicao violacoes por voo
+    var dApp={1:0,2:0,3:0,4:0,5:0};
+    appRecs.forEach(function(r){ var n=r.violCount||0; if(n>=5)dApp[5]++; else if(n>=4)dApp[4]++; else if(n>=3)dApp[3]++; else if(n>=2)dApp[2]++; else dApp[1]++; });
+    ctx+='Distribuicao por voo: 1pt='+dApp[1]+' | 2pt='+dApp[2]+' | 3pt='+dApp[3]+' | 4pt='+dApp[4]+' | 5+pt='+dApp[5]+'\n';
+  } else if(typeof iasAppResults!=='undefined' && !iasAppResults){
+    ctx+='Violacoes IAS APP: analise nao efectuada (usa aba Velocidades APP para analisar)\n';
+  }
+
+  // ── HOLDINGS ─────────────────────────────────────────────────────────────
+  if(typeof holdingsResults!=='undefined' && holdingsResults.length){
+    ctx+='\n=== HOLDINGS DETECTADOS ===\n';
+    ctx+='Total: '+holdingsResults.length+'\n';
+    var holdFix={}, holdDur=[], holdOp={};
+    holdingsResults.forEach(function(h){
+      var fix=h.fix||'sem fix'; holdFix[fix]=(holdFix[fix]||0)+1;
+      holdDur.push(h.durS||0);
+      var pre=(h.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
+      if(!holdOp[pre]) holdOp[pre]={n:0,durS:0};
+      holdOp[pre].n++; holdOp[pre].durS+=(h.durS||0);
+    });
+    var durSum=holdDur.reduce(function(a,b){return a+b;},0);
+    var durMin=Math.min.apply(null,holdDur), durMax=Math.max.apply(null,holdDur);
+    ctx+='Duração: min='+Math.round(durMin)+'s | max='+Math.round(durMax)+'s | média='+Math.round(durSum/holdDur.length)+'s\n';
+    ctx+='Por fix: '+Object.entries(holdFix).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ')+'\n';
+    ctx+='Por companhia: '+Object.entries(holdOp).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,8).map(function(e){return e[0]+'('+e[1].n+'x/'+Math.round(e[1].durS/60)+'min)';}).join(', ')+'\n';
+    ctx+='Lista: '+holdingsResults.map(function(h){return h.csn+'('+h.date+' '+h.startStr+'-'+h.endStr+'/'+Math.round(h.durS)+'s'+(h.fix?'/fix:'+h.fix:'')+')';}).join(', ')+'\n';
+  }
+
+  // ── GO-AROUNDS ────────────────────────────────────────────────────────────
+  if(typeof goAroundResults!=='undefined' && goAroundResults.length){
+    ctx+='\n=== GO-AROUNDS DETECTADOS ===\n';
+    ctx+='Total: '+goAroundResults.length+'\n';
+    var gaOp={};
+    goAroundResults.forEach(function(g){
+      var pre=(g.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
+      gaOp[pre]=(gaOp[pre]||0)+1;
+    });
+    ctx+='Por companhia: '+Object.entries(gaOp).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ')+'\n';
+    ctx+='Lista: '+goAroundResults.map(function(g){return g.csn+'('+g.date+' '+g.tMinStr+' alt='+Math.round(g.altMin||0)+'ft climb='+Math.round(g.climb||0)+'ft)';}).join(', ')+'\n';
+  }
+
+  // ── ROT (Runway Occupancy Time) ─────────────────────────────────────────
+  if(typeof rotResults!=='undefined' && rotResults.length){
+    ctx+='\n=== ROT — TEMPO DE OCUPAÇÃO DE PISTA ===\n';
+    ctx+='Total registos: '+rotResults.length+'\n';
+    var rotByRwy={}, rotSecs=[];
+    rotResults.forEach(function(r){
+      var k='RWY'+(r.rwy||'?');
+      if(!rotByRwy[k]) rotByRwy[k]={n:0,sum:0,min:9999,max:0};
+      rotByRwy[k].n++; rotByRwy[k].sum+=r.rotS||0;
+      if(r.rotS<rotByRwy[k].min) rotByRwy[k].min=r.rotS;
+      if(r.rotS>rotByRwy[k].max) rotByRwy[k].max=r.rotS;
+      rotSecs.push(r.rotS||0);
+    });
+    var rotSum=rotSecs.reduce(function(a,b){return a+b;},0);
+    ctx+='Média geral: '+Math.round(rotSum/rotSecs.length)+'s | Min: '+Math.min.apply(null,rotSecs)+'s | Max: '+Math.max.apply(null,rotSecs)+'s\n';
+    Object.entries(rotByRwy).forEach(function(e){
+      ctx+='  '+e[0]+': '+e[1].n+' registos | média='+Math.round(e[1].sum/e[1].n)+'s | min='+e[1].min+'s | max='+e[1].max+'s\n';
+    });
+    // Distribuição por faixas
+    var rotD={u30:0,u45:0,u60:0,u90:0,u120:0,mais:0};
+    rotSecs.forEach(function(s){if(s<30)rotD.u30++;else if(s<45)rotD.u45++;else if(s<60)rotD.u60++;else if(s<90)rotD.u90++;else if(s<120)rotD.u120++;else rotD.mais++;});
+    ctx+='Distribuicao: <30s='+rotD.u30+' | 30-44s='+rotD.u45+' | 45-59s='+rotD.u60+' | 60-89s='+rotD.u90+' | 90-119s='+rotD.u120+' | >=120s='+rotD.mais+'\n';
+  }
+
+  // ── SEQUÊNCIA (aba Pontos/Sequência) ──────────────────────────────────────
+  if(typeof seqResults!=='undefined' && seqResults.length){
+    ctx+='\n=== SEQUÊNCIA / PONTOS ===\n';
+    ctx+='Aeronaves na sequência: '+seqResults.length+'\n';
+    var seqDists=seqResults.filter(function(r){return r.antD!=null;}).map(function(r){return r.antD;});
+    if(seqDists.length){
+      var dSum=seqDists.reduce(function(a,b){return a+b;},0);
+      ctx+='Distância ao anterior: min='+Math.min.apply(null,seqDists).toFixed(1)+'NM | max='+Math.max.apply(null,seqDists).toFixed(1)+'NM | média='+(dSum/seqDists.length).toFixed(1)+'NM\n';
+    }
+    var seqAlts=seqResults.filter(function(r){return r.alt!=null&&r.alt>0;}).map(function(r){return r.alt;});
+    if(seqAlts.length){
+      var aSum=seqAlts.reduce(function(a,b){return a+b;},0);
+      ctx+='Altitude no ponto: min='+Math.min.apply(null,seqAlts).toFixed(0)+'ft | max='+Math.max.apply(null,seqAlts).toFixed(0)+'ft | média='+(aSum/seqAlts.length).toFixed(0)+'ft\n';
+    }
+  }
+
+  // ── FAST (Separação entre chegadas consecutivas) ──────────────────────────
+  if(typeof _fastPairs!=='undefined' && _fastPairs.length){
+    // Reconstruir depEpochs (mesma lógica da aba FAST)
+    var depEpochs=[];
+    Object.values(flights).forEach(function(f){
+      if(!f||!f.rows||classifyFlight(f.rows)!=='dep')return;
+      var firstT=Infinity;
+      for(var i=0;i<f.rows.length;i++){var t=rowEpoch(f.rows[i]);if(!isNaN(t)&&t<firstT)firstT=t;}
+      if(isFinite(firstT)&&firstT>0)depEpochs.push(firstT);
+    });
+    depEpochs.sort(function(a,b){return a-b;});
+
+    // Limiar da aba FAST (usa o valor actual do input, default 160)
+    var fastThr=parseInt($('fastThreshold')&&$('fastThreshold').value)||160;
+
+    // ATENÇÃO: a aba FAST mostra sep < fastThr (strict)
+    var paresAbaixo=_fastPairs.filter(function(p){return p.sep<fastThr;});
+    var paresAbaixoComDep=paresAbaixo.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
+    var paresAbaixoSemDep=paresAbaixo.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
+
+    // Todos os pares (sem filtro de limiar)
+    var todosComDep=_fastPairs.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
+    var todosSemDep=_fastPairs.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
+
+    // Sep min/max/média
+    var sepSum=0,sepMin=_fastPairs[0].sep,sepMax=_fastPairs[0].sep;
+    _fastPairs.forEach(function(p){sepSum+=p.sep;if(p.sep<sepMin)sepMin=p.sep;if(p.sep>sepMax)sepMax=p.sep;});
+    var sepMean=(sepSum/_fastPairs.length).toFixed(1);
+
+    // Por pista
+    var byRwy={};
+    _fastPairs.forEach(function(p){var r=p.lead&&p.lead.rwy?'RWY'+p.lead.rwy:'?';byRwy[r]=(byRwy[r]||0)+1;});
+
+    // Distribuição por faixas de 30s
+    var fx={};
+    var faixas=[30,60,90,120,150,180,210,240,270,300,360,600];
+    faixas.forEach(function(f){fx[f]=0;});
+    _fastPairs.forEach(function(p){
+      for(var i=0;i<faixas.length;i++){if(p.sep<faixas[i]){fx[faixas[i]]++;break;}}
+    });
+
+    ctx+='\n=== DADOS DE SEPARAÇÃO ENTRE CHEGADAS CONSECUTIVAS (FAST) ===\n';
+    ctx+='IMPORTANTE: os números abaixo espelham exactamente o que a aba FAST mostra.\n';
+    ctx+='Limiar configurado na aba FAST: '+fastThr+'s (mostra pares com sep < '+fastThr+'s)\n';
+    ctx+='Total de pares calculados (todos): '+_fastPairs.length+'\n';
+    ctx+='Separação: min='+sepMin+'s | max='+sepMax+'s | média='+sepMean+'s\n';
+    ctx+='Por pista: '+Object.entries(byRwy).map(function(e){return e[0]+'='+e[1];}).join(' | ')+'\n';
+    ctx+='\nPARES COM sep < '+fastThr+'s (= o que a aba FAST mostra sem filtro A/C intercalar): '+paresAbaixo.length+'\n';
+    ctx+='  - Com descolagem intercalar (= aba FAST com filtro A/C INTERCALAR activo): '+paresAbaixoComDep.length+'\n';
+    ctx+='  - Sem descolagem intercalar: '+paresAbaixoSemDep.length+'\n';
+    ctx+='\nTodos os pares (sem filtro de limiar):\n';
+    ctx+='  - Com descolagem intercalar: '+todosComDep.length+'\n';
+    ctx+='  - Sem descolagem intercalar: '+todosSemDep.length+'\n';
+    ctx+='\nDistribuicao por faixas:\n';
+    ctx+='  <30s='+fx[30]+' | 30-59s='+fx[60]+' | 60-89s='+fx[90]+' | 90-119s='+fx[120]+' | 120-149s='+fx[150]+' | 150-179s='+fx[180]+' | 180-209s='+fx[210]+' | 210-239s='+fx[240]+' | 240-269s='+fx[270]+' | 270-299s='+fx[300]+' | 300-359s='+fx[360]+' | >=360s='+fx[600]+'\n';
+
+    // Detalhe dos pares abaixo do limiar (max 50 para não sobrecarregar)
+    if(paresAbaixo.length){
+      ctx+='\nDetalhe dos pares abaixo de '+fastThr+'s:\n';
+      paresAbaixo.slice(0,50).forEach(function(p,i){
+        var comDep=_pairHasIntercalDep(p,depEpochs)?'COM DEP intercalar':'SEM DEP intercalar';
+        ctx+='  '+(i+1)+'. '+p.lead.csn+' → '+p.trail.csn+' | RWY'+(p.lead.rwy||'?')+' | '+((p.lead.tTHRstr)||'')+' | sep='+p.sep+'s | '+comDep+'\n';
+      });
+      if(paresAbaixo.length>50) ctx+='  ... ('+( paresAbaixo.length-50)+' pares adicionais omitidos)\n';
+    }
+  } else if(typeof finalResults!=='undefined' && finalResults.length){
+    ctx+='\nSeparacao entre chegadas (FAST): dados da aba Final disponiveis ('+finalResults.length+' chegadas) mas pares nao foram calculados. O utilizador deve ir a aba Analise Op. > FAST.\n';
+  } else {
+    ctx+='\nSeparacao entre chegadas (FAST): sem dados. Vai a aba Final e clica Analisar, depois Analise Op. > FAST.\n';
+  }
+
+  // ── FINAL (chegadas analisadas) ───────────────────────────────────────────
+  if(typeof finalResults!=='undefined' && finalResults.length){
+    ctx+='\n=== CHEGADAS ANALISADAS (ABA FINAL) ===\n';
+    ctx+='Total chegadas analisadas: '+finalResults.length+'\n';
+    var rwyCnt={};
+    finalResults.forEach(function(r){rwyCnt[r.rwy]=(rwyCnt[r.rwy]||0)+1;});
+    ctx+='Por pista: '+Object.entries(rwyCnt).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
+  }
+
+  // ── DATAS E TRÁFEGO POR DIA ────────────────────────────────────────────────
+  var perDay={};
+  Object.entries(flights).forEach(function(kv){
+    var csn=kv[0], f=kv[1];
+    var cls=classifyFlight(f.rows);
+    var dates={};
+    f.rows.forEach(function(r){ if(r._date&&r._date!=='??') dates[r._date]=1; });
+    Object.keys(dates).forEach(function(d){
+      if(!perDay[d]) perDay[d]={arr:0,dep:0,nvl:0,total:0};
+      perDay[d].total++;
+      if(cls==='arr') perDay[d].arr++;
+      else if(cls==='dep') perDay[d].dep++;
+      else perDay[d].nvl++;
+    });
+  });
+  var dayKeys=Object.keys(perDay).sort();
+  if(dayKeys.length){
+    ctx+='\n=== TRÁFEGO POR DIA ===\n';
+    ctx+='Dias carregados: '+dayKeys.length+'\n';
+    dayKeys.forEach(function(d){
+      var dv=perDay[d];
+      // formatar data AAAAMMDD → DD/MM/AAAA
+      var df=d.length===8?(d.slice(6,8)+'/'+d.slice(4,6)+'/'+d.slice(0,4)):d;
+      ctx+='  '+df+': total='+dv.total+' | ARR='+dv.arr+' | DEP='+dv.dep+' | NVL='+dv.nvl+'\n';
+    });
+    // Top 3 dias com mais tráfego
+    var top3=dayKeys.slice().sort(function(a,b){return perDay[b].total-perDay[a].total;}).slice(0,3);
+    ctx+='Top 3 dias com mais trafego: '+top3.map(function(d){
+      var df=d.length===8?(d.slice(6,8)+'/'+d.slice(4,6)+'/'+d.slice(0,4)):d;
+      return df+'('+perDay[d].total+')';
+    }).join(', ')+'\n';
+  }
+
+  // ── PONTOS — resultados da aba Pontos ──────────────────────────────────────
+  if(typeof ptQueryResults!=='undefined' && ptQueryResults.length && typeof selectedPoint!=='undefined' && selectedPoint){
+    var ptRad=typeof $!=='undefined'&&$('ptRadius')?parseFloat($('ptRadius').value)||1:1;
+    ctx+='\n=== ABA PONTOS — PASSAGENS NO RAIO DE '+ptRad+'NM ===\n';
+    ctx+='Ponto seleccionado: '+selectedPoint.name+'\n';
+    ctx+='Total passagens: '+ptQueryResults.length+'\n';
+    // Por tipo
+    var ptTipo={ARR:0,DEP:0,NVL:0};
+    ptQueryResults.forEach(function(r){ ptTipo[r.tipo]=(ptTipo[r.tipo]||0)+1; });
+    ctx+='Por tipo: ARR='+ptTipo.ARR+' | DEP='+ptTipo.DEP+' | NVL='+ptTipo.NVL+'\n';
+    // Por companhia
+    var ptOp={};
+    ptQueryResults.forEach(function(r){ var pre=(r.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?'; ptOp[pre]=(ptOp[pre]||0)+1; });
+    var topPtOp=Object.entries(ptOp).sort(function(a,b){return b[1]-a[1];}).slice(0,8).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ');
+    ctx+='Top operadores: '+topPtOp+'\n';
+    // Por dia
+    var ptDay={};
+    ptQueryResults.forEach(function(r){ if(r.date) ptDay[r.date]=(ptDay[r.date]||0)+1; });
+    var ptDayKeys=Object.keys(ptDay).sort();
+    if(ptDayKeys.length>1){
+      ctx+='Por dia: '+ptDayKeys.map(function(d){return d+'='+ptDay[d];}).join(' | ')+'\n';
+      var topPtDay=ptDayKeys.slice().sort(function(a,b){return ptDay[b]-ptDay[a];}).slice(0,3);
+      ctx+='Top 3 dias com mais passagens: '+topPtDay.map(function(d){return d+'('+ptDay[d]+'x)';}).join(', ')+'\n';
+    }
+    // Estatísticas IAS e altitude
+    var ptIas=ptQueryResults.filter(function(r){return r.ias&&r.ias!=='—'&&!isNaN(parseFloat(r.ias));}).map(function(r){return parseFloat(r.ias);});
+    if(ptIas.length){
+      var iSum=ptIas.reduce(function(a,b){return a+b;},0);
+      var iMin=Math.min.apply(null,ptIas), iMax=Math.max.apply(null,ptIas);
+      ctx+='IAS no ponto: min='+iMin.toFixed(0)+'kt | max='+iMax.toFixed(0)+'kt | media='+(iSum/ptIas.length).toFixed(0)+'kt\n';
+    }
+    var ptAlt=ptQueryResults.filter(function(r){return r.alt&&r.alt!=='—'&&!isNaN(parseFloat(r.alt));}).map(function(r){return parseFloat(r.alt);});
+    if(ptAlt.length){
+      var aSum=ptAlt.reduce(function(a,b){return a+b;},0);
+      ctx+='Altitude no ponto: min='+Math.min.apply(null,ptAlt).toFixed(0)+'ft | max='+Math.max.apply(null,ptAlt).toFixed(0)+'ft | media='+(aSum/ptAlt.length).toFixed(0)+'ft\n';
+    }
+  }
+
+  return ctx;
+}
+
+async function iaPerguntar(){
+  if(_iaLoading) return;
+  const q = document.getElementById('iaInput').value.trim();
+  if(!q){ alert('Escreve uma pergunta.'); return; }
+  if(!Object.keys(flights).length){ alert('Carrega dados primeiro.'); return; }
+  document.getElementById('iaInput').value='';
+  _iaLoading=true;
+  document.getElementById('iaSendBtn').disabled=true;
+  _iaAddMsg('user', q);
+  const aiDiv = _iaAddMsg('ai', '⏳ A analisar...', false); // false = nao guardar no historico
+  const bubble = aiDiv.querySelector('.ia-bubble');
+  var _model = document.getElementById('iaModelSel').value || iaGetModel();
+  const ctx = _iaBuildCtx();
+  if(!ctx){ bubble.textContent='⚠ Sem dados carregados.'; _iaLoading=false; document.getElementById('iaSendBtn').disabled=false; return; }
+  var _key = iaGetKey();
+  if(!_key){ bubble.textContent='⚠ Sem API Key configurada. Vai às Preferências e cola a tua chave.'; bubble.style.background='rgba(248,113,113,0.1)'; bubble.style.borderColor='var(--red,#f87171)'; _iaLoading=false; document.getElementById('iaSendBtn').disabled=false; return; }
+  var _prov = iaGetProvider();
+  const SYSTEM = 'Es um especialista em analise de dados de trafego aereo e radar. Responde SEMPRE em JSON valido, sem markdown, sem texto fora do JSON. Estrutura: {"texto":"explicacao em portugues de Portugal sem asteriscos","grafico":{"tipo":"bar|pie|line|doughnut","titulo":"titulo","dados":[{"nome":"label","valor":numero}]}} O campo grafico e OPCIONAL. Os valores em valor devem ser SEMPRE numeros inteiros ou decimais, NUNCA strings. Para listas usa hifen (-).';
+  try{
+    var res, raw='{}';
+    var _provObj=IA_PROVIDERS[_prov]||IA_PROVIDERS.anthropic;
+    var _type=_provObj.type||'openai';
+
+    if(_type==='anthropic'){
+      res = await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':_key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:_model,max_tokens:2048,system:SYSTEM,messages:[{role:'user',content:ctx+'\nPERGUNTA: '+q}]})
+      });
+      const data=await res.json();
+      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
+      raw=data&&data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'{}';
+
+    } else if(_type==='azure'){
+      var _azEndpoint=iaGetAzureEndpoint();
+      if(!_azEndpoint) throw new Error('Endpoint Azure não configurado. Vai às Preferências.');
+      var _azUrl=_azEndpoint.replace(/\/+$/,'')+'?api-version=2024-02-01';
+      res = await fetch(_azUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','api-key':_key},
+        body:JSON.stringify({messages:[{role:'system',content:SYSTEM},{role:'user',content:ctx+'\nPERGUNTA: '+q}],temperature:0.2,max_tokens:2048,response_format:{type:'json_object'}})
+      });
+      const data=await res.json();
+      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
+      raw=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content?data.choices[0].message.content:'{}';
+
+    } else {
+      // OpenAI-compatible: OpenAI, Groq, Mistral
+      var _oaiUrl=_provObj.url;
+      res = await fetch(_oaiUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_key},
+        body:JSON.stringify({model:_model,messages:[{role:'system',content:SYSTEM},{role:'user',content:ctx+'\nPERGUNTA: '+q}],temperature:0.2,max_tokens:2048,response_format:{type:'json_object'}})
+      });
+      const data=await res.json();
+      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
+      raw=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content?data.choices[0].message.content:'{}';
+    }
+    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
+    var textoResposta=parsed.texto||'(sem resposta)';
+    bubble.textContent=textoResposta;
+    // Gravar resposta real no histórico (o loading foi criado com _record=false)
+    var histEntry={role:'ai', text:textoResposta, grafico:null, graficoImg:null};
+    _iaHistory.push(histEntry);
+    if(parsed.grafico&&parsed.grafico.dados&&parsed.grafico.dados.length){
+      _iaRenderChart(aiDiv,parsed.grafico,histEntry);
+      histEntry.grafico=parsed.grafico;
+    }
+  }catch(err){
+    bubble.textContent='⚠ Erro: '+err.message;
+    bubble.style.background='rgba(248,113,113,0.1)';
+    bubble.style.borderColor='var(--red)';
+  }
+  const chat=document.getElementById('iaChat');
+  if(chat) chat.scrollTop=99999;
+  _iaLoading=false;
+  document.getElementById('iaSendBtn').disabled=false;
+  document.getElementById('iaInput').focus();
+}
+
+const _iaTipoMap={'histograma':'bar','barras':'bar','barra':'bar','colunas':'bar','coluna':'bar','linha':'line','linhas':'line','circular':'pie','pizza':'pie','rosca':'doughnut','anel':'doughnut'};
+
+function _iaRenderChart(container, grafico, histEntry){
+  const tipoRaw=(grafico.tipo||'bar').toLowerCase().trim();
+  const tipo=_iaTipoMap[tipoRaw]||(['bar','line','pie','doughnut'].includes(tipoRaw)?tipoRaw:'bar');
+  const titulo=grafico.titulo, dados=grafico.dados;
+  const labels=dados.map(function(d){return d.nome;}), values=dados.map(function(d){return parseFloat(d.valor)||0;});
+  if(values.every(function(v){return v===0;})) return; // nao renderizar grafico com dados a zero
+  const isPie=tipo==='pie'||tipo==='doughnut';
+  const COLORS=['#2563eb','#16a34a','#dc2626','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#0f766e','#6d28d9','#b45309','#be123c','#047857','#1d4ed8'];
+  const wrap=document.createElement('div');
+  wrap.style.cssText='margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px';
+  const ttl=document.createElement('div');
+  ttl.style.cssText='font-size:10px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:700';
+  ttl.textContent='▸ '+(titulo||'Grafico');
+  wrap.appendChild(ttl);
+  const cw=document.createElement('div');
+  cw.style.cssText='position:relative;height:200px;max-width:480px;';
+  const canvas=document.createElement('canvas');
+  cw.appendChild(canvas); wrap.appendChild(cw); container.appendChild(wrap);
+  const ch=new Chart(canvas,{
+    type:tipo,
+    data:{labels:labels,datasets:[{label:titulo||'',data:values,backgroundColor:isPie?COLORS.slice(0,values.length):COLORS[0]+'cc',borderColor:isPie?COLORS.slice(0,values.length):COLORS[0],borderWidth:isPie?2:1,borderRadius:tipo==='bar'?4:0}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      animation:{onComplete:function(){
+        // Guardar PNG directamente no histEntry passado por referência
+        try{
+          if(histEntry) histEntry.graficoImg=canvas.toDataURL('image/png');
+        }catch(e){}
+      }},
+      plugins:{legend:{display:isPie,position:'right',labels:{color:'var(--text)',font:{size:10},boxWidth:10}},tooltip:{bodyColor:'var(--text)',titleColor:'var(--accent)'}},
+      scales:isPie?{}:{x:{ticks:{color:'var(--muted)',font:{size:9},maxRotation:45},grid:{color:'var(--border)'}},y:{ticks:{color:'var(--muted)',font:{size:9}},grid:{color:'var(--border)'},beginAtZero:true}}}
+  });
+  _iaCharts.push(ch);
+}
+
+function _iaAddMsg(role, text, _record){
+  if(_record!==false) _iaHistory.push({role, text, grafico:null});
+  const chat=document.getElementById('iaChat');
+  if(!chat) return document.createElement('div');
+  const empt=chat.querySelector('.ia-empty'); if(empt) empt.remove();
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;flex-direction:column;gap:4px;';
+  const lbl=document.createElement('div');
+  lbl.style.cssText='font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:0 4px;color:'+(role==='user'?'var(--accent)':'var(--green)');
+  lbl.textContent=role==='user'?'◈ TU':'◈ '+(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name||'IA').toUpperCase();
+  const bubble=document.createElement('div');
+  bubble.className='ia-bubble';
+  bubble.style.cssText='padding:10px 13px;border-radius:6px;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;border:1px solid '+(role==='user'?'rgba(0,200,255,0.2)':'rgba(34,211,160,0.2)')+';background:'+(role==='user'?'rgba(0,200,255,0.06)':'rgba(34,211,160,0.06)');
+  bubble.textContent=text;
+  div.appendChild(lbl); div.appendChild(bubble);
+  chat.appendChild(div);
+  chat.scrollTop=99999;
+  return div;
+}
+
+function iaExportar(fmt){
+  if(!_iaHistory.length){ alert('Sem conversa para exportar.'); return; }
+  const now=new Date();
+  const stamp=now.toISOString().replace('T',' ').substring(0,16);
+
+  if(fmt==='html'){
+    var provName=(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name)||'IA';
+    var h='<!DOCTYPE html><html><head><meta charset="utf-8"><title>An\u00e1lise IA \u2014 Flight Track Viewer</title>';
+    h+='<style>*{box-sizing:border-box;}body{margin:0;padding:24px;background:#f0f4f8;font-family:Segoe UI,Arial,sans-serif;color:#1e293b;}';
+    h+='.wrap{max-width:860px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.10);}';
+    h+='h1{font-size:22px;color:#0f2744;border-bottom:2px solid #0f2744;padding-bottom:8px;margin-bottom:4px;}';
+    h+='.meta{font-size:11px;color:#64748b;margin-bottom:28px;}';
+    h+='.msg{margin-bottom:20px;}';
+    h+='.lbl-user{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0284c7;margin-bottom:4px;}';
+    h+='.lbl-ai{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#16a34a;margin-bottom:4px;}';
+    h+='.box-user{background:#f0f9ff;border-left:4px solid #0284c7;padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;line-height:1.6;}';
+    h+='.box-ai{background:#f0fdf4;border-left:4px solid #16a34a;padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;line-height:1.6;white-space:pre-wrap;}';
+    h+='.chart-wrap{margin:12px 0 4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;}';
+    h+='.chart-ttl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#d97706;margin-bottom:8px;}';
+    h+='.chart-img{max-width:100%;height:auto;display:block;border-radius:4px;}';
+    h+='.tbl{border-collapse:collapse;margin-top:8px;font-size:12px;width:auto;min-width:200px;}';
+    h+='.tbl th{background:#0f2744;color:#fff;padding:5px 12px;text-align:left;}';
+    h+='.tbl td{padding:4px 12px;border:1px solid #e2e8f0;}';
+    h+='.tbl tr:nth-child(even) td{background:#f8faff;}';
+    h+='.sep{border:none;border-top:1px solid #e2e8f0;margin:20px 0;}';
+    h+='@media print{body{padding:0;}@page{margin:2cm;}}';
+    h+='</style></head><body><div class="wrap">';
+    h+='<h1>&#9881; An&#225;lise IA &#8212; Flight Track Viewer</h1>';
+    h+='<div class="meta">Exportado em: '+stamp+' &nbsp;&middot;&nbsp; Fornecedor: '+provName+'</div>';
+    _iaHistory.forEach(function(e){
+      if(!e||!e.text||e.text==='⏳ A analisar...') return;
+      if(e.role==='user'){
+        h+='<div class="msg"><div class="lbl-user">&#9658; Pergunta</div>';
+        h+='<div class="box-user">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div></div>';
+      } else {
+        h+='<div class="msg"><div class="lbl-ai">&#9672; '+provName+'</div>';
+        var txt=e.text.split('\n').map(function(l){
+          var s=l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          if(s.match(/^- /)) s='&bull; '+s.slice(2);
+          return s;
+        }).join('<br>');
+        h+='<div class="box-ai">'+txt+'</div>';
+        if(e.grafico||e.graficoImg){
+          h+='<div class="chart-wrap"><div class="chart-ttl">&#128202; '+(e.grafico&&e.grafico.titulo?e.grafico.titulo.replace(/&/g,'&amp;'):'Gr&#225;fico')+'</div>';
+          if(e.graficoImg) h+='<img class="chart-img" src="'+e.graficoImg+'">';
+          if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
+            h+='<table class="tbl" style="margin-top:'+(e.graficoImg?'12px':'0')+';"><tr><th>Item</th><th>Valor</th></tr>';
+            e.grafico.dados.forEach(function(d){
+              h+='<tr><td>'+String(d.nome).replace(/&/g,'&amp;')+'</td><td style="text-align:right;">'+d.valor+'</td></tr>';
+            });
+            h+='</table>';
+          }
+          h+='</div>';
+        }
+        h+='<hr class="sep"></div>';
+      }
+    });
+    h+='</div></body></html>';
+    _iaDownload(new Blob([h],{type:'text/html;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.html');
+  }
+
+  else if(fmt==='excel'){
+    // Excel: tabela + imagem do gráfico (base64 inline)
+    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>An&#225;lise IA</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
+    html+='<table border="1" style="font-family:Arial;font-size:10pt;"><thead><tr style="background:#0f2744;color:#fff;"><th>Tipo</th><th>Conte&#250;do</th></tr></thead><tbody>';
+    _iaHistory.forEach(function(e){
+      if(!e||!e.text||e.text==='⏳ A analisar...') return;
+      var tipo=e.role==='user'?'Pergunta':'Resposta IA';
+      var bg=e.role==='user'?'#f0f9ff':'#f0fdf4';
+      html+='<tr style="background:'+bg+';vertical-align:top;"><td style="font-weight:bold;white-space:nowrap;padding:4pt 8pt;">'+tipo+'</td><td style="padding:4pt 8pt;">'+e.text.split('\n').map(function(l){return l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}).join('<br>')+'</td></tr>';
+      if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
+        html+='<tr><td colspan="2" style="padding:4pt 8pt;background:#fffbf0;"><strong>Gr&#225;fico: '+e.grafico.titulo+'</strong></td></tr>';
+        // Nota: Excel não suporta base64 inline — imagem omitida; ver exportação DOC para gráficos.
+        html+='<tr><td style="background:#e2e8f0;font-weight:bold;padding:3pt 8pt;">Item</td><td style="background:#e2e8f0;font-weight:bold;padding:3pt 8pt;">Valor</td></tr>';
+        e.grafico.dados.forEach(function(d,i){
+          html+='<tr style="background:'+(i%2?'#f8faff':'#fff')+';"><td style="padding:3pt 8pt;">'+String(d.nome).replace(/&/g,'&amp;')+'</td><td style="padding:3pt 8pt;text-align:right;">'+d.valor+'</td></tr>';
+        });
+        html+='<tr><td colspan="2" style="padding:2pt;"></td></tr>';
+      }
+    });
+    html+='</tbody></table></body></html>';
+    _iaDownload(new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.xls');
+  }
+
+  else if(fmt==='word'){
+    // Imagens já guardadas no histórico pelo onComplete do Chart.js
+
+    var provName=(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name)||'IA';
+    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Arial;font-size:11pt;color:#1e293b;margin:2cm;} h1{color:#0f2744;font-size:16pt;border-bottom:2px solid #0f2744;padding-bottom:6pt;} .pergunta-label{color:#0284c7;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:16pt 0 4pt;} .pergunta-box{background:#f0f9ff;border-left:4px solid #0284c7;padding:8pt 12pt;margin:0 0 12pt;font-size:11pt;} .ia-label{color:#16a34a;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:8pt 0 4pt;} .ia-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:8pt 12pt;margin:0 0 6pt;font-size:11pt;white-space:pre-wrap;line-height:1.6;} .grafico-titulo{color:#d97706;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:8pt 0 4pt;} table{border-collapse:collapse;width:auto;min-width:200pt;margin:6pt 0 12pt;} th{background:#0f2744;color:#fff;padding:5pt 10pt;font-size:9pt;text-align:left;} td{padding:4pt 10pt;font-size:10pt;border:1px solid #e2e8f0;} tr:nth-child(even) td{background:#f8faff;} .separator{border:none;border-top:1px solid #e2e8f0;margin:14pt 0;} img{max-width:500pt;height:auto;display:block;margin:6pt 0 12pt;}</style></head><body>';
+    html+='<h1>&#128736; An&#225;lise IA &#8212; Flight Track Viewer</h1>';
+    html+='<p style="color:#64748b;font-size:9pt;">Exportado em: '+stamp+' &nbsp;&middot;&nbsp; Fornecedor: '+provName+'</p>';
+
+    var aiCount=0;
+    _iaHistory.forEach(function(e,i){
+      if(!e||!e.text||e.text==='⏳ A analisar...') return;
+      if(e.role==='user'){
+        html+='<p class="pergunta-label">&#9658; Pergunta</p>';
+        html+='<div class="pergunta-box">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
+      } else {
+        html+='<p class="ia-label">&#9672; '+provName+'</p>';
+        // Texto da resposta — preservar listas com bullets
+        var textoHtml=e.text.split('\n').map(function(ln){
+          var s=ln.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+          if(s.match(/^- /)) s='&bull; '+s.slice(2);
+          return s;
+        }).join('<br>');
+        html+='<div class="ia-box">'+textoHtml+'</div>';
+        // Gráfico: imagem PNG se disponível, senão tabela de dados
+        if(e.graficoImg){
+          html+='<p class="grafico-titulo">&#128202; '+(e.grafico&&e.grafico.titulo?e.grafico.titulo:'Gr&#225;fico')+'</p>';
+          html+='<img src="'+e.graficoImg+'" style="width:380pt;height:auto;display:block;margin:6pt 0 12pt;">';
+        } else if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
+          html+='<p class="grafico-titulo">&#128202; '+(e.grafico.titulo||'Gr&#225;fico')+'</p>';
+          html+='<table><tr><th>Item</th><th>Valor</th></tr>';
+          e.grafico.dados.forEach(function(d){
+            html+='<tr><td>'+String(d.nome).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</td><td>'+d.valor+'</td></tr>';
+          });
+          html+='</table>';
+        }
+        html+='<hr class="separator">';
+      }
+    });
+    html+='</body></html>';
+    _iaDownload(new Blob([html],{type:'application/msword;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.doc');
+  }
+}
+
+function _iaDownload(blob,filename){
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1000);
 }
 </script>
 <div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
