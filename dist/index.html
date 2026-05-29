@@ -74,7 +74,7 @@ header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 1
 .si{padding:7px 18px;border-right:1px solid var(--border);flex-shrink:0;}
 .si-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px;}
 .si-val{font-size:13px;font-weight:600;font-family:'Syne','Segoe UI',Arial,sans-serif;color:var(--accent);}
-.tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;}
+.tabs{display:flex;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
 .tab{padding:11px 18px;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;font-weight:600;}
 .tab:hover{color:var(--text);}
 .tab.on{color:var(--accent);border-bottom-color:var(--accent);}
@@ -455,8 +455,8 @@ tr:hover td{background:rgba(0,200,255,.03);}
       <div class="tab" onclick="switchTab('ias',this)">&#x26A1; Velocidades STAR</div>
       <div class="tab" onclick="switchTab('iasapp',this)">&#x1F6EC; Velocidades APP</div>
       <div class="tab" onclick="switchTab('ana',this)">&#x1F50D; An&aacute;lise Op.</div>
-      <div class="tab" <div class="tab" onclick="switchTab('ia',this)">&#x1F916; An&aacute;lise IA</div>
-      onclick="switchTab('pref',this)">&#x2699; Preferencias</div>
+      <div class="tab" onclick="switchTab('ia',this)">&#x1F916; An&aacute;lise IA</div>
+      <div class="tab" onclick="switchTab('pref',this)">&#x2699; Preferencias</div>
     </div>
     <div class="panel on" id="panel-map"><div id="map"></div></div>
     <div class="panel" id="panel-tbl">
@@ -1003,29 +1003,6 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <div class="empty" id="anaEmpty" style="display:none;"><div class="empty-ico">&#x1F50D;</div><div class="empty-ttl">Abre uma sub-aba para analisar</div></div>
         <div id="anaContent" style="display:none;"></div>
       
-        <div class="kpi-h" style="margin-top:16px;margin-bottom:8px;">&#x1F916; Análise IA — Configuração</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
-          <select id="prefIaProvider" onchange="_iaOnProviderChange()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;">
-            <option value="anthropic">Claude (Anthropic) — recomendado</option>
-            <option value="openai">OpenAI (ChatGPT)</option>
-            <option value="mistral">Mistral AI</option>
-            <option value="azure">Azure OpenAI</option>
-            <option value="groq">Groq (Llama)</option>
-          </select>
-          <select id="prefIaModel" onchange="iaSaveKey()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;min-width:180px;"></select>
-        </div>
-        <div id="prefAzureEndpointRow" style="display:none;margin-bottom:6px;">
-          <input type="text" id="prefAzureEndpoint" placeholder="https://SEU-RECURSO.openai.azure.com/openai/deployments/SEU-DEPLOYMENT" onchange="iaSaveKey()" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:6px 10px;outline:none;" autocomplete="off">
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="password" id="prefIaKey" placeholder="Cola aqui a tua API Key..." onchange="iaSaveKey()" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:6px 10px;outline:none;" autocomplete="off">
-          <button class="btn" onclick="iaSaveKey(true)" style="white-space:nowrap;">&#x2713; Guardar</button>
-          <button class="btn" onclick="iaClearKey()" style="color:#f87171;white-space:nowrap;">&#x1F5D1; Limpar</button>
-        </div>
-        <div id="prefIaStatus" style="font-size:10px;color:var(--muted);margin-top:5px;padding:0 2px;"></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7;">A chave é guardada localmente neste dispositivo e nunca vai para o GitHub.</div>
-      </div></div>
-    </div>
     <div class="panel" id="panel-ia" style="flex-direction:column;overflow:hidden;">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
         <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">&#x1F916; Análise IA</span>
@@ -1948,12 +1925,12 @@ function renderDayPicker(){
   const blocksAvail=new Set(files.map(f=>f.block));
   // Helper: from YYMMDD extract month key "2026-03" and label "Março 2026"
   const MNAMES=['Janeiro','Fevereiro','Mar\xe7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-  const toMonthKey=d=>'20'+d.slice(0,2)+'-'+d.slice(2,4); // "260317" → "2026-03"
-  const toMonthLabel=mk=>{const yr=mk.slice(0,4),mo=parseInt(mk.slice(5,7));return MNAMES[mo-1]+' '+yr;}; // "2026-03" → "Março 2026"
+  const toMonthKey=d=>{if(!d||d.includes('?')||d.length<6)return'';return '20'+d.slice(0,2)+'-'+d.slice(2,4);}; // "260317" → "2026-03"
+  const toMonthLabel=mk=>{const yr=mk.slice(0,4),mo=parseInt(mk.slice(5,7)||'0');const n=MNAMES[mo-1];return n?n+' '+yr:mk;}; // "2026-03" → "Março 2026"
   const toDayNum=d=>parseInt(d.slice(4,6)); // "260317" → 17
   const toDow=d=>new Date('20'+d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4,6)+'T12:00:00').getDay();
   // Month selector
-  const months=[...new Set(days.map(toMonthKey))].sort();
+  const months=[...new Set(days.map(toMonthKey).filter(Boolean))].sort();
   const ms=$('calMonthSel');
   if(ms){
     const curMon=ms.value;
