@@ -926,6 +926,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="chartCard">
       <div class="chartTitle">Separação vs distância do seguidor</div>
       <div class="chartSub">X = separação em segundos. Y = distância do seguidor à THR quando o precedente cruzou a soleira.</div>
+      <div id="sep_sepDistBtns" class="timelineButtons" style="margin:4px 0;"></div>
       <div id="sep_chartSepDist"></div>
       <div class="chartNote">Cada ponto é um par precedente/seguidor. Laranja = com DEP. Verde = sem DEP.</div>
     </div>
@@ -6876,10 +6877,18 @@ function sep_renderDepDistance(rows,limit){
   data.forEach(d=>d._modalKey=sep_registerModalData(`Posição do seguidor no DEP · ${d.range}`,d._rows,`Classe ${d.name}`));
   $('sep_chartDepDist').innerHTML=sep_barSvg(data,{w:620,h:240,labelKey:'label',valueKey:'count',criticalFn:d=>d.label==='<3'||d.label==='3-4',titleY:'Nº DEP',tipFn:d=>[`Seguidor à THR no DEP: ${d.range}`,`Classe: ${d.name}`,`Descolagens: ${d.count}`,`Em pares críticos: ${d.crit}`,`% crítico: ${sep_pct(d.crit,d.count)}`]});
 }
+let sep_sepDistFilter='all';
+function setSepDistFilter(m){ sep_sepDistFilter=m; try{sep_renderAnalysis();}catch(e){} }
 function sep_renderSepDistance(rows,limit){
-  const pts=rows.map(r=>({x:Number(r.sepSec),y:Number(r.sepNm),dep:r._hasDep,crit:r._sepSecNum<limit,pista:r.pista,a:r.csnA,b:r.csnB,h:r.horaA,ias:r.iasB,seq:r._seq,row:r})).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+  const allPts=rows.map(r=>({x:Number(r.sepSec),y:Number(r.sepNm),dep:r._hasDep,crit:r._sepSecNum<limit,pista:r.pista,a:r.csnA,b:r.csnB,h:r.horaA,ias:r.iasB,seq:r._seq,row:r})).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+  const nLt=allPts.filter(p=>p.x<limit).length, nGe=allPts.length-nLt;
+  const bc=$('sep_sepDistBtns');
+  if(bc) bc.innerHTML=`<button type="button" class="${sep_sepDistFilter==='all'?'active':''}" onclick="setSepDistFilter('all')">Todos (${allPts.length})</button><button type="button" class="${sep_sepDistFilter==='lt'?'active':''}" onclick="setSepDistFilter('lt')">&lt; ${limit}s (${nLt})</button><button type="button" class="${sep_sepDistFilter==='ge'?'active':''}" onclick="setSepDistFilter('ge')">&ge; ${limit}s (${nGe})</button>`;
+  let pts=allPts;
+  if(sep_sepDistFilter==='lt') pts=allPts.filter(p=>p.x<limit);
+  else if(sep_sepDistFilter==='ge') pts=allPts.filter(p=>p.x>=limit);
   pts.forEach(p=>p._modalKey=sep_registerModalData(`Ponto · ${p.a} → ${p.b}`,[p.row],`Separação ${p.x.toFixed(1)}s · distância ${p.y.toFixed(2)}NM`));
-  $('sep_chartSepDist').innerHTML=sep_scatterSvg(pts,{w:620,h:240,limit,tipFn:p=>[`Precedente/seguidor: ${p.a} → ${p.b}`,`Hora A: ${p.h} · RWY ${p.pista}`,`Separação: ${p.x.toFixed(1)} s`,`Distância do seguidor: ${p.y.toFixed(2)} NM`,p.dep?'Com DEP':'Sem DEP',`Sequência: ${p.seq||''}`,`IAS do seguidor: ${p.ias||''} kt`]});
+  $('sep_chartSepDist').innerHTML=sep_scatterSvg(pts,{w:620,h:240,limit,minX:sep_sepDistFilter==='ge'?limit:0,tipFn:p=>[`Precedente/seguidor: ${p.a} → ${p.b}`,`Hora A: ${p.h} · RWY ${p.pista}`,`Separação: ${p.x.toFixed(1)} s`,`Distância do seguidor: ${p.y.toFixed(2)} NM`,p.dep?'Com DEP':'Sem DEP',`Sequência: ${p.seq||''}`,`IAS do seguidor: ${p.ias||''} kt`]});
 }
 function sep_renderHourTable(rows,limit){
   const map={};
@@ -7014,9 +7023,10 @@ function sep_stackInfoBars(data,opt){
 }
 function sep_scatterSvg(pts,opt){
   const w=opt.w,h=opt.h,padL=46,padB=38,padT=18,padR=20, plotW=w-padL-padR, plotH=h-padT-padB;
-  const maxX=Math.max(opt.limit||165, 1, ...pts.map(p=>p.x))*1.08;
+  const minX=opt.minX||0;
+  const maxX=Math.max(opt.limit||165, minX+1, ...pts.map(p=>p.x))*1.08;
   const maxY=Math.max(1, ...pts.map(p=>p.y))*1.10;
-  const xScale=x=>padL+(x/maxX)*plotW;
+  const xScale=x=>padL+((x-minX)/(maxX-minX))*plotW;
   const yScale=y=>padT+plotH-(y/maxY)*plotH;
   const limitX=xScale(opt.limit||0);
   const grid=[3,4,5,6].filter(v=>v<maxY);
