@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Flight Track Viewer — NAV Portugal</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
 <style>
 ﻿.leaflet-image-layer,.leaflet-layer,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-pane,.leaflet-pane>canvas,.leaflet-pane>svg,.leaflet-tile,.leaflet-tile-container,.leaflet-zoom-box{position:absolute;left:0;top:0}.leaflet-container{overflow:hidden}.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none}.leaflet-tile::selection{background:0 0}.leaflet-safari .leaflet-tile{image-rendering:-webkit-optimize-contrast}.leaflet-safari .leaflet-tile-container{width:1600px;height:1600px;-webkit-transform-origin:0 0}.leaflet-marker-icon,.leaflet-marker-shadow{display:block}.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,.leaflet-container .leaflet-tile,.leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer{max-width:none!important;max-height:none!important;width:auto;padding:0}.leaflet-container img.leaflet-tile{mix-blend-mode:plus-lighter}.leaflet-container.leaflet-touch-zoom{-ms-touch-action:pan-x pan-y;touch-action:pan-x pan-y}.leaflet-container.leaflet-touch-drag{-ms-touch-action:pinch-zoom;touch-action:none;touch-action:pinch-zoom}.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{-ms-touch-action:none;touch-action:none}.leaflet-container{-webkit-tap-highlight-color:transparent}.leaflet-container a{-webkit-tap-highlight-color:rgba(51,181,229,.4)}.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}.leaflet-zoom-box{width:0;height:0;-moz-box-sizing:border-box;box-sizing:border-box;z-index:800}.leaflet-overlay-pane svg{-moz-user-select:none}.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}.leaflet-vml-shape{width:1px;height:1px}.lvml{behavior:url(#default#VML);display:inline-block;position:absolute}.leaflet-control{position:relative;z-index:800;pointer-events:visiblePainted;pointer-events:auto}.leaflet-bottom,.leaflet-top{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-control{float:left;clear:both}.leaflet-right .leaflet-control{float:right}.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}.leaflet-fade-anim .leaflet-popup{opacity:0;-webkit-transition:opacity .2s linear;-moz-transition:opacity .2s linear;transition:opacity .2s linear}.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{opacity:1}.leaflet-zoom-animated{-webkit-transform-origin:0 0;-ms-transform-origin:0 0;transform-origin:0 0}svg.leaflet-zoom-animated{will-change:transform}.leaflet-zoom-anim .leaflet-zoom-animated{-webkit-transition:-webkit-transform .25s cubic-bezier(0,0,.25,1);-moz-transition:-moz-transform .25s cubic-bezier(0,0,.25,1);transition:transform .25s cubic-bezier(0,0,.25,1)}.leaflet-pan-anim .leaflet-tile,.leaflet-zoom-anim .leaflet-tile{-webkit-transition:none;-moz-transition:none;transition:none}.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:-webkit-grab;cursor:-moz-grab;cursor:grab}.leaflet-crosshair,.leaflet-crosshair .leaflet-interactive{cursor:crosshair}.leaflet-control,.leaflet-popup-pane{cursor:auto}.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive,.leaflet-dragging .leaflet-marker-draggable{cursor:move;cursor:-webkit-grabbing;cursor:-moz-grabbing;cursor:grabbing}.leaflet-image-layer,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-pane>svg path,.leaflet-tile-container{pointer-events:none}.leaflet-image-layer.leaflet-interactive,.leaflet-marker-icon.leaflet-interactive,.leaflet-pane>svg path.leaflet-interactive,svg.leaflet-image-layer.leaflet-interactive path{pointer-events:visiblePainted;pointer-events:auto}.leaflet-container{background:#ddd;outline-offset:1px}.leaflet-container a{color:#0078a8}.leaflet-zoom-box{border:2px dotted #38f;background:rgba(255,255,255,.5)}.leaflet-container{font-family:"Helvetica Neue",Arial,Helvetica,sans-serif;font-size:12px;font-size:.75rem;line-height:1.5}.leaflet-bar{box-shadow:0 1px 5px rgba(0,0,0,.65);border-radius:4px}.leaflet-bar a{background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:#000}.leaflet-bar a,.leaflet-control-layers-toggle{background-position:50% 50%;background-repeat:no-repeat;display:block}.leaflet-bar a:focus,.leaflet-bar a:hover{background-color:#f4f4f4}.leaflet-bar a:first-child{border-top-left-radius:4px;border-top-right-radius:4px}.leaflet-bar a:last-child{border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none}.leaflet-bar a.leaflet-disabled{cursor:default;background-color:#f4f4f4;color:#bbb}.leaflet-touch .leaflet-bar a{width:30px;height:30px;line-height:30px}.leaflet-touch .leaflet-bar a:first-child{border-top-left-radius:2px;border-top-right-radius:2px}.leaflet-touch .leaflet-bar a:last-child{border-bottom-left-radius:2px;border-bottom-right-radius:2px}.leaflet-control-zoom-in,.leaflet-control-zoom-out{font:bold 18px 'Lucida Console',Monaco,monospace;text-indent:1px}.leaflet-touch .leaflet-control-zoom-in,.leaflet-touch .leaflet-control-zoom-out{font-size:22px}.leaflet-control-layers{box-shadow:0 1px 5px rgba(0,0,0,.4);background:#fff;border-radius:5px}.leaflet-control-layers-toggle{background-image:url(images/layers.png);width:36px;height:36px}.leaflet-retina .leaflet-control-layers-toggle{background-image:url(images/layers-2x.png);background-size:26px 26px}.leaflet-touch .leaflet-control-layers-toggle{width:44px;height:44px}.leaflet-control-layers .leaflet-control-layers-list,.leaflet-control-layers-expanded .leaflet-control-layers-toggle{display:none}.leaflet-control-layers-expanded .leaflet-control-layers-list{display:block;position:relative}.leaflet-control-layers-expanded{padding:6px 10px 6px 6px;color:#333;background:#fff}.leaflet-control-layers-scrollbar{overflow-y:scroll;overflow-x:hidden;padding-right:5px}.leaflet-control-layers-selector{margin-top:2px;position:relative;top:1px}.leaflet-control-layers label{display:block;font-size:13px;font-size:1.08333em}.leaflet-control-layers-separator{height:0;border-top:1px solid #ddd;margin:5px -10px 5px -6px}.leaflet-default-icon-path{background-image:url(images/marker-icon.png)}.leaflet-container .leaflet-control-attribution{background:#fff;background:rgba(255,255,255,.8);margin:0}.leaflet-control-attribution,.leaflet-control-scale-line{padding:0 5px;color:#333;line-height:1.4}.leaflet-control-attribution a{text-decoration:none}.leaflet-control-attribution a:focus,.leaflet-control-attribution a:hover{text-decoration:underline}.leaflet-attribution-flag{display:inline!important;vertical-align:baseline!important;width:1em;height:.6669em}.leaflet-left .leaflet-control-scale{margin-left:5px}.leaflet-bottom .leaflet-control-scale{margin-bottom:5px}.leaflet-control-scale-line{border:2px solid #777;border-top:none;line-height:1.1;padding:2px 5px 1px;white-space:nowrap;-moz-box-sizing:border-box;box-sizing:border-box;background:rgba(255,255,255,.8);text-shadow:1px 1px #fff}.leaflet-control-scale-line:not(:first-child){border-top:2px solid #777;border-bottom:none;margin-top:-2px}.leaflet-control-scale-line:not(:first-child):not(:last-child){border-bottom:2px solid #777}.leaflet-touch .leaflet-bar,.leaflet-touch .leaflet-control-attribution,.leaflet-touch .leaflet-control-layers{box-shadow:none}.leaflet-touch .leaflet-bar,.leaflet-touch .leaflet-control-layers{border:2px solid rgba(0,0,0,.2);background-clip:padding-box}.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}.leaflet-popup-content-wrapper{padding:1px;text-align:left;border-radius:12px}.leaflet-popup-content{margin:13px 24px 13px 20px;line-height:1.3;font-size:13px;font-size:1.08333em;min-height:1px}.leaflet-popup-content p{margin:17px 0;margin:1.3em 0}.leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-top:-1px;margin-left:-20px;overflow:hidden;pointer-events:none}.leaflet-popup-tip{width:17px;height:17px;padding:1px;margin:-10px auto 0;pointer-events:auto;-webkit-transform:rotate(45deg);-moz-transform:rotate(45deg);-ms-transform:rotate(45deg);transform:rotate(45deg)}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#333;box-shadow:0 3px 14px rgba(0,0,0,.4)}.leaflet-container a.leaflet-popup-close-button{position:absolute;top:0;right:0;border:none;text-align:center;width:24px;height:24px;font:16px/24px Tahoma,Verdana,sans-serif;color:#757575;text-decoration:none;background:0 0}.leaflet-container a.leaflet-popup-close-button:focus,.leaflet-container a.leaflet-popup-close-button:hover{color:#585858}.leaflet-popup-scrolled{overflow:auto}.leaflet-oldie .leaflet-popup-content-wrapper{-ms-zoom:1}.leaflet-oldie .leaflet-popup-tip{width:24px;margin:0 auto}.leaflet-oldie .leaflet-control-layers,.leaflet-oldie .leaflet-control-zoom,.leaflet-oldie .leaflet-popup-content-wrapper,.leaflet-oldie .leaflet-popup-tip{border:1px solid #999}.leaflet-div-icon{background:#fff;border:1px solid #666}.leaflet-tooltip{position:absolute;padding:6px;background-color:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.4)}.leaflet-tooltip.leaflet-interactive{cursor:pointer;pointer-events:auto}.leaflet-tooltip-bottom:before,.leaflet-tooltip-left:before,.leaflet-tooltip-right:before,.leaflet-tooltip-top:before{position:absolute;pointer-events:none;border:6px solid transparent;background:0 0;content:""}.leaflet-tooltip-bottom{margin-top:6px}.leaflet-tooltip-top{margin-top:-6px}.leaflet-tooltip-bottom:before,.leaflet-tooltip-top:before{left:50%;margin-left:-6px}.leaflet-tooltip-top:before{bottom:0;margin-bottom:-12px;border-top-color:#fff}.leaflet-tooltip-bottom:before{top:0;margin-top:-12px;margin-left:-6px;border-bottom-color:#fff}.leaflet-tooltip-left{margin-left:-6px}.leaflet-tooltip-right{margin-left:6px}.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{top:50%;margin-top:-6px}.leaflet-tooltip-left:before{right:0;margin-right:-12px;border-left-color:#fff}.leaflet-tooltip-right:before{left:0;margin-left:-12px;border-right-color:#fff}@media print{.leaflet-control{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 
@@ -195,7 +194,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
 .date-row input[type=date]{font-family:'JetBrains Mono',Consolas,'Courier New',monospace;font-size:11px;padding:4px 8px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:3px;outline:none;flex-shrink:0;}
 .date-row input[type=date]:focus{border-color:var(--accent);}
 .warn-bar{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);border-radius:4px;padding:6px 12px;font-size:10px;color:#f59e0b;display:none;flex-shrink:0;margin:0 14px 6px;}
-#anaTabRot,#anaSubRot{display:none!important;}
+#anaTabRot,#anaSubRot,#anaTabHold,#anaSubHold,#anaTabGA,#anaSubGA,#anaTabOper,#anaSubOper{display:none!important;}
 .modal-box.modal-charts{max-width:min(920px,98vw);width:98vw;padding:16px 18px;max-height:92vh;display:flex;flex-direction:column;}
 #iasAppChartScroll{flex:1;min-height:0;overflow-y:auto;margin-top:8px;padding-right:4px;}
 .ias-app-chart-glossary{border:1px solid var(--border);border-radius:6px;padding:10px 12px;background:rgba(34,211,160,.06);margin-bottom:12px;font-size:10px;line-height:1.55;color:var(--text);}
@@ -307,7 +306,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="upload-layout">
       <div>
         <span class="upload-plane">&#x2708;&#xFE0F;</span>
-        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v2.0</span></h2>
+        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v1.3</span></h2>
         <p style="margin-bottom:18px;color:#64748b;">Escolhe como queres carregar os dados de voo:</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
           <div class="upload-card">
@@ -440,7 +439,6 @@ tr:hover td{background:rgba(0,200,255,.03);}
       <div class="tab" onclick="switchTab('iasapp',this)">&#x1F6EC; Velocidades APP</div>
       <div class="tab" onclick="switchTab('ana',this)">&#x1F50D; An&aacute;lise Op.</div>
       <div class="tab" onclick="switchTab('pref',this)">&#x2699; Preferencias</div>
-      <div class="tab" onclick="switchTab('ia',this)">&#x1F916; An&aacute;lise IA</div>
     </div>
     <div class="panel on" id="panel-map"><div id="map"></div></div>
     <div class="panel" id="panel-tbl">
@@ -704,11 +702,9 @@ tr:hover td{background:rgba(0,200,255,.03);}
       </div>
       <!-- Sub-tab row -->
       <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap;">
-        <button class="btn" id="anaTabFast" onclick="switchAnaTab('fast')" style="font-size:10px;padding:4px 14px;">&#x26A1; FAST</button>
-        <button class="btn" id="anaTabHold" onclick="switchAnaTab('hold')" style="font-size:10px;padding:4px 14px;">&#x25CE; HOLDINGS</button>
-        <button class="btn" id="anaTabGA" onclick="switchAnaTab('ga')" style="font-size:10px;padding:4px 14px;">&#x1F6A8; GO-AROUNDS</button>
-        <button class="btn" id="anaTabRot" onclick="switchAnaTab('rot')" style="font-size:10px;padding:4px 14px;">&#x23F1; ROT</button>
-        <button class="btn" id="anaTabOper" onclick="switchAnaTab('oper')" style="font-size:10px;padding:4px 14px;">&#x1F3E2; OPERADORES</button>
+        <button class="btn" id="anaTabFast" onclick="switchAnaTab('fast')" style="font-size:10px;padding:4px 14px;">&#x2708; Separa&#xe7;&#xe3;o entre chegadas</button>
+        <button class="btn" id="anaTabAnaData" onclick="switchAnaTab('anaData')" style="font-size:10px;padding:4px 14px;">&#x1F4CA; An&#xe1;lise de Dados</button>
+        <button class="btn" id="anaTabAnaDaily" onclick="switchAnaTab('anaDaily')" style="font-size:10px;padding:4px 14px;">&#x1F4C5; An&#xe1;lise Di&#xe1;ria</button>
         <button class="btn" style="font-size:10px;padding:4px 12px;margin-left:auto;" onclick="exportAnaActiveCsv()">&#x2193; CSV</button>
         <span id="anaSubSummary" style="font-size:11px;color:var(--muted);margin-left:12px;"></span>
       </div>
@@ -720,8 +716,9 @@ tr:hover td{background:rgba(0,200,255,.03);}
             <span class="radius-lbl">Separação THR:</span>
             <input class="inp inp-sm" id="fastThreshold" type="number" value="160" min="30" max="300" step="10" style="width:65px;" oninput="renderFastResults()">
             <span class="radius-lbl">s</span>
+            <button class="btn" id="fastModeAll" onclick="setFastMode('all')" style="font-size:10px;padding:3px 10px;" title="Mostrar todos os pares com cor">Todos</button>
             <button class="btn toggled" id="fastModeLt" onclick="setFastMode('lt')" style="font-size:10px;padding:3px 10px;" title="Mostrar pares abaixo do limiar (muito perto)">&#x3C; Abaixo</button>
-            <button class="btn" id="fastModeRange" onclick="setFastMode('range')" style="font-size:10px;padding:3px 10px;" title="Mostrar pares entre o limiar e 240s">↔ Entre limite e 240s</button>
+            <button class="btn" id="fastModeRange" onclick="setFastMode('range')" style="font-size:10px;padding:3px 10px;" title="Mostrar pares entre o limiar e 240s">&#x2194; Entre limite e 240s</button>
             <button class="btn" id="fastInterBtn" onclick="toggleFastIntercal()" style="font-size:10px;padding:3px 10px;" title="Mostrar apenas pares ARR com pelo menos um DEP entre eles">A/C intercalar</button>
             <button class="btn" id="fastRwy02Btn" onclick="setFastRwyFilter('02')" style="font-size:10px;padding:3px 10px;">RWY02</button>
             <button class="btn" id="fastRwy20Btn" onclick="setFastRwyFilter('20')" style="font-size:10px;padding:3px 10px;">RWY20</button>
@@ -755,77 +752,260 @@ tr:hover td{background:rgba(0,200,255,.03);}
             </div>
           </div>
         </div>
-        <!-- HOLDINGS sub-tab -->
-        <div id="anaSubHold" style="display:none;flex:1;overflow:auto;padding:10px 14px;">
-          <div class="empty" id="anaHoldEmpty">
-            <div class="empty-ico">&#x25CE;</div>
-            <div class="empty-ttl">Nenhuma holding detectada ainda</div>
-            <div class="empty-sub" style="font-size:10px;color:var(--muted);">Abre esta aba para detectar automaticamente</div>
-          </div>
-          <div id="anaHoldContent" style="display:none;">
-            <div class="kpi-h" style="margin-bottom:6px;"><span style="color:#fbbf24;">&#x25CE;</span> Holdings detectadas</div>
-            <table id="holdTable" style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:18px;">
-              <thead id="holdHead"></thead><tbody id="holdBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <!-- GO-AROUNDS sub-tab -->
-        <div id="anaSubGA" style="display:none;flex:1;overflow:auto;padding:10px 14px;">
-          <div class="empty" id="anaGAEmpty">
-            <div class="empty-ico">&#x1F6A8;</div>
-            <div class="empty-ttl">Nenhum go-around detectado ainda</div>
-            <div class="empty-sub" style="font-size:10px;color:var(--muted);">Abre esta aba para detectar automaticamente</div>
-          </div>
-          <div id="anaGAContent" style="display:none;">
-            <div class="kpi-h" style="margin-bottom:6px;"><span style="color:#f87171;">&#x1F6A8;</span> Go-Arounds detectados</div>
-            <table id="gaTable" style="width:100%;border-collapse:collapse;font-size:11px;">
-              <thead id="gaHead"></thead><tbody id="gaBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <!-- ROT sub-tab -->
-        <div id="anaSubRot" style="display:none;flex:1;overflow:auto;padding:10px 14px;">
-          <div class="empty" id="anaRotEmpty">
-            <div class="empty-ico">&#x23F1;</div>
-            <div class="empty-ttl">Nenhum ROT calculado ainda</div>
-            <div class="empty-sub" style="font-size:10px;color:var(--muted);">Abre esta aba para calcular automaticamente</div>
-          </div>
-          <div id="anaRotContent" style="display:none;">
-            <div class="kpi-h" style="margin-bottom:6px;"><span style="color:#34d399;">&#x23F1;</span> Runway Occupancy Time</div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-              <span class="radius-lbl">Pista:</span>
-              <button class="btn" id="rotRwy02Btn" onclick="setRotRwyFilter('02')" style="font-size:10px;padding:3px 10px;">RWY 02</button>
-              <button class="btn" id="rotRwy20Btn" onclick="setRotRwyFilter('20')" style="font-size:10px;padding:3px 10px;">RWY 20</button>
-              <span id="rotCount" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
-            </div>
-            <div id="anaRotKpi" class="kpi-grid" style="margin-bottom:12px;"></div>
-            <div id="rotDiag" style="font-size:10px;color:var(--muted);padding:0 0 6px 0;"></div>
-            <table id="rotTable" style="width:100%;border-collapse:collapse;font-size:11px;">
-              <thead id="rotHead"></thead><tbody id="rotBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <!-- Operadores sub-panel -->
-        <div id="anaSubOper" style="display:none;flex:1;overflow:auto;padding:10px 14px;">
-          <div class="empty" id="anaOperEmpty">
-            <div class="empty-ico">&#x1F3E2;</div>
-            <div class="empty-ttl">Análise por Operador</div>
-            <div class="empty-sub" style="font-size:10px;color:var(--muted);">Abre esta aba para calcular automaticamente</div>
-          </div>
-          <div id="anaOperContent" style="display:none;">
-            <div class="kpi-h" style="margin-bottom:8px;display:flex;align-items:center;gap:10px;">
-              <span style="color:#a78bfa;">&#x1F3E2;</span> Por Operador
-              <button class="btn" onclick="exportOperCsv()" style="margin-left:auto;font-size:10px;padding:3px 10px;">&#x2193; CSV</button>
-            </div>
-            <div id="anaOperKpi" class="kpi-grid" style="margin-bottom:10px;"></div>
-            <div style="overflow-x:auto;"><div id="anaOperTable" style="min-width:520px;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-size:11px;"></div></div>
-          </div>
-        </div>
-        <!-- old empty (hidden, kept for compat) -->
-        <div class="empty" id="anaEmpty" style="display:none;">
-          <div class="empty-ico">&#x1F50D;</div>
-          <div class="empty-ttl">Abre uma sub-aba para analisar</div>
-        </div>
+        <!-- Análise de Dados sub-tab (light theme isolado) -->
+        <div id="anaSubAnaData" style="display:none;flex:1;overflow:auto;"><div class="sep-ad-wrap" style="font-family:Segoe UI,Roboto,Arial,sans-serif;color:#1f2937;background:#f5f6f8;min-height:100%;padding:12px;">
+<style>
+.sep-ad-wrap{color:#1f2937;background:#f5f6f8;}
+.sep-ad-wrap .card{background:#fff;border:1px solid #d7dce3;border-radius:16px;box-shadow:0 8px 22px rgba(20,30,40,.08);padding:12px;margin-bottom:12px;}
+.sep-ad-wrap label{font-size:12px;color:#6b7280;font-weight:700;display:block;margin-bottom:6px;}
+.sep-ad-wrap select,.sep-ad-wrap input[type="text"]{height:38px;border:1px solid #d7dce3;border-radius:10px;background:white;padding:0 10px;font-size:14px;color:#1f2937;}
+.sep-ad-wrap button{height:38px;border:0;border-radius:10px;background:#5b4a42;color:#fff;padding:0 14px;font-weight:700;cursor:pointer;}
+.sep-ad-wrap button.secondary{background:#e7e1dc;color:#3f332d;border:1px solid #d5cac2;}
+.sep-ad-wrap .miniKpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+.sep-ad-wrap .miniKpi{background:#fafafa;border:1px solid #d7dce3;border-radius:12px;padding:10px;cursor:pointer;}
+.sep-ad-wrap .miniKpi b{font-size:22px;color:#0f172a;display:block;}
+.sep-ad-wrap .miniKpi span{display:block;color:#6b7280;font-size:11px;margin-top:3px;}
+.sep-ad-wrap .analysisGrid{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px;}
+.sep-ad-wrap .chartCard{background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;min-height:280px;}
+.sep-ad-wrap .chartTitle{font-weight:900;color:#2b2521;margin:0 0 4px;font-size:14px;}
+.sep-ad-wrap .chartSub{color:#6b7280;font-size:12px;margin-bottom:8px;}
+.sep-ad-wrap .chartSvg{width:100%;height:220px;display:block;background:#fbfcfd;border:1px solid #edf0f3;border-radius:10px;}
+.sep-ad-wrap .chartNote{font-size:11px;color:#64748b;margin-top:6px;}
+.sep-ad-wrap .timelineCard{grid-column:1/-1;min-height:400px;}
+.sep-ad-wrap .timelineControls{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin:8px 0;padding:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;}
+.sep-ad-wrap .timelineControls select{height:32px;font-size:12px;border-radius:8px;}
+.sep-ad-wrap .timelineScroller{overflow-x:auto;overflow-y:hidden;border:1px solid #edf0f3;border-radius:10px;background:#fbfcfd;max-width:100%;}
+.sep-ad-wrap .timelineSvg{height:300px;display:block;background:#fbfcfd;min-width:100%;}
+.sep-ad-wrap .timelineButtons{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 8px;}
+.sep-ad-wrap .timelineButtons button{height:25px;padding:0 8px;border-radius:999px;background:#eef2f7;color:#334155;border:1px solid #d8dee8;font-size:11px;}
+.sep-ad-wrap .timelineButtons button.active{background:#5b4a42;color:white;border-color:#5b4a42;}
+.sep-ad-wrap .timelineHint{font-size:11px;color:#64748b;margin:0 0 6px;}
+.sep-ad-wrap .timelineLegend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;color:#64748b;margin-top:6px;}
+.sep-ad-wrap .tlChip{display:inline-flex;gap:5px;align-items:center;}
+.sep-ad-wrap .tlSymbol{width:11px;height:11px;display:inline-block;border-radius:50%;}
+.sep-ad-wrap .analysisTableWrap{overflow:auto;max-height:280px;border:1px solid #d7dce3;border-radius:12px;background:#fff;}
+.sep-ad-wrap .analysisTableWrap table{font-size:12px;width:100%;border-collapse:collapse;}
+.sep-ad-wrap .analysisTableWrap th,.sep-ad-wrap .analysisTableWrap td{padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:left;}
+.sep-ad-wrap .analysisTableWrap th{background:#e9e6e3;color:#2b2521;font-weight:800;font-size:11px;position:sticky;top:0;}
+.sep-ad-wrap .analysisTableWrap tr:hover td{background:#fff7ed;cursor:pointer;}
+.sep-ad-wrap .modalSource:hover td{background:#fff7ed!important;cursor:pointer;}
+.sep-ad-wrap .legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px;color:#64748b;margin-top:8px;}
+.sep-ad-wrap .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px;}
+.sep-ad-wrap .dot.red{background:#b91c1c;}.sep-ad-wrap .dot.blue{background:#0b5cad;}.sep-ad-wrap .dot.dep{background:#f59e0b;}.sep-ad-wrap .dot.nodep{background:#0f766e;}
+.sep-ad-wrap .analysisToolbar{display:flex;gap:12px;align-items:end;flex-wrap:wrap;}
+.sep-ad-wrap .small{font-size:12px;color:#6b7280;}
+@media(max-width:1050px){.sep-ad-wrap .analysisGrid{grid-template-columns:1fr;}}
+/* Data modal */
+.sep_dataModalBackdrop{position:fixed;inset:0;background:rgba(15,23,42,.42);z-index:9999;display:none;align-items:center;justify-content:center;padding:22px;}
+.sep_dataModalBackdrop.open{display:flex;}
+.sep_dataModal{width:min(1180px,96vw);max-height:90vh;background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(15,23,42,.35);border:1px solid #cbd5e1;display:flex;flex-direction:column;overflow:hidden;color:#1f2937;}
+.sep_dataModalHeader{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid #e5e7eb;background:#f8fafc;}
+.sep_dataModalTitle{font-weight:900;color:#0f172a;font-size:16px;}
+.sep_dataModalSub{font-size:12px;color:#64748b;margin-top:4px;}
+.sep_dataModalClose{height:30px;border-radius:8px;background:#e5e7eb;color:#111827;padding:0 10px;border:1px solid #cbd5e1;cursor:pointer;}
+.sep_dataModalBody{padding:12px 16px;overflow:auto;}
+.sep_dataModalBody table{font-size:12px;width:100%;border-collapse:collapse;}
+.sep_dataModalBody tr{cursor:pointer;}.sep_dataModalBody tr:hover td{background:#fff7ed;}
+.sep_dataModalBody th,.sep_dataModalBody td{padding:6px 10px;border-bottom:1px solid #e5e7eb;text-align:left;}
+.sep_dataModalBody th{background:#f1f5f9;font-weight:700;font-size:11px;}
+.modalActions{display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;}
+.modalActions button{height:30px;font-size:12px;border-radius:8px;}
+</style>
+
+  <div class="card analysisToolbar">
+    <div><label>Limite crítico</label><select id="sep_anaLimit"><option>240</option><option>200</option><option selected>165</option><option>140</option><option>120</option></select></div>
+    <div><label>Data</label><select id="anaData"><option value="all">Todas</option></select></div>
+    <div><label>Hora</label><select id="sep_anaHour"><option value="all">Todas</option></select></div>
+    <div><label>Pista</label><select id="sep_anaPista"><option value="all">Todas</option><option value="02">RWY 02</option><option value="20">RWY 20</option></select></div>
+    <div><label>Tipo</label><select id="sep_anaTipo"><option value="all">Tudo</option><option value="withDep">Com DEP entre aterragens</option><option value="noDep">Sem DEP no meio</option></select></div>
+    <div><label>Sequência</label><select id="sep_anaSeq"><option value="all">Todas</option><option value="AA">AA</option><option value="ADA">ADA</option><option value="ADDA">ADDA</option><option value="AD...A">AD...A</option></select></div>
+    <div><label>Seguidor no DEP até</label><select id="sep_anaDepNm"><option value="all">Qualquer distância</option><option value="3">3 NM</option><option value="4">4 NM</option><option value="5">5 NM</option><option value="6">6 NM</option></select></div>
+    <div><label>Mostrar</label><select id="sep_anaCrit"><option value="all">Todos os pares precedente/seguidor</option><option value="crit">Só abaixo do limite</option></select></div>
+    <button id="sep_btnAnaRefresh" class="secondary">Atualizar análise</button>
+    <button id="sep_btnExportAnalysis" class="secondary">Download análise</button>
+    <button id="btnExportPdf" class="secondary">Relatório PDF</button>
+    <span class="small" id="sep_anaStatus">A análise usa os pares precedente/seguidor detetados na janela selecionada.</span>
+  </div>
+  <div class="card grid">
+    <div class="metric"><b id="mFiles">0</b><span>ficheiros carregados</span></div>
+    <div class="metric"><b id="mRows">0</b><span>registos radar</span></div>
+    <div class="metric"><b id="mLand">0</b><span>passagens THR detetadas</span></div>
+    <div class="metric"><b id="mPairs">0</b><span>pares precedente/seguidor na janela</span></div>
+  </div>
+  <div class="card miniKpis">
+    <div class="miniKpi"><b id="sep_akPairs">0</b><span>pares precedente/seguidor analisados</span></div>
+    <div class="miniKpi"><b id="sep_akCrit">0</b><span>pares abaixo do limite</span></div>
+    <div class="miniKpi"><b id="sep_akCritDep">0</b><span>abaixo do limite com DEP</span></div>
+    <div class="miniKpi"><b id="sep_akCritNoDep">0</b><span>abaixo do limite sem DEP</span></div>
+    <div class="miniKpi"><b id="sep_akMin">—</b><span>menor separação</span></div>
+    <div class="miniKpi"><b id="sep_akAvg">—</b><span>média da separação</span></div>
+    <div class="miniKpi"><b id="sep_akMedian">—</b><span>mediana da separação</span></div>
+    <div class="miniKpi"><b id="sep_akHour">—</b><span>hora mais crítica</span></div>
+    <div class="miniKpi"><b id="sep_akBusyHour">—</b><span>hora mais movimentada</span></div>
+    <div class="miniKpi"><b id="sep_akMainRwy">—</b><span>pista mais usada</span></div>
+    <div class="miniKpi"><b id="sep_akDepTotal">0</b><span>DEP entre chegadas</span></div>
+    <div class="miniKpi"><b id="sep_akMovs">0</b><span>movimentos ARR+DEP</span></div>
+    <div class="miniKpi"><b id="sep_akPeakArr">—</b><span>pico de aterragens</span></div>
+    <div class="miniKpi"><b id="sep_akPeakDep">—</b><span>pico de descolagens</span></div>
+    <div class="miniKpi"><b id="sep_akPeakTotal">—</b><span>pico de movimentos</span></div>
+  </div>
+  <div class="analysisGrid">
+    <div class="chartCard">
+      <div class="chartTitle">Distribuição das separações entre precedente e seguidor</div>
+      <div class="chartSub">Barras por intervalo de segundos entre a chegada precedente e a chegada seguidora. Vermelho = abaixo do limite escolhido.</div>
+      <div id="sep_chartHist"></div>
+      <div class="chartNote">Passa o rato sobre as barras para ver valores detalhados.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">Resumo por hora</div>
+      <div class="chartSub">Total de pares e pares críticos por hora.</div>
+      <div id="sep_chartHour"></div>
+      <div class="chartNote">Tooltip: total, críticos e percentagem crítica por hora.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">Análise por pista</div>
+      <div class="chartSub">Comparação de pares, críticos e DEP por RWY.</div>
+      <div id="sep_chartRwy"></div>
+      <div class="chartNote">Mostra total de pares precedente/seguidor, abaixo do limite e com DEP entre aterragens.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">Tipo de sequência</div>
+      <div class="chartSub">AA = chegada-chegada. ADA/ADDA = uma ou mais descolagens entre chegadas.</div>
+      <div id="sep_chartSeq"></div>
+      <div class="chartNote">A sequência é calculada pelo número de DEP detetados entre A e B.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">Movimentos por hora</div>
+      <div class="chartSub">Total de movimentos detetados por hora, somando aterragens e descolagens.</div>
+      <div id="sep_chartMovHour"></div>
+      <div class="chartNote">Clica numa barra para ver os movimentos que deram origem ao valor.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">Movimentos por companhia</div>
+      <div class="chartSub">Top companhias por número de movimentos ARR+DEP detetados nos filtros ativos.</div>
+      <div id="sep_chartCompMov"></div>
+      <div class="chartNote">A companhia é inferida pelo prefixo alfabético do callsign, por exemplo TAP, RYR, EZY.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">Top 10 companhias por taxa de ocorrências críticas</div>
+      <div class="chartSub">Ranking por ocorrências críticas envolvidas / movimentos da companhia. Mede taxa, não apenas quantidade absoluta.</div>
+      <div id="sep_chartCompInf"></div>
+      <div class="chartNote">Exemplo: 1 ocorrência em 1 movimento = 100%; 5 ocorrências em 10 movimentos = 50%.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">Posição do seguidor no momento do DEP</div>
+      <div class="chartSub">Só casos com DEP. Distribuição da distância da chegada seguidora à soleira quando ocorreu a descolagem.</div>
+      <div id="sep_chartDepDist"></div>
+      <div class="chartNote">Quanto menor a distância, mais apertado era o encaixe do DEP.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">Separação vs distância do seguidor</div>
+      <div class="chartSub">X = separação em segundos. Y = distância do seguidor à THR quando o precedente cruzou a soleira.</div>
+      <div id="sep_chartSepDist"></div>
+      <div class="chartNote">Cada ponto é um par precedente/seguidor. Laranja = com DEP. Verde = sem DEP.</div>
+    </div>
+
+    <div class="chartCard timelineCard">
+      <div class="chartTitle">Timeline operacional</div>
+      <div class="chartSub">Sequência temporal das chegadas precedentes, DEP intermédios e chegadas seguidoras, usando os filtros ativos.</div>
+      <div class="timelineControls">
+        <div><label>Zoom</label><select id="sep_tlZoom"><option value="all">Dia completo com scroll horizontal</option><option value="4">Janela de 4 horas</option><option value="2" selected>Janela de 2 horas</option><option value="1">Janela de 1 hora</option></select></div>
+        <div><label>Hora foco</label><select id="sep_tlHour"><option value="auto">Automático</option></select></div>
+        <div><label>Etiquetas</label><select id="sep_tlLabels"><option value="crit" selected>Só pares críticos</option><option value="none">Sem callsigns</option><option value="all">Todos os callsigns</option></select></div>
+      </div>
+      <div class="timelineHint">Usa os botões horários para isolar uma janela. No modo “dia completo”, a timeline fica larga de propósito: usa o scroll horizontal para analisar por períodos sem esmagar os eventos.</div>
+      <div id="sep_tlHourButtons" class="timelineButtons"></div>
+      <div class="timelineScroller"><div id="sep_chartTimeline"></div></div>
+      <div class="timelineLegend">
+        <span class="tlChip"><span class="tlSymbol" style="background:#0b5cad"></span>Precedente na THR</span>
+        <span class="tlChip"><span class="tlSymbol" style="background:#f59e0b;border-radius:2px"></span>DEP intermédio</span>
+        <span class="tlChip"><span class="tlSymbol" style="background:#7c3aed"></span>Seguidor na THR</span>
+        <span class="tlChip"><span class="tlSymbol" style="background:#b91c1c"></span>Par abaixo do limite</span>
+      </div>
+      <div class="chartNote">Passa o rato sobre os marcadores para ver detalhes. Clica num marcador ou linha para abrir a ocorrência na aba Tabela.</div>
+    </div>
+    <div class="chartCard">
+      <div class="chartTitle">IAS da aeronave seguidora</div>
+      <div class="chartSub">Distribuição da IAS da aeronave seguidora nos pares precedente/seguidor.</div>
+      <div id="sep_chartIas"></div>
+      <div class="chartNote">Ajuda a ver se os casos críticos coincidem com uma aeronave seguidora mais rápida na final.</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="chartTitle">Top 10 situações mais críticas</div>
+    <div class="chartSub">Ordenado pela menor separação em segundos. Usa os filtros desta aba.</div>
+    <div class="analysisTableWrap"><table id="sep_critTbl"><thead></thead><tbody></tbody></table></div>
+  </div>
+  <div class="card summaryGrid">
+    <div>
+      <div class="chartTitle">Resumo por hora</div>
+      <div class="chartSub">Valores exatos por hora, com chegadas, pares, críticos, DEP, menor e média de separação. Clica numa linha para ver os dados de origem.</div>
+      <div class="analysisTableWrap"><table id="sep_hourTbl"><thead></thead><tbody></tbody></table></div>
+    </div>
+    <div>
+      <div class="chartTitle">Resumo por companhia</div>
+      <div class="chartSub">Movimentos, ocorrências críticas envolvidas e taxa por movimento. Clica numa linha para ver os dados de origem.</div>
+      <div class="analysisTableWrap"><table id="sep_companyTbl"><thead></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+<!-- Data Modal (light) -->
+<div class="sep_dataModalBackdrop" id="sep_dataModalBackdrop">
+  <div class="sep_dataModal">
+    <div class="sep_dataModalHeader">
+      <div><div class="sep_dataModalTitle" id="sep_dataModalTitle"></div><div class="sep_dataModalSub" id="sep_dataModalSub"></div></div>
+      <button class="sep_dataModalClose" onclick="sep_closeDataModal()">&#x2715; Fechar</button>
+    </div>
+    <div class="sep_dataModalBody" id="sep_dataModalBody">
+      <div class="modalActions" id="sep_dataModalActions"></div>
+      <div id="sep_dataModalContent"></div>
+    </div>
+  </div>
+</div>
+</div></div>
+        <!-- Análise Diária sub-tab -->
+        <div id="anaSubAnaDaily" style="display:none;flex:1;overflow:auto;"><div class="sep-ad-wrap" style="font-family:Segoe UI,Roboto,Arial,sans-serif;color:#1f2937;background:#f5f6f8;min-height:100%;padding:12px;">
+<div style="display:grid;grid-template-columns:290px minmax(0,1fr);gap:12px;align-items:start;" id="sep_dailyLayout">
+  <!-- LEFT: calendar filter panel -->
+  <div style="position:sticky;top:8px;background:#fff;border:1px solid #d7dce3;border-radius:16px;box-shadow:0 8px 22px rgba(20,30,40,.08);padding:12px;">
+    <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#6b7280;font-weight:900;margin:4px 0 8px;">Mês disponível</div>
+    <select id="sep_dayMonth" style="width:100%;height:34px;border:1px solid #d7dce3;border-radius:8px;font-size:13px;padding:0 8px;color:#1f2937;background:white;margin-bottom:8px;"></select>
+    <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#6b7280;font-weight:900;margin:8px 0 6px;">Dias disponíveis</div>
+    <div id="sep_dayCalendar" style="margin-bottom:8px;"></div>
+    <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#6b7280;font-weight:900;margin:8px 0 6px;">Dias da semana</div>
+    <div id="sep_dayWeekBtns" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;"></div>
+    <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#6b7280;font-weight:900;margin:8px 0 6px;">Blocos horários</div>
+    <div id="sep_dayBlockBtns" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
+      <button id="sep_dayAllDays" style="height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;">Todos dias</button>
+      <button id="sep_dayNoDays" style="height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;">Nenhum dia</button>
+      <button id="sep_dayAllBlocks" style="height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;">Todos blocos</button>
+      <button id="sep_dayNoBlocks" style="height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;">Nenhum bloco</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button data-dtype="all" style="flex:1;height:30px;font-size:11px;background:#5b4a42;color:white;border:0;border-radius:8px;cursor:pointer;" id="sep_dtypeAll">Todos</button>
+      <button data-dtype="arr" style="flex:1;height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;" id="sep_dtypeArr">▼ ARR</button>
+      <button data-dtype="dep" style="flex:1;height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;" id="sep_dtypeDep">▲ DEP</button>
+    </div>
+    <button id="sep_dayApply" style="width:100%;margin-top:10px;height:38px;background:#0f766e;color:white;border:0;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px;">▶ Aplicar filtro</button>
+    <input id="sep_daySearch" type="text" placeholder="🔍 TAP, RYR, BAW..." style="width:100%;margin-top:8px;height:34px;border:1px solid #d7dce3;border-radius:8px;font-size:13px;padding:0 10px;color:#1f2937;"/>
+    <div id="sep_dayStatus" style="font-size:11px;color:#6b7280;margin-top:8px;line-height:1.4;"></div>
+  </div>
+  <!-- RIGHT: analysis area -->
+  <div id="sep_dailyContent" style="min-width:0;">
+    <div style="text-align:center;padding:40px;color:#6b7280;">
+      <div style="font-size:32px;margin-bottom:8px;">📅</div>
+      <div style="font-weight:700;font-size:15px;">Seleciona dias no calendário e clica <em>Aplicar filtro</em></div>
+    </div>
+  </div>
+</div>
+</div></div>
+        <!-- kept hidden for compat (ROT, Holdings, GA still computed for alerts) -->
+        <div id="anaSubHold" style="display:none;"></div>
+        <div id="anaSubGA" style="display:none;"></div>
+        <div id="anaSubRot" style="display:none;"></div>
+        <div id="anaSubOper" style="display:none;"></div>
+        <div class="empty" id="anaEmpty" style="display:none;"><div class="empty-ico">&#x1F50D;</div><div class="empty-ttl">Abre uma sub-aba para analisar</div></div>
         <div id="anaContent" style="display:none;"></div>
       </div>
     </div>
@@ -841,60 +1021,8 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <button class="btn" id="prefPastaBtn" onclick="document.getElementById('addDir').click()">&#x2191; Pasta</button>
           <button class="btn" id="prefFicheirosBtn" onclick="document.getElementById('addFiles').click()">&#x2191; Ficheiros</button>
           <button class="btn" style="color:#f87171;" onclick="_clearSession()">&#x1F5D1; Limpar sessão guardada</button>
-          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v2.0</button>
+          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v1.3</button>
         </div>
-        <div class="kpi-h" style="margin-top:16px;margin-bottom:8px;">&#x1F916; Análise IA — Configuração</div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
-          <select id="prefIaProvider" onchange="_iaOnProviderChange()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;">
-            <option value="anthropic">Claude (Anthropic) — recomendado</option>
-            <option value="openai">OpenAI (ChatGPT)</option>
-            <option value="mistral">Mistral AI</option>
-            <option value="azure">Azure OpenAI</option>
-            <option value="groq">Groq (Llama)</option>
-          </select>
-          <select id="prefIaModel" onchange="iaSaveKey()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;min-width:180px;"></select>
-        </div>
-        <div id="prefAzureEndpointRow" style="display:none;margin-bottom:6px;">
-          <input type="text" id="prefAzureEndpoint" placeholder="https://SEU-RECURSO.openai.azure.com/openai/deployments/SEU-DEPLOYMENT" onchange="iaSaveKey()" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:6px 10px;outline:none;" autocomplete="off">
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="password" id="prefIaKey" placeholder="Cola aqui a tua API Key..." onchange="iaSaveKey()" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:6px 10px;outline:none;" autocomplete="off">
-          <button class="btn" onclick="iaSaveKey(true)" style="white-space:nowrap;">&#x2713; Guardar</button>
-          <button class="btn" onclick="iaClearKey()" style="color:#f87171;white-space:nowrap;">&#x1F5D1; Limpar</button>
-        </div>
-        <div id="prefIaStatus" style="font-size:10px;color:var(--muted);margin-top:5px;padding:0 2px;"></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7;">A chave é guardada localmente neste dispositivo e nunca vai para o GitHub.</div>
-      </div>
-    </div>
-    <div class="panel" id="panel-ia" style="flex-direction:column;overflow:hidden;">
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
-        <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">&#x1F916; Análise IA</span>
-        <select id="iaModelSel" style="margin-left:auto;background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:4px 8px;outline:none;cursor:pointer;"></select>
-        <span id="iaStatusBadge" style="font-size:10px;color:var(--muted);padding:3px 8px;border:1px solid var(--border);border-radius:12px;">A configurar...</span>
-        <div style="display:flex;gap:4px;">
-          <button onclick="iaExportar('html')" title="Exportar HTML (abre no browser com gráficos)" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--accent)';this.style.borderColor='var(--accent)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">HTML</button>
-          <button onclick="iaExportar('excel')" title="Exportar Excel" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--green)';this.style.borderColor='var(--green)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">XLS</button>
-          <button onclick="iaExportar('word')" title="Exportar Word" style="padding:3px 9px;background:transparent;border:1px solid var(--border);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;font-family:inherit;letter-spacing:.5px;" onmouseover="this.style.color='var(--blue)';this.style.borderColor='var(--blue)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">DOC</button>
-        </div>
-      </div>
-      <div id="iaChat" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;">
-        <div class="ia-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--border);text-align:center;gap:10px;min-height:200px;">
-          <div style="font-size:32px;">&#x25CE;</div>
-          <div style="font-size:11px;letter-spacing:1px;color:var(--muted);">CARREGA DADOS E FAZ UMA PERGUNTA</div>
-          <div style="font-size:10px;color:var(--muted);opacity:.6;">A IA analisa os voos já carregados no FlightTracker</div>
-        </div>
-      </div>
-      <div style="padding:10px 14px;background:var(--panel);border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;">
-        <input type="text" id="iaInput" placeholder="Faz uma pergunta sobre os voos carregados..."
-          style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:12px;padding:8px 12px;outline:none;"
-          onkeydown="if(event.key==='Enter')iaPerguntar()">
-        <button id="iaSendBtn" onclick="iaPerguntar()"
-          style="padding:8px 18px;background:var(--accent);border:none;border-radius:4px;color:var(--bg);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:1px;white-space:nowrap;">
-          ENVIAR
-        </button>
-      </div>
-      <div style="padding:6px 14px 8px;font-size:9px;color:var(--muted);opacity:.6;background:var(--panel);">
-        Fornecedor: <span id="iaFooterProv">—</span> &nbsp;·&nbsp; Configura em <strong>Preferências → Análise IA</strong>
       </div>
     </div>
   </div>
@@ -2190,7 +2318,6 @@ function switchTab(id,el){
       if(id==='seq')refreshSeqPointList();
       if(id==='kpi')renderKpis();
       if(id==='ana'){switchAnaTab(_anaTab||'fast');}
-      if(id==='ia'){_iaInit();}
       if(id==='ias'){if(!iasLimits)loadIasLimits();renderIasManage();}
       if(id==='iasapp'){buildIasAppRwyButtons();renderIasAppResults();}
       if(id==='ana')renderAnaResults();
@@ -3127,18 +3254,14 @@ function analyzeFlightApproach(csn,flight,rwy,rwyId,fafNM,corrNM,altThrMax){
   pts.sort((a,b)=>a.t-b.t);
   if(pts.length<3)return null;
 
-  // Find THR crossing: procura TODOS os candidatos e escolhe o de menor altitude (= THR real)
-  // Evita falsos positivos durante a curva de base onde along pode transitar prematuramente
+  // Find THR crossing: along transitions from positive to <= 0.3 NM, alt low, inside corridor.
   const altThrAbsMax=rwy.elev+altThrMax;
   let thrIdx=-1;
-  let thrBestAlt=Infinity;
   for(let i=1;i<pts.length;i++){
     const a=pts[i-1],b=pts[i];
     if(a.along>0&&b.along<=0.3){
       const loAlt=Math.min(a.alt,b.alt);
-      if(loAlt<=altThrAbsMax&&Math.abs(a.cross)<corrNM&&Math.abs(b.cross)<corrNM){
-        if(loAlt<thrBestAlt){thrBestAlt=loAlt;thrIdx=i;}
-      }
+      if(loAlt<=altThrAbsMax&&Math.abs(a.cross)<corrNM&&Math.abs(b.cross)<corrNM){thrIdx=i;break;}
     }
   }
   if(thrIdx<0)return null;
@@ -4810,18 +4933,14 @@ async function switchAnaTab(tab){
   _anaTab=tab;
   const ae=$('anaEmpty');if(ae)ae.style.display='none';
   const ac=$('anaContent');if(ac)ac.style.display='none';
-  const tabIds={fast:'anaTabFast',hold:'anaTabHold',ga:'anaTabGA',rot:'anaTabRot',oper:'anaTabOper'};
-  ['fast','hold','ga','rot','oper'].forEach(t=>{
-    const el=$(tabIds[t]);
-    if(el)el.classList.toggle('toggled',t===tab);
+  const tabIds={fast:'anaTabFast',anaData:'anaTabAnaData',anaDaily:'anaTabAnaDaily'};
+  ['fast','anaData','anaDaily'].forEach(t=>{
+    const el=$(tabIds[t]);if(el)el.classList.toggle('toggled',t===tab);
   });
-  // Show/hide sub-panels
-  const sf=$('anaSubFast'),sh=$('anaSubHold'),sg=$('anaSubGA'),sr=$('anaSubRot'),so=$('anaSubOper');
+  const sf=$('anaSubFast'),sd=$('anaSubAnaData'),sdl=$('anaSubAnaDaily');
   if(sf){sf.style.display=tab==='fast'?'flex':'none';sf.style.flexDirection='column';}
-  if(sh)sh.style.display=tab==='hold'?'block':'none';
-  if(sg)sg.style.display=tab==='ga'?'block':'none';
-  if(sr)sr.style.display=tab==='rot'?'block':'none';
-  if(so)so.style.display=tab==='oper'?'flex':'none';if(so&&tab==='oper')so.style.flexDirection='column';
+  if(sd)sd.style.display=tab==='anaData'?'block':'none';
+  if(sdl)sdl.style.display=tab==='anaDaily'?'block':'none';
   refreshAnaSubSummary();
   ensureAnaTabData(tab);
 }
@@ -4835,37 +4954,17 @@ async function ensureAnaTabData(tab){
       renderFastResults();
       return;
     }
-    if(tab==='hold'){
-      if(!_anaTabLoaded.hold){
-        await detectHoldings();
-        _anaTabLoaded.hold=true;
-      }
-      renderAnaResults();
+    if(tab==='anaData'){
+      if(!finalResults.length)await runFinalAnalysis();
+      buildFastPairs();
+      renderSepAnalysis();
       return;
     }
-    if(tab==='ga'){
+    if(tab==='anaDaily'){
       if(!finalResults.length)await runFinalAnalysis();
-      if(!_anaTabLoaded.ga){
-        await detectGoArounds();
-        _anaTabLoaded.ga=true;
-      }
-      renderAnaResults();
-    }
-    if(tab==='rot'){
-      if(!_anaTabLoaded.rot){
-        detectROT();
-        _anaTabLoaded.rot=true;
-      }
-      renderRotResults();
-    }
-    if(tab==='oper'){
-      if(!finalResults.length)await runFinalAnalysis();
-      if(!_anaTabLoaded.rot){detectROT();_anaTabLoaded.rot=true;}
-      if(!_anaTabLoaded.ga){await detectGoArounds();_anaTabLoaded.ga=true;}
-      if(!iasResults)await runIasCompliance();
-      if(!iasAppResults)runIasAppCompliance();
-      _anaTabLoaded.oper=true;
-      runOperAnalysis();
+      buildFastPairs();
+      renderSepDaily();
+      return;
     }
   }finally{
     _anaBusy=false;
@@ -4876,23 +4975,14 @@ function refreshAnaSubSummary(){
   if(_anaTab==='fast'){
     const thr=parseInt($('fastThreshold')&&$('fastThreshold').value)||160;
     const mode=_fastMode||'lt';
-    const base=(mode==='lt'?`Pares abaixo de ${thr}s na soleira`:`Pares entre ${thr}s e 240s`);
+    const base=mode==='all'?'Todos os pares':(mode==='lt'?`Pares abaixo de ${thr}s na soleira`:`Pares entre ${thr}s e 240s`);
     const inter=_fastIntercalOnly?' · com A/C intercalar':'';
     const rwy=_fastRwyFilter!=='all'?` · RWY ${_fastRwyFilter}`:'';
     el.textContent=base+inter+rwy;
-  } else if(_anaTab==='hold'){
-    const totS=holdingsResults.reduce((s,h)=>s+h.durS,0);
-    el.textContent=holdingsResults.length?`${holdingsResults.length} holdings \u00b7 ${Math.round(totS/60)} min acumulados`:'Sem holdings detectadas';
-  } else if(_anaTab==='ga'){
-    el.textContent=goAroundResults.length?`${goAroundResults.length} go-arounds · ${goAroundResults.filter(g=>g.eventuallyLanded).length} aterraram depois`:'Sem go-arounds detectados';
-  } else if(_anaTab==='rot'){
-    const rr=_rotFiltered||rotResults;
-    if(!rr.length){el.textContent='Sem ROT calculados';return;}
-    const mean=rr.reduce((s,r)=>s+r.rotS,0)/rr.length;
-    el.textContent=`${rr.length} aterragens · ROT médio ${mean.toFixed(0)}s`;
-  } else if(_anaTab==='oper'){
-    const n=_operResults?_operResults.length:0;
-    el.textContent=n?`${n} operadores`:' ';
+  } else if(_anaTab==='anaData'){
+    el.textContent=_fastPairs.length?`${_fastPairs.length} pares · análise de separação`:'';
+  } else if(_anaTab==='anaDaily'){
+    el.textContent='Análise diária';
   } else {
     el.textContent='';
   }
@@ -4905,6 +4995,7 @@ let _fastIntercalOnly=false;
 let _fastRwyFilter='all';
 function setFastMode(mode){
   _fastMode=mode;
+  const ma=$('fastModeAll');if(ma)ma.classList.toggle('toggled',mode==='all');
   $('fastModeLt').classList.toggle('toggled',mode==='lt');
   $('fastModeRange').classList.toggle('toggled',mode==='range');
   renderFastResults();
@@ -4945,32 +5036,8 @@ function buildFastPairs(){
     for(let i=1;i<arr.length;i++){
       const lead=arr[i-1],trail=arr[i];
       const sep=(trail.epochTHR||0)-(lead.epochTHR||0);
-      if(sep<=0||sep>600)continue;
-      // Calcular distância real do seguidor à THR no momento em que o líder cruzou
-      const t0=lead.epochTHR;
-      let trailDistActual=null;
-      const trailFlight=flights[trail.csn];
-      if(trailFlight&&trailFlight.rows&&trailFlight.rows.length){
-        const rows=trailFlight.rows;
-        const sorted=rows.filter(r=>rowEpoch(r)>0).sort((a,b)=>rowEpoch(a)-rowEpoch(b));
-        for(let j=1;j<sorted.length;j++){
-          const rA=sorted[j-1],rB=sorted[j];
-          const tA=rowEpoch(rA),tB=rowEpoch(rB);
-          if(tA<=t0&&tB>=t0&&(tB-tA)<60){
-            const k=(t0-tA)/(tB-tA);
-            const latI=+rA.latitude+k*(+rB.latitude-+rA.latitude);
-            const lonI=+rA.longitude+k*(+rB.longitude-+rA.longitude);
-            if(!isNaN(latI)&&!isNaN(lonI)){
-              const rwyObj=getActiveRwy()[lead.rwy];
-              const thrLat=rwyObj?rwyObj.thr.lat:38.766428;
-              const thrLon=rwyObj?rwyObj.thr.lon:-9.143903;
-              trailDistActual=distNM(latI,lonI,thrLat,thrLon);
-            }
-            break;
-          }
-        }
-      }
-      _fastPairs.push({lead,trail,sep,trailDistActual});
+      if(sep<=0||sep>600)continue; // ignore negative or >10 min
+      _fastPairs.push({lead,trail,sep});
     }
   }
   _fastPairs.sort((a,b)=>a.sep-b.sep);
@@ -4979,7 +5046,9 @@ function renderFastResults(){
   buildFastPairs();
   const thr=parseInt($('fastThreshold')&&$('fastThreshold').value)||160;
   let pairs;
-  if(_fastMode==='lt'){
+  if(_fastMode==='all'){
+    pairs=[..._fastPairs];
+  } else if(_fastMode==='lt'){
     pairs=_fastPairs.filter(p=>p.sep<thr);
   } else {
     pairs=_fastPairs.filter(p=>p.sep>=thr&&p.sep<=240);
@@ -4997,39 +5066,64 @@ function renderFastResults(){
   if(_fastRwyFilter!=='all'){
     pairs=pairs.filter(p=>String(p.lead&&p.lead.rwy||'')===_fastRwyFilter);
   }
+  // Build DEP epochs
+  const _depEpochs=[];
+  Object.values(flights).forEach(f=>{
+    if(!f||!f.rows||classifyFlight(f.rows)!=='dep')return;
+    const t=_firstEpoch(f.rows);if(isFinite(t)&&t>0)_depEpochs.push({t,csn:(f.rows[0]&&f.rows[0].csn)||''});
+  });
+  _depEpochs.sort((a,b)=>a.t-b.t);
+  // Enrich pairs with sequence + dep info
+  const thr2=parseInt($('fastThreshold')&&$('fastThreshold').value)||160;
+  const enrichedPairs=pairs.map(p=>{
+    const t0=p.lead.epochTHR,t1=p.trail.epochTHR;
+    const depsIn=_depEpochs.filter(d=>d.t>t0&&d.t<t1);
+    const depCnt=depsIn.length;
+    const seq=depCnt===0?'AA':depCnt===1?'ADA':depCnt===2?'ADDA':'AD…A';
+    const firstDep=depsIn[0]||null;
+    let bNmAtDep='—';
+    if(firstDep&&p.trail.epochTHR&&p.trail.iasTHR){
+      const secs=p.trail.epochTHR-firstDep.t;
+      if(secs>0){const nmPerSec=(p.trail.iasTHR||140)/3600;bNmAtDep=(secs*nmPerSec).toFixed(1);}
+    }
+    return {...p,seq,depCnt,firstDep,bNmAtDep};
+  });
   const tbl=$('fastTable'),tbody=$('fastBody'),thead=$('fastHead'),emp=$('fastEmpty'),cnt=$('fastCount');
   if(!tbl)return;
   if(!_fastPairs.length){
     if(emp)emp.style.display='flex';tbl.style.display='none';
     if(cnt)cnt.textContent='Sem dados — corre Final primeiro';return;
   }
-  if(!pairs.length){
-    if(emp)emp.style.display='flex';emp.querySelector('.empty-ttl').textContent='Nenhum par encontrado com este filtro';
+  if(!enrichedPairs.length){
+    if(emp)emp.style.display='flex';const etl=emp.querySelector&&emp.querySelector('.empty-ttl');if(etl)etl.textContent='Nenhum par encontrado com este filtro';
     tbl.style.display='none';
-    if(cnt)cnt.textContent=`0 pares (de ${_fastPairs.length} total)`+(_fastIntercalOnly?' · filtro A/C intercalar':'')+(_fastRwyFilter!=='all'?` · RWY ${_fastRwyFilter}`:'');return;
+    if(cnt)cnt.textContent=`0 pares (de ${_fastPairs.length} total)`;return;
   }
   if(emp)emp.style.display='none';tbl.style.display='';
-  if(cnt)cnt.textContent=`${pairs.length} par(es)`+(_fastIntercalOnly?' · com DEP intercalar':'')+(_fastRwyFilter!=='all'?` · RWY ${_fastRwyFilter}`:'');
-  if(thead)thead.innerHTML='<tr><th>#</th><th>Pista</th><th>Data</th><th>Líder</th><th>Hora (THR)</th><th>IAS Líder</th><th>Seguidor</th><th>IAS Seg.</th><th>Sep. (s)</th></tr>';
-  if(tbody)tbody.innerHTML=pairs.map((p,i)=>{
-    const sepOk=p.sep>=160;
-    const sepColor=p.sep<120?'#f87171':p.sep<160?'#f59e0b':'#22d3a0';
+  if(cnt)cnt.textContent=`${enrichedPairs.length} par(es)`+(_fastIntercalOnly?' · com DEP intercalar':'')+(_fastRwyFilter!=='all'?` · RWY ${_fastRwyFilter}`:'');
+  if(thead)thead.innerHTML='<tr><th>#</th><th>Pista</th><th>Data</th><th>Líder</th><th>Hora (THR)</th><th>IAS Líder</th><th>Seguidor</th><th>IAS Seg.</th><th>Sep. (s)</th><th>Seq.</th><th>DEP</th><th>Seg. no DEP</th></tr>';
+  if(tbody)tbody.innerHTML=enrichedPairs.map((p,i)=>{
+    const sepColor=p.sep<120?'#f87171':p.sep<thr2?'#f59e0b':'#22d3a0';
+    const depLabel=p.firstDep?`<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(245,158,11,.15);color:#f59e0b;font-weight:700;">${p.firstDep.csn||'DEP'}</span>`:'<span style="font-size:10px;color:var(--muted);">—</span>';
     return `<tr style="cursor:pointer;" onclick="showFastDetail(${i})" id="fastRow${i}">
     <td style="color:var(--muted);">${i+1}</td>
     <td style="font-weight:700;color:var(--accent);">RWY ${p.lead.rwy}</td>
     <td style="color:var(--muted);font-size:10px;">${p.lead.date}</td>
-    <td><span style="display:inline-block;width:9px;height:9px;background:${p.lead.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b style="cursor:pointer;" onclick="openFlightModal('${p.lead.csn}','${p.lead.color||'#888'}')">${p.lead.csn}</b></td>
+    <td><span style="display:inline-block;width:9px;height:9px;background:${p.lead.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b onclick="event.stopPropagation();openFlightModal('${p.lead.csn}','${p.lead.color||'#888'}')" style="cursor:pointer;">${p.lead.csn}</b></td>
     <td style="color:var(--muted);font-size:10px;">${p.lead.tTHRstr||'—'}</td>
-    <td style="color:#a78bfa;">${p.lead.iasTHR!=null?Math.round(p.lead.iasTHR)+'kt':'\u2014'}</td>
-    <td><span style="display:inline-block;width:9px;height:9px;background:${p.trail.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b style="cursor:pointer;" onclick="openFlightModal('${p.trail.csn}','${p.trail.color||'#888'}')">${p.trail.csn}</b></td>
-    <td style="color:#a78bfa;">${p.trail.iasTHR!=null?Math.round(p.trail.iasTHR)+'kt':'\u2014'}</td>
-    <td style="font-weight:700;color:${sepColor};">${Math.round(p.sep)}s</td>
+    <td style="color:#a78bfa;">${p.lead.iasTHR!=null?Math.round(p.lead.iasTHR)+'kt':'—'}</td>
+    <td><span style="display:inline-block;width:9px;height:9px;background:${p.trail.color||'#888'};border-radius:2px;vertical-align:middle;margin-right:5px;"></span><b onclick="event.stopPropagation();openFlightModal('${p.trail.csn}','${p.trail.color||'#888'}')" style="cursor:pointer;">${p.trail.csn}</b></td>
+    <td style="color:#a78bfa;">${p.trail.iasTHR!=null?Math.round(p.trail.iasTHR)+'kt':'—'}</td>
+    <td style="font-weight:800;color:${sepColor};">${Math.round(p.sep)}s</td>
+    <td style="font-size:10px;color:${p.seq==='AA'?'#64748b':p.seq==='ADA'?'#f59e0b':'#f87171'};font-weight:700;">${p.seq}</td>
+    <td>${depLabel}</td>
+    <td style="font-size:10px;color:var(--muted);">${p.bNmAtDep!=='—'?p.bNmAtDep+' NM':'—'}</td>
   </tr>`;
   }).join('');
   const listScroll=$('fastListScroll');
   if(listScroll)listScroll.scrollTop=0;
-  // Store filtered pairs for detail lookup
-  window._fastFilteredPairs=pairs;
+  window._fastFilteredPairs=enrichedPairs;
+  window._fastAllDepEpochs=_depEpochs;
   activateSortable('fastTable');
 }
 function showFastDetail(idx){
@@ -5058,7 +5152,7 @@ function showFastDetail(idx){
   // sep seconds before THR crossing → distance = sep * 140 / 3600 NM
   const ktGs=140;
   const nmPerSec=ktGs/3600;
-  const trailDistNM=(p.trailDistActual!=null?p.trailDistActual:p.sep*nmPerSec); // distância real ou estimada
+  const trailDistNM=p.sep*nmPerSec; // NM from THR when lead was at THR
   // SVG diagram
   const svgH=500,svgW=360;
   const thrY=svgH-28,topY=18;
@@ -5148,7 +5242,7 @@ function showFastDetail(idx){
             <span>IAS: <b style="color:#a78bfa;">${p.trail.iasTHR!=null?Math.round(p.trail.iasTHR)+' kt':'\u2014'}</b></span>
             <span>Alt THR: <b style="color:#60a5fa;">${p.trail.altTHR!=null?Math.round(p.trail.altTHR)+' ft':'\u2014'}</b></span>
           </div>
-          <div style="margin-top:8px;font-size:13px;"><span style="color:var(--muted);">Distância quando líder cruzou THR:</span> <b style="color:${p.sep<120?'#f87171':p.sep<160?'#f59e0b':'#22d3a0'};">${p.trailDistActual!=null?p.trailDistActual.toFixed(2)+' NM':( p.sep*(140/3600)).toFixed(2)+' NM (est.)'}</b></div>
+          <div style="margin-top:8px;font-size:13px;"><span style="color:var(--muted);">Distância aprox. quando líder cruzou THR:</span> <b style="color:${p.sep<120?'#f87171':p.sep<160?'#f59e0b':'#22d3a0'};">${(p.sep*(140/3600)).toFixed(1)} NM</b></div>
         </div>
         ${deps.length?`<div style="margin-top:10px;font-size:12px;color:#f59e0b;">&#x26A0; ${deps.length} descolagem(ns) entre as duas aterragens</div>`:''}
       </div>
@@ -6185,62 +6279,13 @@ function _drawProfileChart(canvas,pts){
   ctx.fillStyle='#94a3b8';ctx.fillText('Alt (ft)',PAD.l+92,19);
 }
 async function _autoAnalyseAndAlert(){
-  await new Promise(r=>setTimeout(r,400));
+  await new Promise(r=>setTimeout(r,400)); // esperar que applyFilter termine
   if(!Object.keys(flights).length){_computeAlerts();return;}
-
-  // 1. Final (necessário para FAST e IAS APP)
-  if(!finalResults.length) await runFinalAnalysis();
-
-  // 2. ROT
+  if(!finalResults.length)await runFinalAnalysis();
   if(!_anaTabLoaded.rot){detectROT();_anaTabLoaded.rot=true;}
   _computeAlerts();
-
-  // 3. Holdings
   if(!_anaTabLoaded.hold){await detectHoldings();_anaTabLoaded.hold=true;_computeAlerts();}
-
-  // 4. Go-Arounds
   if(!_anaTabLoaded.ga){await detectGoArounds();_anaTabLoaded.ga=true;_computeAlerts();}
-
-  // 5. IAS STAR (usa defaults da UI — raio 1NM, tolerância 0)
-  if(!iasResults) await runIasCompliance();
-  _computeAlerts();
-
-  // 6. IAS APP — garantir pista TODAS + defaults
-  if(!iasAppResults){
-    const finRwyEl=$('finRwy');
-    if(finRwyEl && finRwyEl.value==='') finRwyEl.value='BOTH';
-    runIasAppCompliance();
-    await new Promise(r=>setTimeout(r,800));
-  }
-  _computeAlerts();
-
-  // 7. Pontos e Sequência — PESEX por defeito
-  const pts=allPoints();
-  const pesex=pts.find(function(p){return p.name.toUpperCase()==='PESEX';});
-  if(pesex){
-    // Aba Pontos — só correr se selectedPoint ainda não estiver definido
-    if(!selectedPoint){
-      selectedPoint=pesex;
-      const selName=$('ptSelName');
-      if(selName) selName.textContent=pesex.name;
-      document.querySelectorAll('.pt-item').forEach(function(el){
-        el.classList.toggle('sel', el.textContent.indexOf('PESEX')>=0);
-      });
-      if(!ptQueryResults.length) queryPoint();
-    }
-
-    // Aba Sequência — garantir que a lista está populada antes de correr
-    refreshSeqPointList(); // preenche o selector com todos os pontos
-    await new Promise(r=>setTimeout(r,100));
-    const seqSel=$('seqPointSel');
-    if(seqSel && !seqResults.length){
-      seqSel.value='PESEX';
-      if(seqSel.value==='PESEX'){
-        querySequence();
-      }
-    }
-  }
-  _computeAlerts();
 }
 function _computeAlerts(){
   _alerts=[];
@@ -6286,118 +6331,97 @@ function _renderAlerts(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// v2.0 — EMAIL DE NOVIDADES
+// v1.3 — EMAIL DE NOVIDADES
 // ═══════════════════════════════════════════════════════════════════════════
 function _emailHtml(){
-  return `<!DOCTYPE html><html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-<title>Flight Track Viewer v2.0</title></head>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flight Track Viewer v1.3</title></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f0f4f8" style="background:#f0f4f8;padding:30px 0;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:30px 0;">
 <tr><td align="center">
 <table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
 
 <!-- HEADER -->
-<tr><td bgcolor="#0f1923" style="background:#0f1923;padding:36px 40px 28px;text-align:center;">
-  <div style="font-size:32px;margin-bottom:8px;">&#9992;</div>
+<tr><td style="background:linear-gradient(135deg,#0f1923 0%,#1a2d45 60%,#0f2744 100%);padding:36px 40px 28px;text-align:center;">
+  <div style="font-size:32px;margin-bottom:8px;">✈</div>
   <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">Flight Track Viewer</h1>
-  <div style="display:inline-block;background:#1a3a5c;border:1px solid #3a7ab5;color:#7ee8fa;padding:4px 16px;border-radius:20px;font-size:13px;margin-top:10px;letter-spacing:1px;">VERS&#195;O 2.0</div>
-  <p style="color:#94a3b8;font-size:13px;margin:14px 0 0;">An&#225;lise de tr&#225;fego a&#233;reo com Intelig&#234;ncia Artificial integrada</p>
+  <div style="display:inline-block;background:rgba(99,102,241,0.25);border:1px solid rgba(99,102,241,0.5);color:#a5b4fc;padding:4px 16px;border-radius:20px;font-size:13px;margin-top:10px;letter-spacing:1px;">VERSÃO 1.3</div>
+  <p style="color:#94a3b8;font-size:13px;margin:14px 0 0;">Nova versão disponível com funcionalidades de análise avançadas</p>
 </td></tr>
 
 <!-- INTRO -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:30px 40px 10px;">
-  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Est&#225; dispon&#237;vel a vers&#227;o <strong>2.0</strong> do Flight Track Viewer. Esta vers&#227;o acrescenta &#224; base s&#243;lida da v1.3 uma nova aba de <strong>An&#225;lise por Intelig&#234;ncia Artificial</strong>, que permite interrogar os dados carregados em linguagem natural e obter respostas com texto e gr&#225;ficos autom&#225;ticos.</p>
+<tr><td style="padding:30px 40px 10px;">
+  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Está disponível a versão <strong>1.3</strong> do Flight Track Viewer com quatro novas funcionalidades operacionais. Esta versão pode ser instalada directamente sobre a anterior.</p>
 </td></tr>
 
-<!-- FEATURE 1 — IA tab -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #bae6fd;">
-    <tr><td bgcolor="#0284c7" style="background:#0284c7;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#129302; Nova aba &#8212; An&#225;lise IA</span>
+<!-- FEATURE 1 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8faff;border:1px solid #e0e7ff;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#4f46e5;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">📈 Perfil IAS / Altitude por voo</span>
     </td></tr>
-    <tr><td bgcolor="#f0fdff" style="background:#f0fdff;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Nova aba <strong>An&#225;lise IA</strong> no final da barra de navega&#231;&#227;o com um chat em linguagem natural. Permite fazer perguntas sobre os voos carregados &#8212; por exemplo <em>"Quais os operadores com mais viola&#231;&#245;es IAS?"</em>, <em>"Faz um gr&#225;fico de chegadas vs descolagens"</em> ou <em>"Resume os go-arounds do dia"</em>. A IA responde em portugu&#234;s com texto e, quando aplic&#225;vel, gera automaticamente um gr&#225;fico (barras, pizza, linha, doughnut).
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      No modal de detalhe de voo (clique numa linha no mapa), passa a aparecer um <strong>gráfico dual-axis</strong> com a evolução da <span style="color:#0891b2;font-weight:600;">IAS (kt)</span> e da <span style="color:#059669;font-weight:600;">altitude (ft)</span> em função da distância ao THR — nos últimos 20 NM de cada chegada. Permite ver visualmente se o voo estabilizou antes dos gates definidos.
     </td></tr>
   </table>
 </td></tr>
 
-<!-- FEATURE 2 — Claude por defeito -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #bbf7d0;">
-    <tr><td bgcolor="#16a34a" style="background:#16a34a;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#9889; Claude (Anthropic) por defeito &#8212; j&#225; configurado</span>
+<!-- FEATURE 2 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fff8;border:1px solid #d1fae5;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#059669;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">🏢 Análise por Operador / Companhia</span>
     </td></tr>
-    <tr><td bgcolor="#f0fdf4" style="background:#f0fdf4;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Esta vers&#227;o inclui o modelo <strong>Claude Sonnet 4.5</strong> da Anthropic j&#225; configurado &#8212; a IA arranca sem necessidade de configura&#231;&#227;o adicional. Para quem preferir usar a sua pr&#243;pria chave ou outro fornecedor, basta ir a <strong>Prefer&#234;ncias &#8594; An&#225;lise IA &#8594; Configura&#231;&#227;o</strong>.
-    </td></tr>
-  </table>
-</td></tr>
-
-<!-- FEATURE 3 — 5 fornecedores -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #fde68a;">
-    <tr><td bgcolor="#d97706" style="background:#d97706;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128295; 5 fornecedores de IA dispon&#237;veis</span>
-    </td></tr>
-    <tr><td bgcolor="#fffbf0" style="background:#fffbf0;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Nas Prefer&#234;ncias &#233; poss&#237;vel escolher entre <strong>Claude (Anthropic)</strong>, <strong>OpenAI (GPT-4o)</strong>, <strong>Mistral AI</strong>, <strong>Azure OpenAI</strong> e <strong>Groq (Llama 3.3)</strong>. Basta colar a API Key do fornecedor pretendido e guardar &#8212; sem necessidade de alterar c&#243;digo.
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Nova sub-aba <strong>OPERADORES</strong> na aba Análise Op. Agrega automaticamente por prefixo ICAO (TAP, RYR, EZY…): volumes ARR/DEP, ROT médio, go-arounds, violações IAS STAR e APP. Tabela ordenável e exportável para CSV — ideal para feedback a companhias aéreas.
     </td></tr>
   </table>
 </td></tr>
 
-<!-- FEATURE 4 — Contexto completo -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e9d5ff;">
-    <tr><td bgcolor="#7c3aed" style="background:#7c3aed;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#129504; Contexto completo da sess&#227;o</span>
+<!-- FEATURE 3 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbf0;border:1px solid #fde68a;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#d97706;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">🚨 Alertas Automáticos após carregamento</span>
     </td></tr>
-    <tr><td bgcolor="#fdf4ff" style="background:#fdf4ff;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      A IA tem acesso autom&#225;tico a todos os dados calculados na app: <strong>viola&#231;&#245;es IAS STAR e APP</strong> (por waypoint, companhia e distribui&#231;&#227;o), <strong>pares FAST</strong> com separa&#231;&#227;o e DEP intercalares, <strong>holdings</strong>, <strong>go-arounds</strong>, <strong>ROT</strong>, <strong>sequ&#234;ncia</strong> e estat&#237;sticas gerais &#8212; sem enviar dados brutos para o exterior.
-    </td></tr>
-  </table>
-</td></tr>
-
-<!-- FEATURE 5 — Exportação -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #fed7aa;">
-    <tr><td bgcolor="#ea580c" style="background:#ea580c;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128202; Exporta&#231;&#227;o da conversa IA</span>
-    </td></tr>
-    <tr><td bgcolor="#fff7ed" style="background:#fff7ed;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Bot&#245;es <strong>CSV</strong>, <strong>XLS</strong> e <strong>DOC</strong> no cabe&#231;alho do painel IA para exportar toda a conversa, incluindo os dados dos gr&#225;ficos gerados.
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Após carregar dados, um <strong>painel de alertas</strong> surge automaticamente com eventos notáveis: ROT acima de 55s, go-arounds, holdings acima de 5 minutos e violações IAS. Cada alerta é dispensável individualmente. Permite uma visão imediata do que merece atenção antes de entrar em qualquer aba de análise.
     </td></tr>
   </table>
 </td></tr>
 
-<!-- MANTIDO DA V1.3 -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
-  <p style="color:#6b7280;font-size:12px;margin:6px 0 4px;text-transform:uppercase;letter-spacing:1px;">Mantido da vers&#227;o 1.3</p>
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr><td bgcolor="#f8fafc" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;color:#374151;font-size:13px;line-height:1.7;">
-      Mapa Leaflet com todas as tracks &middot; An&#225;lise de sequ&#234;ncia e separa&#231;&#227;o em Final &middot; Conformidade IAS STAR e Velocidades APP &middot; KPIs operacionais &middot; An&#225;lise Op. (FAST / Holdings / Go-Arounds / ROT / Operadores) &middot; Alertas autom&#225;ticos ap&#243;s carregamento &middot; Sess&#227;o persistente
+<!-- FEATURE 4 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;overflow:hidden;">
+    <tr><td style="background:#7c3aed;padding:12px 18px;">
+      <span style="color:#fff;font-size:13px;font-weight:700;">✉ Email de novidades (Preferências)</span>
+    </td></tr>
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Em <strong>Preferências → Email novidades v1.3</strong> é possível gerar este email directamente a partir da aplicação, com prévia visual e opções de abrir no Outlook ou guardar como ficheiro HTML.
     </td></tr>
   </table>
 </td></tr>
 
 <!-- DOWNLOAD -->
-<tr><td bgcolor="#0f2744" style="background:#0f2744;padding:24px 40px;text-align:center;">
-  <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da vers&#227;o 2.0</p>
-  <table cellpadding="0" cellspacing="0" align="center"><tr>
-    <td style="padding:0 8px;">
-      <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_2.0.0_x64-setup.exe" style="display:inline-block;background:#3b82f6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; Windows (.exe)</a>
-    </td>
-    <td style="padding:0 8px;">
-      <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_2.0.0_aarch64.dmg" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; macOS (.dmg)</a>
-    </td>
-  </tr></table>
-  <p style="color:#64748b;font-size:11px;margin:14px 0 0;">Instala&#231;&#227;o directa sobre vers&#227;o anterior &middot; Dados e sess&#227;o preservados</p>
+<tr><td style="padding:24px 40px;">
+  <div style="background:linear-gradient(135deg,#1e3a5f,#0f2744);border-radius:10px;padding:24px;text-align:center;">
+    <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da versão 1.3</p>
+    <table cellpadding="0" cellspacing="0" align="center"><tr>
+      <td style="padding:0 8px;">
+        <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_1.3.0_x64-setup.exe" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ Windows (.exe)</a>
+      </td>
+      <td style="padding:0 8px;">
+        <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_1.3.0_aarch64.dmg" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ macOS (.dmg)</a>
+      </td>
+    </tr></table>
+    <p style="color:#64748b;font-size:11px;margin:14px 0 0;">Instalação directa sobre versão anterior · Dados e sessão preservados</p>
+  </div>
 </td></tr>
 
 <!-- FOOTER -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:20px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-  <p style="color:#9ca3af;font-size:11px;margin:0;">Flight Track Viewer v2.0 &middot; NAV Portugal &middot; Desenvolvido para an&#225;lise interna de tr&#225;fego a&#233;reo</p>
-  <p style="color:#d1d5db;font-size:10px;margin:4px 0 0;"><a href="https://github.com/Mendreas/FlightTracker" style="color:#60a5fa;text-decoration:none;">github.com/Mendreas/FlightTracker</a></p>
+<tr><td style="background:#f8faff;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
+  <p style="color:#9ca3af;font-size:12px;margin:0;">Paulo Leal · NAV Portugal, E.P.E. · paulo.leal@nav.pt</p>
+  <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">Flight Track Viewer é uma ferramenta interna de análise de tráfego aéreo</p>
 </td></tr>
 
 </table>
@@ -6419,7 +6443,7 @@ function _openEmailModal(){
 async function _sendEmailOutlook(){
   const to='carlos.jesus@nav.pt,carolina.rosa@nav.pt';
   const cc='paulo.leal@nav.pt';
-  const subject='Flight Track Viewer v2.0 — Novas funcionalidades';
+  const subject='Flight Track Viewer v1.3 — Novas funcionalidades';
   const htmlBody=_emailHtml();
   // Build RFC 2822 .eml with HTML body so Outlook renders it properly
   const eml='MIME-Version: 1.0\r\nFrom: paulo.leal@nav.pt\r\nTo: '+to+'\r\nCC: '+cc+'\r\nSubject: '+subject+'\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+htmlBody;
@@ -6427,7 +6451,7 @@ async function _sendEmailOutlook(){
     try{
       const tmpDir=await window.__TAURI__.path.tempDir();
       const sep=(tmpDir.endsWith('/')||tmpDir.endsWith('\\')?'':'/');
-      const emlPath=tmpDir+sep+'FlightTracker_v2.0_novidades.eml';
+      const emlPath=tmpDir+sep+'FlightTracker_v1.3_novidades.eml';
       await window.__TAURI__.fs.writeTextFile(emlPath,eml);
       await window.__TAURI__.shell.open(emlPath);
       return;
@@ -6437,7 +6461,7 @@ async function _sendEmailOutlook(){
   const blob=new Blob([eml],{type:'message/rfc822'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v2.0_novidades.eml';
+  a.href=url;a.download='FlightTracker_v1.3_novidades.eml';
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
@@ -6446,833 +6470,687 @@ function _downloadEmailHtml(){
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v2.0_novidades.html';
-  document.body.appendChild(a);a.click();
-  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
-}
-function _downloadEmailHtml(){
-  const html=_emailHtml();
-  const blob=new Blob([html],{type:'text/html'});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v2.0_novidades.html';
+  a.href=url;a.download='FlightTracker_v1.3_novidades.html';
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
 
-// ═══════════════════════════════════════════════════════
-// ANÁLISE IA — Multi-fornecedor
-// ═══════════════════════════════════════════════════════
-const IA_PROVIDERS = {
-  anthropic: {
-    name: 'Claude (Anthropic)',
-    url: 'https://api.anthropic.com/v1/messages',
-    type: 'anthropic',
-    models: [
-      ['claude-sonnet-4-5','Claude Sonnet 4.5 (recomendado)'],
-      ['claude-haiku-4-5','Claude Haiku 4.5 (mais rápido)'],
-      ['claude-opus-4-5','Claude Opus 4.5 (mais potente)']
-    ]
-  },
-  openai: {
-    name: 'OpenAI (ChatGPT)',
-    url: 'https://api.openai.com/v1/chat/completions',
-    type: 'openai',
-    models: [
-      ['gpt-4o','GPT-4o (recomendado)'],
-      ['gpt-4o-mini','GPT-4o Mini (mais rápido)'],
-      ['gpt-4-turbo','GPT-4 Turbo']
-    ]
-  },
-  mistral: {
-    name: 'Mistral AI',
-    url: 'https://api.mistral.ai/v1/chat/completions',
-    type: 'openai',
-    models: [
-      ['mistral-large-latest','Mistral Large (recomendado)'],
-      ['mistral-small-latest','Mistral Small (mais rápido)'],
-      ['open-mixtral-8x22b','Mixtral 8x22B']
-    ]
-  },
-  azure: {
-    name: 'Azure OpenAI',
-    url: '',
-    type: 'azure',
-    models: [
-      ['gpt-4o','GPT-4o'],
-      ['gpt-4','GPT-4'],
-      ['gpt-35-turbo','GPT-3.5 Turbo']
-    ]
-  },
-  groq: {
-    name: 'Groq (Llama)',
-    url: 'https://api.groq.com/openai/v1/chat/completions',
-    type: 'openai',
-    models: [
-      ['llama-3.3-70b-versatile','Llama 3.3 70B'],
-      ['llama-3.1-8b-instant','Llama 3.1 8B (mais rápido)'],
-      ['mixtral-8x7b-32768','Mixtral 8x7B']
-    ]
+
+// ═══════════════════════════════════════════════════════════════
+// SEPARAÇÃO — módulo de análise (Fase 3+4)
+// ═══════════════════════════════════════════════════════════════
+let sep_results=[], sep_movementRows=[];
+let sep_modalDatas=new Map(), sep_modalCounter=0;
+
+function sep_buildData(){
+  sep_results=[];sep_movementRows=[];
+  if(!_fastPairs||!_fastPairs.length)return;
+  // Build DEP epochs from flights
+  const depEpochs=[];
+  Object.values(flights).forEach(f=>{
+    if(!f||!f.rows||classifyFlight(f.rows)!=='dep')return;
+    const t=_firstEpoch(f.rows);
+    if(isFinite(t)&&t>0)depEpochs.push({t,csn:(f.rows[0]&&f.rows[0].csn)||''});
+  });
+  depEpochs.sort((a,b)=>a.t-b.t);
+  // Build sep_results from _fastPairs
+  for(const p of _fastPairs){
+    const t0=p.lead.epochTHR,t1=p.trail.epochTHR;
+    const depsIn=depEpochs.filter(d=>d.t>t0&&d.t<t1);
+    const depCnt=depsIn.length;
+    const seq=depCnt===0?'AA':depCnt===1?'ADA':depCnt===2?'ADDA':'AD…A';
+    const firstDep=depsIn[0]||null;
+    let bNmAtDep=null,bSecAtDep=null;
+    if(firstDep&&p.trail.epochTHR&&p.trail.iasTHR){
+      const secs=p.trail.epochTHR-firstDep.t;
+      if(secs>0){const nmPerSec=(p.trail.iasTHR||140)/3600;bNmAtDep=secs*nmPerSec;bSecAtDep=secs;}
+    }
+    sep_results.push({
+      horaA:p.lead.tTHRstr||'',
+      pistaA:p.lead.rwy||'',
+      callA:p.lead.csn||'',
+      iasA:p.lead.iasTHR!=null?Math.round(p.lead.iasTHR):null,
+      horaB:p.trail.tTHRstr||'',
+      callB:p.trail.csn||'',
+      iasB:p.trail.iasTHR!=null?Math.round(p.trail.iasTHR):null,
+      sepSec:Math.round(p.sep),
+      sepNm:+(p.sep*(140/3600)).toFixed(2),
+      depCsn:firstDep?firstDep.csn:'',
+      depHora:firstDep?epochToHHMMSS(firstDep.t):'',
+      bSecAtDep:bSecAtDep!=null?Math.round(bSecAtDep):null,
+      bNmAtDep:bNmAtDep!=null?+bNmAtDep.toFixed(2):null,
+      seq,
+      data:p.lead.date||'',
+      _hasDep:depCnt>0,
+      _hasB:true,
+      _sepSecNum:Math.round(p.sep),
+    });
   }
-};
-
-// Placeholder substituído pelo GitHub Actions durante o build
-// Se não vazio, é usado como chave por defeito (apenas na primeira execução)
-const _IA_BAKED_KEY = '__ANTHROPIC_API_KEY__';
-const _IA_BAKED_PROV = 'anthropic';
-
-let _iaLoading = false;
-let _iaCharts = [];
-let _iaHistory = [];
-
-function iaGetProvider(){ return localStorage.getItem('ia_provider')||'anthropic'; }
-function iaGetKey(){
-  var k=localStorage.getItem('ia_key_'+iaGetProvider())||'';
-  // Se não há chave guardada, usar a baked-in (injectada no build)
-  if(!k && iaGetProvider()===_IA_BAKED_PROV && _IA_BAKED_KEY && !_IA_BAKED_KEY.startsWith('__')) k=_IA_BAKED_KEY;
-  return k;
-}
-function iaGetModel(){ return localStorage.getItem('ia_model_'+iaGetProvider())||(IA_PROVIDERS[iaGetProvider()].models[0][0]); }
-function iaGetAzureEndpoint(){ return localStorage.getItem('ia_azure_endpoint')||''; }
-
-function _iaOnProviderChange(){
-  var prov=document.getElementById('prefIaProvider').value;
-  var azRow=document.getElementById('prefAzureEndpointRow');
-  if(azRow) azRow.style.display=(prov==='azure'?'block':'none');
-  _iaPopulatePrefModels();
-  // Preencher chave já guardada para este fornecedor
-  var keyEl=document.getElementById('prefIaKey');
-  if(keyEl){ keyEl.value=''; keyEl.placeholder='Cola aqui a API Key do '+IA_PROVIDERS[prov].name+'...'; }
-  var azEl=document.getElementById('prefAzureEndpoint');
-  if(azEl && prov==='azure') azEl.value=iaGetAzureEndpoint()||'';
-}
-
-function iaSaveKey(show){
-  var prov=document.getElementById('prefIaProvider').value;
-  var key=document.getElementById('prefIaKey').value.trim();
-  var model=document.getElementById('prefIaModel').value;
-  var azEl=document.getElementById('prefAzureEndpoint');
-  localStorage.setItem('ia_provider', prov);
-  if(key) localStorage.setItem('ia_key_'+prov, key);
-  if(model) localStorage.setItem('ia_model_'+prov, model);
-  if(azEl && prov==='azure' && azEl.value.trim()) localStorage.setItem('ia_azure_endpoint', azEl.value.trim());
-  _iaUpdateStatus();
-  _iaUpdateChatBar();
-  if(show===true){ var s=document.getElementById('prefIaStatus'); s.textContent='Chave guardada.'; s.style.color='var(--green)'; setTimeout(function(){s.textContent='';},2000); }
-}
-
-function iaClearKey(){
-  var prov=document.getElementById('prefIaProvider').value;
-  localStorage.removeItem('ia_key_'+prov);
-  if(prov==='azure') localStorage.removeItem('ia_azure_endpoint');
-  document.getElementById('prefIaKey').value='';
-  _iaUpdateStatus();
-}
-
-function _iaUpdateStatus(){
-  var prov=iaGetProvider();
-  var key=iaGetKey();
-  var s=document.getElementById('prefIaStatus');
-  var badge=document.getElementById('iaStatusBadge');
-  if(!s) return;
-  if(key){
-    s.textContent='Chave configurada para '+IA_PROVIDERS[prov].name+'.';
-    s.style.color='var(--green)';
-    if(badge){ badge.textContent=IA_PROVIDERS[prov].name+' · '+iaGetModel(); badge.style.color='var(--green)'; }
-    var fp=document.getElementById('iaFooterProv');
-    if(fp) fp.textContent=(key?IA_PROVIDERS[prov].name+' · '+iaGetModel():'Sem chave — configura nas Preferências');
-  } else {
-    s.textContent='Sem chave configurada para '+IA_PROVIDERS[prov].name+'. Vai a console.'+(prov==='anthropic'?'anthropic':'groq')+'.com';
-    s.style.color='var(--red,#f87171)';
-    if(badge){ badge.textContent='Sem chave — configura nas Preferências'; badge.style.color='var(--red,#f87171)'; }
+  // Build sep_movementRows from finalResults
+  for(const r of finalResults||[]){
+    sep_movementRows.push({
+      type:'ARR',callsign:r.csn||'',hora:r.tTHRstr||'',
+      pista:r.rwy||'',data:r.date||'',t:r.epochTHR||0,
+    });
   }
+  // Add DEP movements
+  Object.values(flights).forEach(f=>{
+    if(!f||!f.rows||classifyFlight(f.rows)!=='dep')return;
+    const rows=f.rows;const t=_firstEpoch(rows);
+    if(!isFinite(t)||t<=0)return;
+    const csn=(rows[0]&&rows[0].csn)||'';
+    const rw=rows[0]&&rows[0]._rwy||'';
+    const date=rows[0]&&(rows[0]._date||rows[0].date)||'';
+    sep_movementRows.push({type:'DEP',callsign:csn,hora:epochToHHMMSS(t),pista:rw,data:date,t});
+  });
+  sep_movementRows.sort((a,b)=>a.t-b.t);
 }
 
-function _iaUpdateChatBar(){
-  var prov=iaGetProvider();
-  var provObj=IA_PROVIDERS[prov];
-  var sel=document.getElementById('iaModelSel');
-  var badge=document.getElementById('iaStatusBadge');
+function sep_renderAnalysis(){
+  if(!$('sep_chartHist')) return;
+  sep_modalDatas=new Map(); sep_modalCounter=0;
+  sep_refreshAnalysisFilterOptions();
+  const limit=Number($('sep_anaLimit')?.value||165);
+  const rows=sep_anaFilteredRows();
+  const movs=sep_anaFilteredMovements();
+  const critRows=rows.filter(r=>r._sepSecNum < limit);
+  const critDep=critRows.filter(r=>r._hasDep).length;
+  const critNoDep=critRows.filter(r=>!r._hasDep).length;
+  const seps=rows.map(r=>r._sepSecNum).filter(Number.isFinite);
+  const minSep=seps.length?Math.min(...seps):NaN;
+  const avgSep=sep_mean(seps), medSep=sep_median(seps);
+  const byHour={};
+  for(const r of critRows){const h=(r.horaA||'').slice(0,2)||'??'; byHour[h]=(byHour[h]||0)+1;}
+  const bestHour=Object.entries(byHour).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0];
+  const depTotal=rows.reduce((acc,r)=>acc+(r._depCount||0),0);
+  const hourMovs=sep_movementHourSummary(movs);
+  const peakArr=[...hourMovs].sort((a,b)=>b.arr-a.arr||a.hour.localeCompare(b.hour))[0];
+  const peakDep=[...hourMovs].sort((a,b)=>b.dep-a.dep||a.hour.localeCompare(b.hour))[0];
+  const peakMov=[...hourMovs].sort((a,b)=>b.total-a.total||a.hour.localeCompare(b.hour))[0];
+  const comps=sep_companySummary(movs, rows, limit);
+  $('sep_akPairs').textContent=rows.length.toLocaleString('pt-PT');
+  $('sep_akCrit').textContent=critRows.length.toLocaleString('pt-PT');
+  $('sep_akCritDep').textContent=critDep.toLocaleString('pt-PT');
+  $('sep_akCritNoDep').textContent=critNoDep.toLocaleString('pt-PT');
+  $('sep_akMin').textContent=Number.isFinite(minSep)?minSep.toFixed(1)+' s':'—';
+  if($('sep_akAvg')) $('sep_akAvg').textContent=Number.isFinite(avgSep)?avgSep.toFixed(1)+' s':'—';
+  if($('sep_akMedian')) $('sep_akMedian').textContent=Number.isFinite(medSep)?medSep.toFixed(1)+' s':'—';
+  $('sep_akHour').textContent=bestHour?`${bestHour[0]}h (${bestHour[1]})`:'—';
+  if($('sep_akBusyHour')) $('sep_akBusyHour').textContent=sep_modeBy(rows,r=>(r.horaA||'').slice(0,2),v=>v+'h');
+  if($('sep_akMainRwy')) $('sep_akMainRwy').textContent=sep_modeBy(rows,r=>r.pista,v=>'RWY '+v);
+  if($('sep_akDepTotal')) $('sep_akDepTotal').textContent=depTotal.toLocaleString('pt-PT');
+  if($('sep_akMovs')) $('sep_akMovs').textContent=movs.length.toLocaleString('pt-PT');
+  if($('sep_akPeakArr')) $('sep_akPeakArr').textContent=peakArr?`${peakArr.hour}h (${peakArr.arr})`:'—';
+  if($('sep_akPeakDep')) $('sep_akPeakDep').textContent=peakDep?`${peakDep.hour}h (${peakDep.dep})`:'—';
+  if($('sep_akPeakTotal')) $('sep_akPeakTotal').textContent=peakMov?`${peakMov.hour}h (${peakMov.total})`:'—';
+  sep_setKpiModal('sep_akPairs','Pares precedente/seguidor analisados',rows,`Filtro atual · limite ${limit}s`);
+  sep_setKpiModal('sep_akCrit','Pares abaixo do limite',critRows,`Separação inferior a ${limit}s`);
+  sep_setKpiModal('sep_akCritDep','Pares abaixo do limite com DEP',critRows.filter(r=>r._hasDep),`Separação inferior a ${limit}s e com DEP intermédio`);
+  sep_setKpiModal('sep_akCritNoDep','Pares abaixo do limite sem DEP',critRows.filter(r=>!r._hasDep),`Separação inferior a ${limit}s e sem DEP intermédio`);
+  sep_setKpiModal('sep_akMin','Menor separação do período',Number.isFinite(minSep)?rows.filter(r=>r._sepSecNum===minSep):[],`Filtro atual · menor valor`);
+  sep_setKpiModal('sep_akAvg','Dados usados na média da separação',rows,`Média calculada sobre estes ${rows.length} pares`);
+  sep_setKpiModal('sep_akMedian','Dados usados na mediana da separação',rows,`Mediana calculada sobre estes ${rows.length} pares`);
+  sep_setKpiModal('sep_akHour','Hora mais crítica',bestHour?critRows.filter(r=>(r.horaA||'').slice(0,2)===bestHour[0]):[],bestHour?`Hora ${bestHour[0]}h · pares abaixo de ${limit}s`:'');
+  const busyHour=(($('sep_akBusyHour')?.textContent||'').match(/^(\d{2})h/)||[])[1]; sep_setKpiModal('sep_akBusyHour','Hora mais movimentada',busyHour?rows.filter(r=>(r.horaA||'').slice(0,2)===busyHour):[],busyHour?`Hora ${busyHour}h · total de pares`:``);
+  const usedRunway=(($('sep_akMainRwy')?.textContent||'').match(/RWY\s+(\d{2})/)||[])[1]; sep_setKpiModal('sep_akMainRwy','Pista mais usada',usedRunway?rows.filter(r=>r.pista===usedRunway):[],usedRunway?`RWY ${usedRunway}`:``);
+  sep_setKpiModal('sep_akDepTotal','DEP entre chegadas',rows.filter(r=>r._hasDep),`Pares com uma ou mais descolagens intermédias`);
+  sep_setKpiModal('sep_akMovs','Movimentos ARR+DEP',movs,`Movimentos detetados nos filtros de data/hora/pista`);
+  sep_setKpiModal('sep_akPeakArr','Pico de aterragens',peakArr?peakArr._rows.filter(m=>m.type==='ARR'):[],peakArr?`Hora ${peakArr.hour}h · ${peakArr.arr} aterragens`:``);
+  sep_setKpiModal('sep_akPeakDep','Pico de descolagens',peakDep?peakDep._rows.filter(m=>m.type==='DEP'):[],peakDep?`Hora ${peakDep.hour}h · ${peakDep.dep} descolagens`:``);
+  sep_setKpiModal('sep_akPeakTotal','Pico de movimentos',peakMov?peakMov._rows:[],peakMov?`Hora ${peakMov.hour}h · ${peakMov.total} movimentos`:``);
+  $('sep_anaStatus').textContent=`${rows.length} pares precedente/seguidor analisados · ${critRows.length} abaixo de ${limit}s`;
+  sep_renderHist(rows,limit);
+  sep_renderByHour(rows,limit);
+  sep_renderRunway(rows,limit);
+  sep_renderSeq(rows,limit);
+  sep_renderMovementHour(movs,limit);
+  sep_renderCompanyMoves(comps,limit);
+  sep_renderCompanyInfractions(comps,limit);
+  sep_renderDepDistance(rows,limit);
+  sep_renderSepDistance(rows,limit);
+  sep_renderTimeline(rows,limit);
+  sep_renderIas(rows,limit);
+  sep_renderCriticalTable(rows,limit);
+  sep_renderHourTable(rows,limit);
+  sep_renderCompanyTable(comps,limit);
+  sep_bindModalClicks();
+}
+function sep_renderHist(rows,limit){
+  const bins=[0,60,90,120,140,165,200,240,Infinity], labels=['0-60','60-90','90-120','120-140','140-165','165-200','200-240','>240'];
+  const data=labels.map((lab,i)=>({label:lab,count:0,crit:0,critical:bins[i+1]<=limit || (bins[i]<limit && bins[i+1]>limit),range:`${labels[i]} s`,_rows:[]}));
+  for(const r of rows){const v=r._sepSecNum; let idx=bins.findIndex((b,i)=>i<bins.length-1 && v>=bins[i] && v<bins[i+1]); if(idx<0) idx=labels.length-1; data[idx].count++; data[idx]._rows.push(r); if(v<limit) data[idx].crit++;}
+  data.forEach(d=>d._modalKey=sep_registerModalData(`Distribuição · ${d.range}`,d._rows,`Limite ativo ${limit}s`));
+  $('sep_chartHist').innerHTML=sep_barSvg(data,{w:620,h:240,labelKey:'label',valueKey:'count',criticalFn:d=>d.critical,titleY:'Nº pares',tipFn:d=>[`Intervalo: ${d.range}`,`Pares: ${d.count}`,`Críticos no intervalo: ${d.crit}`,`Limite ativo: ${limit}s`]});
+}
+function sep_renderByHour(rows,limit){
+  const map={};
+  for(const r of rows){const h=(r.horaA||'').slice(0,2)||'??'; if(!map[h]) map[h]={label:h+'h',total:0,crit:0,dep:0,_rows:[],_critRows:[]}; map[h].total++; map[h]._rows.push(r); if(r._sepSecNum<limit){ map[h].crit++; map[h]._critRows.push(r); } if(r._hasDep) map[h].dep++;}
+  const data=Object.values(map).sort((a,b)=>a.label.localeCompare(b.label));
+  data.forEach(d=>{d._modalKeyTotal=sep_registerModalData(`Resumo por hora · ${d.label} · total`,d._rows,`Todos os pares da hora`); d._modalKeyCrit=sep_registerModalData(`Resumo por hora · ${d.label} · críticos`,d._critRows,`Pares abaixo de ${limit}s`);});
+  $('sep_chartHour').innerHTML=sep_groupedBarSvg(data,{w:620,h:240,labelKey:'label',aKey:'total',bKey:'crit',aLab:'Total',bLab:'Críticos',tipFn:d=>[`Hora: ${d.label}`,`Total pares precedente/seguidor: ${d.total}`,`Críticos: ${d.crit}`,`Com DEP: ${d.dep}`,`% crítico: ${sep_pct(d.crit,d.total)}`]});
+}
+function sep_renderRunway(rows,limit){
+  const data=['02','20'].map(p=>{const rr=rows.filter(r=>r.pista===p), cr=rr.filter(r=>r._sepSecNum<limit), dr=rr.filter(r=>r._hasDep);return {label:'RWY '+p,total:rr.length,crit:cr.length,dep:dr.length,_rows:rr,_critRows:cr,_depRows:dr};});
+  data.forEach(d=>{d._modalKeyTotal=sep_registerModalData(`${d.label} · total`,d._rows,'Todos os pares da pista'); d._modalKeyCrit=sep_registerModalData(`${d.label} · abaixo do limite`,d._critRows,`Pares abaixo de ${limit}s`); d._modalKeyDep=sep_registerModalData(`${d.label} · com DEP`,d._depRows,'Pares com DEP intermédio');});
+  $('sep_chartRwy').innerHTML=sep_stackInfoBars(data,{w:620,h:240,tipFn:d=>[`Pista: ${d.label}`,`Total pares precedente/seguidor: ${d.total}`,`Abaixo do limite: ${d.crit}`,`Com DEP: ${d.dep}`,`% crítico: ${sep_pct(d.crit,d.total)}`]});
+}
+function sep_renderSeq(rows,limit){
+  const order=['AA','ADA','ADDA','AD...A'];
+  const data=order.map(seq=>{const rr=rows.filter(r=>(r._seq||(!r._hasDep?'AA':'ADA'))===seq), cr=rr.filter(r=>r._sepSecNum<limit);return {label:seq,total:rr.length,crit:cr.length,dep:seq==='AA'?0:(seq==='ADA'?1:(seq==='ADDA'?2:3)),_rows:rr,_critRows:cr};});
+  data.forEach(d=>{d._modalKeyTotal=sep_registerModalData(`Sequência ${d.label} · total`,d._rows,'Todos os pares desta sequência'); d._modalKeyCrit=sep_registerModalData(`Sequência ${d.label} · críticos`,d._critRows,`Pares abaixo de ${limit}s`);});
+  $('sep_chartSeq').innerHTML=sep_groupedBarSvg(data,{w:620,h:240,labelKey:'label',aKey:'total',bKey:'crit',aLab:'Total',bLab:'Críticos',tipFn:d=>[`Sequência: ${d.label}`,`Total: ${d.total}`,`Críticos: ${d.crit}`,`% crítico: ${sep_pct(d.crit,d.total)}`,d.label==='AA'?'Sem DEP entre chegadas':(d.label==='ADA'?'1 DEP entre chegadas':(d.label==='ADDA'?'2 DEP entre chegadas':'3+ DEP entre chegadas'))]});
+}
+function sep_renderMovementHour(movs,limit){
+  const data=sep_movementHourSummary(movs).map(o=>({...o,_modalKey:sep_registerModalData(`Movimentos ${o.hour}h`,o._rows,`${o.total} movimentos: ${o.arr} ARR + ${o.dep} DEP`)}));
+  $('sep_chartMovHour').innerHTML=sep_barSvg(data,{w:520,h:240,labelKey:'hour',valueKey:'total',titleY:'movimentos',tipFn:d=>[`Hora ${d.hour}h`,`Total: ${d.total}`,`Aterragens: ${d.arr}`,`Descolagens: ${d.dep}`]});
+}
+function sep_renderCompanyMoves(comps,limit){
+  const data=comps.slice(0,15).map(o=>({label:o.company,total:o.movements,_modalKey:sep_registerModalData(`Movimentos ${o.company}`,o._movRows,`${o.movements} movimentos: ${o.arr} ARR + ${o.dep} DEP`)}));
+  $('sep_chartCompMov').innerHTML=sep_barSvg(data,{w:520,h:240,labelKey:'label',valueKey:'total',titleY:'movimentos',tipFn:d=>[`Companhia ${d.label}`,`Movimentos: ${d.total}`]});
+}
+function sep_renderCompanyInfractions(comps,limit){
+  const top=comps.filter(o=>o.critical>0).sort((a,b)=>b.rate-a.rate||b.critical-a.critical||b.movements-a.movements).slice(0,10);
+  const data=top.map(o=>({label:o.company,ratePct:Number((o.rate*100).toFixed(1)),_modalKey:sep_registerModalData(`Ocorrências críticas ${o.company}`,o._critRows,`${o.critical} ocorrências críticas / ${o.movements} movimentos = ${(o.rate*100).toFixed(1)}%`),critical:o.critical,movements:o.movements}));
+  $('sep_chartCompInf').innerHTML=sep_barSvg(data,{w:520,h:240,labelKey:'label',valueKey:'ratePct',titleY:'taxa %',criticalFn:d=>true,tipFn:d=>[`Companhia ${d.label}`,`Taxa: ${d.ratePct}%`,`Ocorrências críticas: ${d.critical}`,`Movimentos: ${d.movements}`]});
+}
+function sep_renderCompanyTable(comps,limit){
+  if(!$('sep_companyTbl')) return;
+  const heads=['Companhia','Movimentos','ARR','DEP','Ocorrências críticas','Taxa por movimento'];
+  $('sep_companyTbl').tHead.innerHTML='<tr>'+heads.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  $('sep_companyTbl').tBodies[0].innerHTML=comps.map(o=>{
+    const key=sep_registerModalData(`Resumo por companhia · ${o.company}`,o._movRows,`${o.movements} movimentos · ${o.arr} ARR · ${o.dep} DEP · ${o.critical} ocorrência(s) crítica(s) · taxa ${(o.rate*100).toFixed(1)}%`);
+    return `<tr class="modalSource" data-modal-key="${key}" title="Clica para ver os movimentos desta companhia"><td><b>${sep_escHtml(o.company)}</b></td><td class="num">${o.movements}</td><td class="num">${o.arr}</td><td class="num">${o.dep}</td><td class="num ${o.critical?'red':''}">${o.critical}</td><td class="num ${o.critical?'red':''}">${(o.rate*100).toFixed(1)}%</td></tr>`;
+  }).join('')||'<tr><td colspan="6" class="mutedCell">Sem dados.</td></tr>';
+}
+function sep_renderDepDistance(rows,limit){
+  const vals=[];
+  for(const r of rows){for(const nm of (r._depDistances||[])) vals.push({nm,crit:r._sepSecNum<limit,row:r});}
+  const bins=[0,3,4,5,6,Infinity], labels=['<3','3-4','4-5','5-6','>6'];
+  const names=['muito crítico','crítico','apertado','normal','confortável'];
+  const data=labels.map((lab,i)=>({label:lab,count:0,crit:0,range:lab+' NM',name:names[i],_rows:[]}));
+  for(const v of vals){let idx=bins.findIndex((b,i)=>i<bins.length-1 && v.nm>=bins[i] && v.nm<bins[i+1]); if(idx<0) idx=labels.length-1; data[idx].count++; data[idx]._rows.push(v.row); if(v.crit) data[idx].crit++;}
+  data.forEach(d=>d._modalKey=sep_registerModalData(`Posição do seguidor no DEP · ${d.range}`,d._rows,`Classe ${d.name}`));
+  $('sep_chartDepDist').innerHTML=sep_barSvg(data,{w:620,h:240,labelKey:'label',valueKey:'count',criticalFn:d=>d.label==='<3'||d.label==='3-4',titleY:'Nº DEP',tipFn:d=>[`Seguidor à THR no DEP: ${d.range}`,`Classe: ${d.name}`,`Descolagens: ${d.count}`,`Em pares críticos: ${d.crit}`,`% crítico: ${sep_pct(d.crit,d.count)}`]});
+}
+function sep_renderSepDistance(rows,limit){
+  const pts=rows.map(r=>({x:Number(r.sepSec),y:Number(r.sepNm),dep:r._hasDep,crit:r._sepSecNum<limit,pista:r.pista,a:r.csnA,b:r.csnB,h:r.horaA,ias:r.iasB,seq:r._seq,row:r})).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+  pts.forEach(p=>p._modalKey=sep_registerModalData(`Ponto · ${p.a} → ${p.b}`,[p.row],`Separação ${p.x.toFixed(1)}s · distância ${p.y.toFixed(2)}NM`));
+  $('sep_chartSepDist').innerHTML=sep_scatterSvg(pts,{w:620,h:240,limit,tipFn:p=>[`Precedente/seguidor: ${p.a} → ${p.b}`,`Hora A: ${p.h} · RWY ${p.pista}`,`Separação: ${p.x.toFixed(1)} s`,`Distância do seguidor: ${p.y.toFixed(2)} NM`,p.dep?'Com DEP':'Sem DEP',`Sequência: ${p.seq||''}`,`IAS do seguidor: ${p.ias||''} kt`]});
+}
+function sep_renderHourTable(rows,limit){
+  const map={};
+  const landingMap={};
+  for(const r of sep_results){const h=(r.horaA||'').slice(0,2)||'??'; if(!landingMap[h]) landingMap[h]=new Set(); landingMap[h].add(r.csnA+'|'+r.horaA+'|'+r.pista);}
+  for(const r of rows){const h=(r.horaA||'').slice(0,2)||'??'; if(!map[h]) map[h]={hora:h+'h',hour:h,chegadas:landingMap[h]?.size||0,pares:0,crit:0,dep:0,min:Infinity,seps:[],_rows:[],_critRows:[]}; const o=map[h]; o.pares++; o._rows.push(r); if(r._sepSecNum<limit){o.crit++; o._critRows.push(r);} if(r._hasDep)o.dep+=(r._depCount||1); o.min=Math.min(o.min,r._sepSecNum); o.seps.push(r._sepSecNum);}
+  const data=Object.values(map).sort((a,b)=>a.hora.localeCompare(b.hora));
+  const heads=['Hora','Chegadas','Pares preced./seg.','< limite','Com DEP','Menor sep.','Média sep.'];
+  $('sep_hourTbl').tHead.innerHTML='<tr>'+heads.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  $('sep_hourTbl').tBodies[0].innerHTML=data.map(d=>{
+    const key=sep_registerModalData(`Resumo por hora · ${d.hora}`,d._rows,`${d.pares} par(es) precedente/seguidor · ${d.crit} abaixo de ${limit}s · ${d.dep} DEP entre chegadas`);
+    return `<tr class="modalSource" data-modal-key="${key}" title="Clica para ver os pares desta hora"><td><b>${sep_escHtml(d.hora)}</b></td><td class="num">${d.chegadas}</td><td class="num">${d.pares}</td><td class="num ${d.crit?'red':''}">${d.crit}</td><td class="num">${d.dep}</td><td class="num">${Number.isFinite(d.min)?d.min.toFixed(1)+' s':'—'}</td><td class="num">${sep_mean(d.seps).toFixed(1)} s</td></tr>`;
+  }).join('')||'<tr><td colspan="7" class="mutedCell">Sem dados.</td></tr>';
+}
+function sep_renderIas(rows,limit){
+  const bins=[0,140,150,160,170,Infinity], labels=['<140','140-150','150-160','160-170','>170'];
+  const data=labels.map((lab,i)=>({label:lab,total:0,crit:0,range:lab+' kt',_rows:[],_critRows:[]}));
+  for(const r of rows){const v=Number(r.iasB); if(!Number.isFinite(v)) continue; let idx=bins.findIndex((b,i)=>i<bins.length-1 && v>=bins[i] && v<bins[i+1]); if(idx<0) idx=labels.length-1; data[idx].total++; data[idx]._rows.push(r); if(r._sepSecNum<limit){ data[idx].crit++; data[idx]._critRows.push(r); }}
+  data.forEach(d=>{d._modalKeyTotal=sep_registerModalData(`IAS do seguidor · ${d.range} · total`,d._rows,'Todos os pares nesta classe IAS'); d._modalKeyCrit=sep_registerModalData(`IAS do seguidor · ${d.range} · críticos`,d._critRows,`Pares abaixo de ${limit}s nesta classe IAS`);});
+  $('sep_chartIas').innerHTML=sep_groupedBarSvg(data,{w:620,h:240,labelKey:'label',aKey:'total',bKey:'crit',aLab:'Total',bLab:'Críticos',tipFn:d=>[`IAS seguidor: ${d.range}`,`Total pares: ${d.total}`,`Críticos: ${d.crit}`,`% crítico: ${sep_pct(d.crit,d.total)}`]});
+}
+function sep_setTimelineHourOptions(events){
+  const sel=$('sep_tlHour'), chips=$('sep_tlHourButtons');
   if(!sel) return;
-  sel.innerHTML='';
-  provObj.models.forEach(function(m){ var o=document.createElement('option'); o.value=m[0]; o.textContent=m[1]; if(m[0]===iaGetModel()) o.selected=true; sel.appendChild(o); });
-  if(badge) badge.textContent=provObj.name+' · '+(sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].text:provObj.models[0][1]);
+  const current=sel.value || 'auto';
+  const hours=[...new Set(events.map(e=>String(Math.floor(e.t/3600)).padStart(2,'0')).filter(h=>h>='00'&&h<='23'))].sort();
+  sel.innerHTML='<option value="auto">Automático</option>'+hours.map(h=>`<option value="${h}">${h}h</option>`).join('');
+  sel.value=(current==='auto'||hours.includes(current))?current:'auto';
+  if(chips){
+    chips.innerHTML=hours.map(h=>`<button type="button" data-hour="${h}" class="${sel.value===h?'active':''}">${h}h</button>`).join('');
+    chips.querySelectorAll('button').forEach(b=>b.onclick=()=>{sel.value=b.dataset.hour; if(($('sep_tlZoom')?.value||'2')==='all') $('sep_tlZoom').value='2'; sep_renderAnalysis();});
+  }
 }
-
-function _iaPopulatePrefModels(){
-  var prov=(document.getElementById('prefIaProvider')||{value:'anthropic'}).value||iaGetProvider();
-  var sel=document.getElementById('prefIaModel');
-  if(!sel) return;
-  sel.innerHTML='';
-  IA_PROVIDERS[prov].models.forEach(function(m){ var o=document.createElement('option'); o.value=m[0]; o.textContent=m[1]; if(m[0]===iaGetModel()) o.selected=true; sel.appendChild(o); });
-  var keyEl=document.getElementById('prefIaKey');
-  if(keyEl && !keyEl.value) keyEl.placeholder='Cola aqui a API Key do '+ IA_PROVIDERS[prov].name+'...';
-}
-
-function _iaInit(){
-  // Sincronizar painel preferências
-  var provSel=document.getElementById('prefIaProvider');
-  var prov0=iaGetProvider();
-  if(provSel){ provSel.value=prov0; }
-  var azRow=document.getElementById('prefAzureEndpointRow');
-  if(azRow) azRow.style.display=(prov0==='azure'?'block':'none');
-  _iaPopulatePrefModels();
-  _iaUpdateChatBar();
-  _iaUpdateStatus();
-  // Chat bar model selector
-  var chatSel=document.getElementById('iaModelSel');
-  if(chatSel) chatSel.addEventListener('change',function(){ localStorage.setItem('ia_model_'+iaGetProvider(),chatSel.value); });
-}
-
-document.addEventListener('DOMContentLoaded', function(){ setTimeout(_iaInit, 400); });
-
-function _iaBuildCtx(){
-  const csns = Object.keys(flights);
-  if(!csns.length) return null;
-  const total = csns.length;
-  let arr=0,dep=0,nvl=0;
-  const opFreq={};
-  const altVals=[], tasVals=[], rocVals=[];
-  let minTod='99:99', maxTod='00:00';
-  csns.forEach(csn=>{
-    const f=flights[csn];
-    const cls=classifyFlight(f.rows);
-    if(cls==='arr')arr++; else if(cls==='dep')dep++; else nvl++;
-    const pre=(csn.match(/^[A-Z]{2,3}/)||['?'])[0];
-    opFreq[pre]=(opFreq[pre]||0)+1;
-    f.rows.forEach(r=>{
-      const alt=parseFloat(r.modeC||r.baroH||r.alt);
-      const tas=parseFloat(r.tas||r.ias||r.gspA);
-      const roc=parseFloat(r.roc);
-      const tod=String(r.tod||'').substring(0,5);
-      if(!isNaN(alt)&&alt>0) altVals.push(alt);
-      if(!isNaN(tas)&&tas>0) tasVals.push(tas);
-      if(!isNaN(roc)) rocVals.push(roc);
-      if(tod&&tod>'00:00'){ if(tod<minTod)minTod=tod; if(tod>maxTod)maxTod=tod; }
-    });
-  });
-  function stat(a){
-  if(!a.length) return null;
-  var mn=a[0],mx=a[0],sum=0;
-  for(var i=0;i<a.length;i++){if(a[i]<mn)mn=a[i];if(a[i]>mx)mx=a[i];sum+=a[i];}
-  return {min:mn.toFixed(1),max:mx.toFixed(1),mean:(sum/a.length).toFixed(1)};
-}
-  // Detalhe completo por operador
-  var opDetail={};
-  csns.forEach(function(csn){
-    var f=flights[csn];
-    var cls=classifyFlight(f.rows);
-    var pre=(csn.match(/^[A-Z]{2,3}/)||['?'])[0];
-    if(!opDetail[pre]) opDetail[pre]={total:0,arr:0,dep:0,nvl:0};
-    opDetail[pre].total++;
-    if(cls==='arr') opDetail[pre].arr++;
-    else if(cls==='dep') opDetail[pre].dep++;
-    else opDetail[pre].nvl++;
-  });
-  var opDetailSorted=Object.entries(opDetail).sort(function(a,b){return b[1].total-a[1].total;});
-
-  let ctx='DADOS CARREGADOS NO FLIGHTTRACKER:\n';
-  ctx+='Total aeronaves: '+total+' | ARR: '+arr+' | DEP: '+dep+' | NVL: '+nvl+'\n';
-  ctx+='Periodo: '+minTod+'-'+maxTod+'\n';
-  ctx+='\nVoos por operador (lista completa):\n';
-  opDetailSorted.forEach(function(e){
-    ctx+='  '+e[0]+': total='+e[1].total+' | ARR='+e[1].arr+' | DEP='+e[1].dep+' | NVL='+e[1].nvl+'\n';
-  });
-  const sa=stat(altVals), st=stat(tasVals), sr=stat(rocVals);
-  if(sa) ctx+='Altitude (FL/100ft): min='+sa.min+' max='+sa.max+' media='+sa.mean+'\n';
-  if(st) ctx+='Velocidade (TAS/kt): min='+st.min+' max='+st.max+' media='+st.mean+'\n';
-  if(sr) ctx+='ROC (ft/min): min='+sr.min+' max='+sr.max+' media='+sr.mean+'\n';
-
-  // IAS STAR violations
-  if(typeof iasResults!=='undefined' && iasResults && iasResults.totalViol>0){
-    ctx+='Violacoes IAS STAR: total='+iasResults.totalViol+' em '+iasResults.totalPasses+' passagens\n';
-    if(iasResults.perWp){
-      var wpViol=Object.entries(iasResults.perWp).filter(function(e){return e[1].viol>0;}).sort(function(a,b){return b[1].viol-a[1].viol;}).slice(0,8).map(function(e){return e[0]+'('+e[1].viol+'viol/'+e[1].passes+'pass)';}).join(', ');
-      if(wpViol) ctx+='Waypoints STAR com mais violacoes: '+wpViol+'\n';
+function sep_renderTimeline(rows,limit){
+  const host=$('sep_chartTimeline'); if(!host) return;
+  const allEvents=[];
+  for(const r of rows){
+    const v=r._viz||{}, A=v.A, B=v.B, deps=v.deps||[];
+    if(!A || !Number.isFinite(A.t)) continue;
+    const crit=r._sepSecNum < limit;
+    const base={rowId:r._id,pista:r.pista,data:r.data,crit,seq:r._seq||'',sep:r.sepSec||'',nm:r.sepNm||'',pre:r.csnA||'',seg:r.csnB||''};
+    allEvents.push({...base,type:'precedente',t:A.t,csn:r.csnA||A.csn||'',label:'Precedente na THR'});
+    for(const d of deps){if(Number.isFinite(d.t)) allEvents.push({...base,type:'dep',t:d.t,csn:d.csn||'',label:'DEP intermédio',depNm:d.bNm,depSec:d.bSec});}
+    if(B && Number.isFinite(B.t)) allEvents.push({...base,type:'seguidor',t:B.t,csn:r.csnB||B.csn||'',label:'Seguidor na THR'});
+  }
+  if(!allEvents.length){host.innerHTML='<div class="placeholder" style="height:360px">Sem eventos para a timeline com os filtros atuais.</div>'; return;}
+  allEvents.sort((a,b)=>a.t-b.t || String(a.type).localeCompare(String(b.type)));
+  sep_setTimelineHourOptions(allEvents);
+  const zoom=$('sep_tlZoom')?.value||'2', focus=$('sep_tlHour')?.value||'auto', labelMode=$('sep_tlLabels')?.value||'crit';
+  let minAll=Math.min(...allEvents.map(e=>e.t)), maxAll=Math.max(...allEvents.map(e=>e.t));
+  let minT=minAll, maxT=maxAll, titleExtra='dia completo';
+  if(zoom!=='all'){
+    const hours=Number(zoom);
+    let start;
+    if(focus!=='auto') start=Number(focus)*3600;
+    else {
+      const byH={}; for(const e of allEvents){const h=Math.floor(e.t/3600); byH[h]=(byH[h]||0)+1;}
+      const best=Object.entries(byH).sort((a,b)=>b[1]-a[1]||Number(a[0])-Number(b[0]))[0];
+      start=best?Number(best[0])*3600:Math.floor(minAll/3600)*3600;
     }
-    var violPorVoo={};
-    iasResults.violations.forEach(function(v){ var c=v.csn||'?'; violPorVoo[c]=(violPorVoo[c]||0)+1; });
-    var d1=0,d2=0,d3=0,d4=0,d5=0;
-    Object.values(violPorVoo).forEach(function(n){ if(n>=5)d5++; else if(n===4)d4++; else if(n===3)d3++; else if(n===2)d2++; else d1++; });
-    ctx+='Distribuicao violacoes IAS STAR por voo: 1viol='+d1+' voos | 2viol='+d2+' voos | 3viol='+d3+' voos | 4viol='+d4+' voos | 5+viol='+d5+' voos\n';
-    var topVV=Object.entries(violPorVoo).sort(function(a,b){return b[1]-a[1];}).slice(0,5).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ');
-    if(topVV) ctx+='Top voos com mais violacoes STAR: '+topVV+'\n';
-    // Por companhia (prefixo)
-    var opViolStar={};
-    Object.entries(violPorVoo).forEach(function(e){
-      var pre=(e[0].match(/^[A-Z]{2,3}/)||['?'])[0];
-      opViolStar[pre]=(opViolStar[pre]||0)+e[1];
-    });
-    var topStarOp=Object.entries(opViolStar).sort(function(a,b){return b[1]-a[1];}).slice(0,8).map(function(e){return e[0]+'('+e[1]+'viol)';}).join(', ');
-    if(topStarOp) ctx+='Top companhias com violacoes IAS STAR: '+topStarOp+'\n';
-  } else if(typeof iasResults!=='undefined' && !iasResults){
-    ctx+='Violacoes IAS STAR: analise nao efectuada (usa aba Velocidades STAR)\n';
-  }
-
-  // IAS APP violations
-  if(typeof iasAppResults!=='undefined' && iasAppResults && iasAppResults.records){
-    // Cada record em iasAppResults.records JA e uma violacao (so sao incluidos voos com violCount>0)
-    var appRecs=iasAppResults.records;
-    var totalViolApp=appRecs.reduce(function(s,r){return s+(r.violCount||0);},0);
-    var maxDev=appRecs.reduce(function(s,r){return Math.max(s,r.maxAbsDeviation||0);},0);
-    ctx+='\n=== VIOLAÇÕES IAS APP (Velocidades Aproximação) ===\n';
-    ctx+='Voos com violacoes: '+appRecs.length+' de '+iasAppResults.arrAnalysed+' chegadas analisadas\n';
-    ctx+='Total pontos violados: '+totalViolApp+' | Desvio maximo: '+maxDev.toFixed(0)+' kt\n';
-
-    // Por waypoint (usar campo points de cada record)
-    var wpViolApp={};
-    appRecs.forEach(function(r){
-      if(!r.points) return;
-      r.points.forEach(function(p){
-        if(p.ias==null) return;
-        var dev=Math.abs(p.deviation||0);
-        if(dev<=0) return; // sem violacao
-        var wn=(p.point||'?').toUpperCase();
-        if(!wpViolApp[wn]) wpViolApp[wn]={voos:0,pontos:0,maxDev:0,totalExcesso:0,voosList:[]};
-        wpViolApp[wn].pontos++;
-        wpViolApp[wn].maxDev=Math.max(wpViolApp[wn].maxDev,dev);
-        wpViolApp[wn].totalExcesso+=dev;
-        if(wpViolApp[wn].voosList.indexOf(r.csn)<0){
-          wpViolApp[wn].voos++;
-          wpViolApp[wn].voosList.push(r.csn);
-        }
-      });
-    });
-    if(Object.keys(wpViolApp).length){
-      ctx+='\nViolacoes por waypoint APP (ordenado por numero de voos):\n';
-      Object.entries(wpViolApp).sort(function(a,b){return b[1].voos-a[1].voos;}).forEach(function(e){
-        ctx+='  '+e[0]+': '+e[1].voos+' voos | '+e[1].pontos+' pontos violados | max='+e[1].maxDev.toFixed(0)+'kt | mediaExcesso='+(e[1].totalExcesso/e[1].pontos).toFixed(1)+'kt\n';
-      });
-    }
-
-    // Por companhia
-    var opViolApp={};
-    appRecs.forEach(function(r){
-      var pre=(r.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
-      if(!opViolApp[pre]) opViolApp[pre]={voos:0,pontos:0,maxDev:0};
-      opViolApp[pre].voos++;
-      opViolApp[pre].pontos+=(r.violCount||0);
-      opViolApp[pre].maxDev=Math.max(opViolApp[pre].maxDev,r.maxAbsDeviation||0);
-    });
-    var topAppOp=Object.entries(opViolApp).sort(function(a,b){return b[1].voos-a[1].voos;}).slice(0,10)
-      .map(function(e){return e[0]+'('+e[1].voos+'voos/'+e[1].pontos+'pts/max'+e[1].maxDev.toFixed(0)+'kt)';}).join(', ');
-    ctx+='\nTop companhias: '+topAppOp+'\n';
-
-    // Distribuicao por pista
-    var rwViol={};
-    appRecs.forEach(function(r){ rwViol[r.rwy]=(rwViol[r.rwy]||0)+1; });
-    ctx+='Por pista: '+Object.entries(rwViol).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
-
-    // Distribuicao violacoes por voo
-    var dApp={1:0,2:0,3:0,4:0,5:0};
-    appRecs.forEach(function(r){ var n=r.violCount||0; if(n>=5)dApp[5]++; else if(n>=4)dApp[4]++; else if(n>=3)dApp[3]++; else if(n>=2)dApp[2]++; else dApp[1]++; });
-    ctx+='Distribuicao por voo: 1pt='+dApp[1]+' | 2pt='+dApp[2]+' | 3pt='+dApp[3]+' | 4pt='+dApp[4]+' | 5+pt='+dApp[5]+'\n';
-  } else if(typeof iasAppResults!=='undefined' && !iasAppResults){
-    ctx+='Violacoes IAS APP: analise nao efectuada (usa aba Velocidades APP para analisar)\n';
-  }
-
-  // ── HOLDINGS ─────────────────────────────────────────────────────────────
-  if(typeof holdingsResults!=='undefined' && holdingsResults.length){
-    ctx+='\n=== HOLDINGS DETECTADOS ===\n';
-    ctx+='Total: '+holdingsResults.length+'\n';
-    var holdFix={}, holdDur=[], holdOp={};
-    holdingsResults.forEach(function(h){
-      var fix=h.fix||'sem fix'; holdFix[fix]=(holdFix[fix]||0)+1;
-      holdDur.push(h.durS||0);
-      var pre=(h.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
-      if(!holdOp[pre]) holdOp[pre]={n:0,durS:0};
-      holdOp[pre].n++; holdOp[pre].durS+=(h.durS||0);
-    });
-    var durSum=holdDur.reduce(function(a,b){return a+b;},0);
-    var durMin=Math.min.apply(null,holdDur), durMax=Math.max.apply(null,holdDur);
-    ctx+='Duração: min='+Math.round(durMin)+'s | max='+Math.round(durMax)+'s | média='+Math.round(durSum/holdDur.length)+'s\n';
-    ctx+='Por fix: '+Object.entries(holdFix).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ')+'\n';
-    ctx+='Por companhia: '+Object.entries(holdOp).sort(function(a,b){return b[1].n-a[1].n;}).slice(0,8).map(function(e){return e[0]+'('+e[1].n+'x/'+Math.round(e[1].durS/60)+'min)';}).join(', ')+'\n';
-    ctx+='Lista: '+holdingsResults.map(function(h){return h.csn+'('+h.date+' '+h.startStr+'-'+h.endStr+'/'+Math.round(h.durS)+'s'+(h.fix?'/fix:'+h.fix:'')+')';}).join(', ')+'\n';
-  }
-
-  // ── GO-AROUNDS ────────────────────────────────────────────────────────────
-  if(typeof goAroundResults!=='undefined' && goAroundResults.length){
-    ctx+='\n=== GO-AROUNDS DETECTADOS ===\n';
-    ctx+='Total: '+goAroundResults.length+'\n';
-    var gaOp={};
-    goAroundResults.forEach(function(g){
-      var pre=(g.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?';
-      gaOp[pre]=(gaOp[pre]||0)+1;
-    });
-    ctx+='Por companhia: '+Object.entries(gaOp).sort(function(a,b){return b[1]-a[1];}).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ')+'\n';
-    ctx+='Lista: '+goAroundResults.map(function(g){return g.csn+'('+g.date+' '+g.tMinStr+' alt='+Math.round(g.altMin||0)+'ft climb='+Math.round(g.climb||0)+'ft)';}).join(', ')+'\n';
-  }
-
-  // ── ROT (Runway Occupancy Time) ─────────────────────────────────────────
-  if(typeof rotResults!=='undefined' && rotResults.length){
-    ctx+='\n=== ROT — TEMPO DE OCUPAÇÃO DE PISTA ===\n';
-    ctx+='Total registos: '+rotResults.length+'\n';
-    var rotByRwy={}, rotSecs=[];
-    rotResults.forEach(function(r){
-      var k='RWY'+(r.rwy||'?');
-      if(!rotByRwy[k]) rotByRwy[k]={n:0,sum:0,min:9999,max:0};
-      rotByRwy[k].n++; rotByRwy[k].sum+=r.rotS||0;
-      if(r.rotS<rotByRwy[k].min) rotByRwy[k].min=r.rotS;
-      if(r.rotS>rotByRwy[k].max) rotByRwy[k].max=r.rotS;
-      rotSecs.push(r.rotS||0);
-    });
-    var rotSum=rotSecs.reduce(function(a,b){return a+b;},0);
-    ctx+='Média geral: '+Math.round(rotSum/rotSecs.length)+'s | Min: '+Math.min.apply(null,rotSecs)+'s | Max: '+Math.max.apply(null,rotSecs)+'s\n';
-    Object.entries(rotByRwy).forEach(function(e){
-      ctx+='  '+e[0]+': '+e[1].n+' registos | média='+Math.round(e[1].sum/e[1].n)+'s | min='+e[1].min+'s | max='+e[1].max+'s\n';
-    });
-    // Distribuição por faixas
-    var rotD={u30:0,u45:0,u60:0,u90:0,u120:0,mais:0};
-    rotSecs.forEach(function(s){if(s<30)rotD.u30++;else if(s<45)rotD.u45++;else if(s<60)rotD.u60++;else if(s<90)rotD.u90++;else if(s<120)rotD.u120++;else rotD.mais++;});
-    ctx+='Distribuicao: <30s='+rotD.u30+' | 30-44s='+rotD.u45+' | 45-59s='+rotD.u60+' | 60-89s='+rotD.u90+' | 90-119s='+rotD.u120+' | >=120s='+rotD.mais+'\n';
-  }
-
-  // ── SEQUÊNCIA (aba Pontos/Sequência) ──────────────────────────────────────
-  if(typeof seqResults!=='undefined' && seqResults.length){
-    ctx+='\n=== SEQUÊNCIA / PONTOS ===\n';
-    ctx+='Aeronaves na sequência: '+seqResults.length+'\n';
-    var seqDists=seqResults.filter(function(r){return r.antD!=null;}).map(function(r){return r.antD;});
-    if(seqDists.length){
-      var dSum=seqDists.reduce(function(a,b){return a+b;},0);
-      ctx+='Distância ao anterior: min='+Math.min.apply(null,seqDists).toFixed(1)+'NM | max='+Math.max.apply(null,seqDists).toFixed(1)+'NM | média='+(dSum/seqDists.length).toFixed(1)+'NM\n';
-    }
-    var seqAlts=seqResults.filter(function(r){return r.alt!=null&&r.alt>0;}).map(function(r){return r.alt;});
-    if(seqAlts.length){
-      var aSum=seqAlts.reduce(function(a,b){return a+b;},0);
-      ctx+='Altitude no ponto: min='+Math.min.apply(null,seqAlts).toFixed(0)+'ft | max='+Math.max.apply(null,seqAlts).toFixed(0)+'ft | média='+(aSum/seqAlts.length).toFixed(0)+'ft\n';
-    }
-  }
-
-  // ── FAST (Separação entre chegadas consecutivas) ──────────────────────────
-  if(typeof _fastPairs!=='undefined' && _fastPairs.length){
-    // Reconstruir depEpochs (mesma lógica da aba FAST)
-    var depEpochs=[];
-    Object.values(flights).forEach(function(f){
-      if(!f||!f.rows||classifyFlight(f.rows)!=='dep')return;
-      var firstT=Infinity;
-      for(var i=0;i<f.rows.length;i++){var t=rowEpoch(f.rows[i]);if(!isNaN(t)&&t<firstT)firstT=t;}
-      if(isFinite(firstT)&&firstT>0)depEpochs.push(firstT);
-    });
-    depEpochs.sort(function(a,b){return a-b;});
-
-    // Limiar da aba FAST (usa o valor actual do input, default 160)
-    var fastThr=parseInt($('fastThreshold')&&$('fastThreshold').value)||160;
-
-    // ATENÇÃO: a aba FAST mostra sep < fastThr (strict)
-    var paresAbaixo=_fastPairs.filter(function(p){return p.sep<fastThr;});
-    var paresAbaixoComDep=paresAbaixo.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
-    var paresAbaixoSemDep=paresAbaixo.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
-
-    // Todos os pares (sem filtro de limiar)
-    var todosComDep=_fastPairs.filter(function(p){return _pairHasIntercalDep(p,depEpochs);});
-    var todosSemDep=_fastPairs.filter(function(p){return !_pairHasIntercalDep(p,depEpochs);});
-
-    // Sep min/max/média
-    var sepSum=0,sepMin=_fastPairs[0].sep,sepMax=_fastPairs[0].sep;
-    _fastPairs.forEach(function(p){sepSum+=p.sep;if(p.sep<sepMin)sepMin=p.sep;if(p.sep>sepMax)sepMax=p.sep;});
-    var sepMean=(sepSum/_fastPairs.length).toFixed(1);
-
-    // Por pista
-    var byRwy={};
-    _fastPairs.forEach(function(p){var r=p.lead&&p.lead.rwy?'RWY'+p.lead.rwy:'?';byRwy[r]=(byRwy[r]||0)+1;});
-
-    // Distribuição por faixas de 30s
-    var fx={};
-    var faixas=[30,60,90,120,150,180,210,240,270,300,360,600];
-    faixas.forEach(function(f){fx[f]=0;});
-    _fastPairs.forEach(function(p){
-      for(var i=0;i<faixas.length;i++){if(p.sep<faixas[i]){fx[faixas[i]]++;break;}}
-    });
-
-    ctx+='\n=== DADOS DE SEPARAÇÃO ENTRE CHEGADAS CONSECUTIVAS (FAST) ===\n';
-    ctx+='IMPORTANTE: os números abaixo espelham exactamente o que a aba FAST mostra.\n';
-    ctx+='Limiar configurado na aba FAST: '+fastThr+'s (mostra pares com sep < '+fastThr+'s)\n';
-    ctx+='Total de pares calculados (todos): '+_fastPairs.length+'\n';
-    ctx+='Separação: min='+sepMin+'s | max='+sepMax+'s | média='+sepMean+'s\n';
-    ctx+='Por pista: '+Object.entries(byRwy).map(function(e){return e[0]+'='+e[1];}).join(' | ')+'\n';
-    ctx+='\nPARES COM sep < '+fastThr+'s (= o que a aba FAST mostra sem filtro A/C intercalar): '+paresAbaixo.length+'\n';
-    ctx+='  - Com descolagem intercalar (= aba FAST com filtro A/C INTERCALAR activo): '+paresAbaixoComDep.length+'\n';
-    ctx+='  - Sem descolagem intercalar: '+paresAbaixoSemDep.length+'\n';
-    ctx+='\nTodos os pares (sem filtro de limiar):\n';
-    ctx+='  - Com descolagem intercalar: '+todosComDep.length+'\n';
-    ctx+='  - Sem descolagem intercalar: '+todosSemDep.length+'\n';
-    ctx+='\nDistribuicao por faixas:\n';
-    ctx+='  <30s='+fx[30]+' | 30-59s='+fx[60]+' | 60-89s='+fx[90]+' | 90-119s='+fx[120]+' | 120-149s='+fx[150]+' | 150-179s='+fx[180]+' | 180-209s='+fx[210]+' | 210-239s='+fx[240]+' | 240-269s='+fx[270]+' | 270-299s='+fx[300]+' | 300-359s='+fx[360]+' | >=360s='+fx[600]+'\n';
-
-    // Detalhe dos pares abaixo do limiar (max 50 para não sobrecarregar)
-    if(paresAbaixo.length){
-      ctx+='\nDetalhe dos pares abaixo de '+fastThr+'s:\n';
-      paresAbaixo.slice(0,50).forEach(function(p,i){
-        var comDep=_pairHasIntercalDep(p,depEpochs)?'COM DEP intercalar':'SEM DEP intercalar';
-        ctx+='  '+(i+1)+'. '+p.lead.csn+' → '+p.trail.csn+' | RWY'+(p.lead.rwy||'?')+' | '+((p.lead.tTHRstr)||'')+' | sep='+p.sep+'s | '+comDep+'\n';
-      });
-      if(paresAbaixo.length>50) ctx+='  ... ('+( paresAbaixo.length-50)+' pares adicionais omitidos)\n';
-    }
-  } else if(typeof finalResults!=='undefined' && finalResults.length){
-    ctx+='\nSeparacao entre chegadas (FAST): dados da aba Final disponiveis ('+finalResults.length+' chegadas) mas pares nao foram calculados. O utilizador deve ir a aba Analise Op. > FAST.\n';
+    minT=start; maxT=start+hours*3600; titleExtra=`${String(Math.floor(start/3600)).padStart(2,'0')}h-${String(Math.floor(maxT/3600)).padStart(2,'0')}h`;
   } else {
-    ctx+='\nSeparacao entre chegadas (FAST): sem dados. Vai a aba Final e clica Analisar, depois Analise Op. > FAST.\n';
+    const pad=Math.max(60,(maxAll-minAll)*0.02); minT=minAll-pad; maxT=maxAll+pad;
   }
-
-  // ── FINAL (chegadas analisadas) ───────────────────────────────────────────
-  if(typeof finalResults!=='undefined' && finalResults.length){
-    ctx+='\n=== CHEGADAS ANALISADAS (ABA FINAL) ===\n';
-    ctx+='Total chegadas analisadas: '+finalResults.length+'\n';
-    var rwyCnt={};
-    finalResults.forEach(function(r){rwyCnt[r.rwy]=(rwyCnt[r.rwy]||0)+1;});
-    ctx+='Por pista: '+Object.entries(rwyCnt).map(function(e){return 'RWY'+e[0]+'='+e[1];}).join(' | ')+'\n';
-  }
-
-  // ── DATAS E TRÁFEGO POR DIA ────────────────────────────────────────────────
-  var perDay={};
-  Object.entries(flights).forEach(function(kv){
-    var csn=kv[0], f=kv[1];
-    var cls=classifyFlight(f.rows);
-    var dates={};
-    f.rows.forEach(function(r){ if(r._date&&r._date!=='??') dates[r._date]=1; });
-    Object.keys(dates).forEach(function(d){
-      if(!perDay[d]) perDay[d]={arr:0,dep:0,nvl:0,total:0};
-      perDay[d].total++;
-      if(cls==='arr') perDay[d].arr++;
-      else if(cls==='dep') perDay[d].dep++;
-      else perDay[d].nvl++;
-    });
+  const events=allEvents.filter(e=>e.t>=minT && e.t<=maxT);
+  const visibleRows=rows.filter(r=>{const v=r._viz||{}, A=v.A, B=v.B; return (A&&A.t>=minT&&A.t<=maxT) || (B&&B.t>=minT&&B.t<=maxT) || ((v.deps||[]).some(d=>d.t>=minT&&d.t<=maxT));});
+  if(!events.length){host.innerHTML='<div class="placeholder" style="height:320px">Sem eventos nesta janela horária da timeline.</div>'; return;}
+  const durationH=Math.max((maxT-minT)/3600, 0.5);
+  const pxPerHour=zoom==='all'?900:(zoom==='4'?1200:(zoom==='2'?1500:2000));
+  const minW=zoom==='1'?2100:(zoom==='2'?2800:(zoom==='4'?4200:1800));
+  const w=Math.max(minW, Math.round(durationH*pxPerHour)+160), h=380, padL=90,padR=56,padT=58,padB=74,plotW=w-padL-padR;
+  const lanes=['02','20']; const yLane=p=>p==='20'?260:150;
+  const xScale=t=>padL+((t-minT)/(maxT-minT))*plotW;
+  const tickStep=(zoom==='1')?900:((zoom==='2'||zoom==='4')?1800:3600);
+  const tickStart=Math.ceil(minT/tickStep)*tickStep;
+  let ticks='';
+  for(let t=tickStart;t<=maxT;t+=tickStep){const x=xScale(t), strong=t%3600===0; ticks+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${h-padB}" stroke="${strong?'#cbd5e1':'#e8edf3'}"/><text x="${x}" y="${h-26}" text-anchor="middle" font-size="10" fill="#64748b">${strong?fmtTime(t).slice(0,5):fmtTime(t).slice(3,5)}</text>`;}
+  const laneSvg=lanes.map(p=>{const y=yLane(p);return `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#cbd5e1"/><text x="16" y="${y+4}" font-size="13" font-weight="900" fill="#334155">RWY ${p}</text>`;}).join('');
+  const segments=visibleRows.map(r=>{const v=r._viz||{}, A=v.A, B=v.B;if(!A||!B||!Number.isFinite(A.t)||!Number.isFinite(B.t))return '';const y=yLane(r.pista);const x1=Math.max(padL,Math.min(w-padR,xScale(A.t))), x2=Math.max(padL,Math.min(w-padR,xScale(B.t)));const col=r._sepSecNum<limit?'#b91c1c':'#94a3b8';const tip=sep_tooltipLines([`Par precedente/seguidor: ${r.csnA} → ${r.csnB}`,`RWY ${r.pista} · ${r.data}`,`Separação: ${r.sepSec} s · ${r.sepNm} NM`,`Sequência: ${r._seq||''}`,r.depCsn?`DEP: ${r.depCsn}`:'Sem DEP intermédio']);return `<g class="timelineEvent" data-rowid="${r._id}">${tip}<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${col}" stroke-width="${r._sepSecNum<limit?4:2}" opacity=".58"/></g>`;}).join('');
+  const markers=events.map((e,idx)=>{const x=xScale(e.t), y=yLane(e.pista)+(e.type==='precedente'?-16:(e.type==='seguidor'?16:0));let col=e.type==='dep'?'#f59e0b':(e.type==='seguidor'?'#7c3aed':'#0b5cad');let stroke=e.crit?'#b91c1c':'#334155';const tip=sep_tooltipLines([e.label+`: ${e.csn}`,`Hora: ${fmtTime(e.t)} · RWY ${e.pista} · ${e.data}`,`Par: ${e.pre} → ${e.seg}`,`Separação: ${e.sep} s · ${e.nm} NM`,`Sequência: ${e.seq}`,e.type==='dep'?`Seguidor à THR no DEP: ${e.depSec||''} s · ${e.depNm||''} NM`:null,e.crit?`Abaixo do limite ${limit}s`:`Dentro/igual ao limite ${limit}s`]);
+    const shape=e.type==='dep'?`<rect x="${x-5}" y="${y-5}" width="10" height="10" rx="2" fill="${col}" stroke="${stroke}" stroke-width="${e.crit?2:1}"/>`:`<circle cx="${x}" cy="${y}" r="5.5" fill="${col}" stroke="${stroke}" stroke-width="${e.crit?2:1}"/>`;
+    const showLabel=labelMode==='all' || (labelMode==='crit' && e.crit);
+    const labelY=e.type==='precedente'?y-16:(e.type==='seguidor'?y+26:y-18); const label=showLabel?`<g><rect x="${x+7}" y="${labelY-10}" width="${Math.max(34,(e.csn||'').length*6.2)}" height="13" rx="3" fill="#fbfcfd" opacity=".82"/><text x="${x+9}" y="${labelY}" font-size="11" fill="#334155">${sep_escSvg(e.csn)}</text></g>`:'';
+    return `<g class="timelineEvent" data-rowid="${e.rowId}">${tip}${shape}${label}</g>`;
+  }).join('');
+  const critCount=visibleRows.filter(r=>r._sepSecNum<limit).length;
+  host.innerHTML=`<svg class="timelineSvg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="Timeline operacional">
+    <rect x="0" y="0" width="${w}" height="${h}" fill="#fbfcfd"/>
+    <text x="14" y="22" font-size="12" font-weight="900" fill="#334155">Timeline operacional · ${titleExtra} · ${visibleRows.length} pares · ${critCount} abaixo de ${limit}s</text>
+    ${ticks}${laneSvg}${segments}${markers}
+    <text x="${padL}" y="${h-10}" font-size="10" fill="#64748b">${fmtTime(minT)}</text>
+    <text x="${w-padR}" y="${h-10}" text-anchor="end" font-size="10" fill="#64748b">${fmtTime(maxT)}</text>
+  </svg>`;
+  host.querySelectorAll('.timelineEvent').forEach(el=>el.addEventListener('click',()=>{selectedRowId=Number(el.dataset.rowid);activateTab('tabela');renderTable();renderViz(sep_results.find(r=>r._id===selectedRowId));}));
+}
+function sep_renderCriticalTable(rows,limit){
+  const top=[...rows].sort((a,b)=>a._sepSecNum-b._sepSecNum).slice(0,10);
+  const heads=['Pista','Data','Hora A','Callsign A','Callsign B','Seq.','Sep. s','Sep. NM','DEP','Hora DEP','Seguidor no DEP'];
+  $('sep_critTbl').tHead.innerHTML='<tr>'+heads.map(h=>`<th>${h}</th>`).join('')+'</tr>';
+  $('sep_critTbl').tBodies[0].innerHTML=top.map(r=>`<tr data-rowid="${r._id}"><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td><b>${sep_escHtml(r.csnA)}</b></td><td><b>${sep_escHtml(r.csnB)}</b></td><td>${sep_escHtml(r._seq||'')}</td><td class="num ${r._sepSecNum<limit?'red':'blue'}">${sep_escHtml(String(r.sepSec))}</td><td class="num">${sep_escHtml(String(r.sepNm))}</td><td>${r.depCsn?`<span class="pill dep">${sep_escHtml(r.depCsn)}</span>`:'<span class="pill nodep">Sem DEP</span>'}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}</td></tr>`).join('');
+  document.querySelectorAll('#critTbl tbody tr').forEach(tr=>tr.onclick=()=>{selectedRowId=Number(tr.dataset.rowid); activateTab('tabela'); renderTable(); renderViz(sep_results.find(r=>r._id===selectedRowId));});
+}
+function sep_barSvg(data,opt){
+  const w=opt.w,h=opt.h,padL=42,padB=38,padT=18,padR=14, plotW=w-padL-padR, plotH=h-padT-padB, max=Math.max(1,...data.map(d=>d[opt.valueKey]));
+  const bw=plotW/Math.max(1,data.length)*0.72, gap=plotW/Math.max(1,data.length);
+  const bars=data.map((d,i)=>{const val=d[opt.valueKey], bh=val/max*plotH, x=padL+i*gap+(gap-bw)/2, y=padT+plotH-bh, col=opt.criticalFn&&opt.criticalFn(d)?'#b91c1c':'#0b5cad'; const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(d)):''; return `<g class="modalSource" data-modal-key="${d._modalKey||''}" data-tip="1">${tip}<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${col}"/><text x="${x+bw/2}" y="${Math.max(11,y-5)}" text-anchor="middle" font-size="10" fill="#334155">${val}</text><text x="${x+bw/2}" y="${h-15}" text-anchor="middle" font-size="10" fill="#475569">${sep_escSvg(d[opt.labelKey])}</text></g>`}).join('');
+  return `<svg class="chartSvg" viewBox="0 0 ${w} ${h}"><line x1="${padL}" y1="${padT+plotH}" x2="${w-padR}" y2="${padT+plotH}" stroke="#cbd5e1"/><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#cbd5e1"/><text x="8" y="14" font-size="10" fill="#64748b">${sep_escSvg(opt.titleY||'')}</text>${bars}</svg>`;
+}
+function sep_groupedBarSvg(data,opt){
+  const w=opt.w,h=opt.h,padL=42,padB=42,padT=22,padR=16, plotW=w-padL-padR, plotH=h-padT-padB, max=Math.max(1,...data.flatMap(d=>[d[opt.aKey],d[opt.bKey]]));
+  const groupW=plotW/Math.max(1,data.length), bw=Math.min(24,groupW*.28);
+  const bars=data.map((d,i)=>{const x0=padL+i*groupW+groupW/2; const a=d[opt.aKey], b=d[opt.bKey], ah=a/max*plotH, bh=b/max*plotH; const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(d)):''; return `<g data-tip="1">${tip}<rect class="modalSource" data-modal-key="${d._modalKeyTotal||d._modalKey||''}" x="${x0-bw-2}" y="${padT+plotH-ah}" width="${bw}" height="${ah}" rx="3" fill="#0b5cad"/><rect class="modalSource" data-modal-key="${d._modalKeyCrit||d._modalKey||''}" x="${x0+2}" y="${padT+plotH-bh}" width="${bw}" height="${bh}" rx="3" fill="#b91c1c"/><text x="${x0-bw/2-2}" y="${Math.max(11,padT+plotH-ah-4)}" text-anchor="middle" font-size="9" fill="#334155">${a}</text><text x="${x0+bw/2+2}" y="${Math.max(11,padT+plotH-bh-4)}" text-anchor="middle" font-size="9" fill="#334155">${b}</text><text x="${x0}" y="${h-16}" text-anchor="middle" font-size="10" fill="#475569">${sep_escSvg(d[opt.labelKey])}</text></g>`}).join('');
+  return `<svg class="chartSvg" viewBox="0 0 ${w} ${h}"><line x1="${padL}" y1="${padT+plotH}" x2="${w-padR}" y2="${padT+plotH}" stroke="#cbd5e1"/><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#cbd5e1"/>${bars}<text x="${w-170}" y="14" font-size="10" fill="#0b5cad">■ ${sep_escSvg(opt.aLab)}</text><text x="${w-88}" y="14" font-size="10" fill="#b91c1c">■ ${sep_escSvg(opt.bLab)}</text></svg>`;
+}
+function sep_stackInfoBars(data,opt){
+  const w=opt.w,h=opt.h,padL=76,padB=24,padT=12,padR=22, plotW=w-padL-padR, plotH=h-padT-padB, max=Math.max(1,...data.map(d=>d.total));
+  const rowH=plotH/Math.max(1,data.length);
+  const rows=data.map((d,i)=>{const y=padT+i*rowH+14, totalW=d.total/max*plotW, critW=d.crit/max*plotW, depW=d.dep/max*plotW; const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(d)):''; return `<g data-tip="1">${tip}<text x="12" y="${y+14}" font-size="12" font-weight="800" fill="#334155">${d.label}</text><rect class="modalSource" data-modal-key="${d._modalKeyTotal||''}" x="${padL}" y="${y}" width="${totalW}" height="18" rx="5" fill="#0b5cad" opacity=".75"/><rect class="modalSource" data-modal-key="${d._modalKeyCrit||''}" x="${padL}" y="${y+23}" width="${critW}" height="18" rx="5" fill="#b91c1c"/><rect class="modalSource" data-modal-key="${d._modalKeyDep||''}" x="${padL}" y="${y+46}" width="${depW}" height="18" rx="5" fill="#f59e0b"/><text x="${Math.min(w-62,padL+totalW+6)}" y="${y+14}" font-size="11" fill="#334155">total ${d.total}</text><text x="${Math.min(w-62,padL+critW+6)}" y="${y+37}" font-size="11" fill="#334155">crit ${d.crit}</text><text x="${Math.min(w-62,padL+depW+6)}" y="${y+60}" font-size="11" fill="#334155">DEP ${d.dep}</text></g>`}).join('');
+  return `<svg class="chartSvg" viewBox="0 0 ${w} ${h}">${rows}</svg>`;
+}
+function sep_scatterSvg(pts,opt){
+  const w=opt.w,h=opt.h,padL=46,padB=38,padT=18,padR=20, plotW=w-padL-padR, plotH=h-padT-padB;
+  const maxX=Math.max(opt.limit||165, 1, ...pts.map(p=>p.x))*1.08;
+  const maxY=Math.max(1, ...pts.map(p=>p.y))*1.10;
+  const xScale=x=>padL+(x/maxX)*plotW;
+  const yScale=y=>padT+plotH-(y/maxY)*plotH;
+  const limitX=xScale(opt.limit||0);
+  const grid=[3,4,5,6].filter(v=>v<maxY);
+  const gridSvg=grid.map(v=>`<line x1="${padL}" y1="${yScale(v)}" x2="${w-padR}" y2="${yScale(v)}" stroke="#e2e8f0"/><text x="8" y="${yScale(v)+4}" font-size="10" fill="#64748b">${v}NM</text>`).join('');
+  const points=pts.map(p=>{const col=p.dep?'#f59e0b':'#0f766e'; const stroke=p.crit?'#b91c1c':'#334155'; const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(p)):''; return `<g class="modalSource" data-modal-key="${p._modalKey||''}" data-tip="1">${tip}<circle cx="${xScale(p.x)}" cy="${yScale(p.y)}" r="4.5" fill="${col}" stroke="${stroke}" stroke-width="${p.crit?2:1}" opacity=".9"/></g>`}).join('');
+  return `<svg class="chartSvg" viewBox="0 0 ${w} ${h}"><line x1="${padL}" y1="${padT+plotH}" x2="${w-padR}" y2="${padT+plotH}" stroke="#cbd5e1"/><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#cbd5e1"/>${gridSvg}<line x1="${limitX}" y1="${padT}" x2="${limitX}" y2="${padT+plotH}" stroke="#b91c1c" stroke-dasharray="5 4"/><text x="${limitX+4}" y="14" font-size="10" fill="#b91c1c">${opt.limit}s</text>${points}<text x="${w-140}" y="${h-10}" font-size="10" fill="#64748b">separação (s)</text><text x="6" y="14" font-size="10" fill="#64748b">distância B</text></svg>`;
+}
+function sep_companySummary(movs, pairs, limit){
+  const by=new Map();
+  for(const m of movs){const c=m.company||companyFromCallsign(m.callsign); if(!by.has(c)) by.set(c,{company:c,movements:0,arr:0,dep:0,critical:0,rate:0,_movRows:[],_critRows:[]}); const o=by.get(c); o.movements++; if(m.type==='ARR') o.arr++; else if(m.type==='DEP') o.dep++; o._movRows.push(m);}
+  const critPairs=pairs.filter(r=>r._sepSecNum<limit);
+  for(const r of critPairs){const comps=[r._companyA||companyFromCallsign(r.csnA), r._companyB||companyFromCallsign(r.csnB)].filter(Boolean); for(const c of [...new Set(comps)]){if(!by.has(c)) by.set(c,{company:c,movements:0,arr:0,dep:0,critical:0,rate:0,_movRows:[],_critRows:[]}); const o=by.get(c); o.critical++; o._critRows.push(r);}}
+  for(const o of by.values()) o.rate=o.movements?o.critical/o.movements:0;
+  return [...by.values()].sort((a,b)=>b.movements-a.movements||a.company.localeCompare(b.company));
+}
+function sep_movementHourSummary(movs){const hours=[...Array(24)].map((_,i)=>String(i).padStart(2,'0')); const map=new Map(hours.map(h=>[h,{hour:h,arr:0,dep:0,total:0,_rows:[]}])); for(const m of movs){const h=(m.hora||'').slice(0,2)||sep_hourOfTime(m.t); const o=map.get(h)||{hour:h,arr:0,dep:0,total:0,_rows:[]}; if(m.type==='ARR') o.arr++; else if(m.type==='DEP') o.dep++; o.total++; o._rows.push(m); map.set(h,o);} return [...map.values()].filter(o=>o.total>0);}
+function sep_setKpiModal(id,title,rows,subtitle){ const el=$(id); if(!el) return; const card=el.closest('.miniKpi,.metric')||el; card.dataset.modalKey=sep_registerModalData(title,rows,subtitle); card.title='Clicar para ver dados de origem'; }
+function sep_pct(a,b){return b?((a/b)*100).toFixed(1)+'%':'0%'}
+function sep_tooltipLines(lines){return `<title>${sep_escSvg(lines.filter(x=>x!==null&&x!==undefined).join('\n'))}</title>`}
+function sep_hourOfTime(t){return String(Math.floor(((Number(t)||0)+86400)%86400/3600)).padStart(2,'0')}
+function sep_registerModalData(title, rows, subtitle){
+  const key='m'+(++sep_modalCounter);
+  sep_modalDatas.set(key,{title,rows:[...(rows||[])],subtitle:subtitle||''});
+  return key;
+}
+function sep_bindModalClicks(){
+  document.querySelectorAll('[data-modal-key]').forEach(el=>{
+    if(el.dataset.boundModal==='1') return;
+    el.dataset.boundModal='1';
+    el.addEventListener('click',ev=>{ev.stopPropagation(); ev.__modalHandled=true; const key=el.dataset.modalKey; if(key) sep_openDataModal(key);});
   });
-  var dayKeys=Object.keys(perDay).sort();
-  if(dayKeys.length){
-    ctx+='\n=== TRÁFEGO POR DIA ===\n';
-    ctx+='Dias carregados: '+dayKeys.length+'\n';
-    dayKeys.forEach(function(d){
-      var dv=perDay[d];
-      // formatar data AAAAMMDD → DD/MM/AAAA
-      var df=d.length===8?(d.slice(6,8)+'/'+d.slice(4,6)+'/'+d.slice(0,4)):d;
-      ctx+='  '+df+': total='+dv.total+' | ARR='+dv.arr+' | DEP='+dv.dep+' | NVL='+dv.nvl+'\n';
+}
+function sep_openDataModal(key){
+  const data=sep_modalDatas.get(key); if(!data) return;
+  const rows=data.rows||[];
+  $('dataModalTitle').textContent=data.title||'Dados de origem';
+  $('dataModalSub').textContent=(data.subtitle?data.subtitle+' · ':'')+`${rows.length.toLocaleString('pt-PT')} linha(s) de origem`;
+  const isMov=rows.some(r=>r && r._isMovement);
+  let heads, bodyRows, hint;
+  if(isMov){
+    heads=['Tipo','Pista','Data','Hora','Callsign','Companhia','IAS','Ficheiro']; hint='Dados de movimentos detetados. ARR = aterragem; DEP = descolagem estimada.';
+    bodyRows=rows.map(r=>`<tr><td><b>${sep_escHtml(r.type||'')}</b></td><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.hora)}</td><td><b>${sep_escHtml(r.callsign||'')}</b></td><td>${sep_escHtml(r.company||'')}</td><td class="num">${sep_escHtml(r.ias||'')}</td><td>${sep_escHtml(r.fileName||'')}</td></tr>`).join('');
+  } else {
+    heads=['Pista','Data','Hora THR precedente','Precedente','IAS prec.','Seguidor','IAS seg.','Sep. s','Sep. NM','Seq.','DEP','Hora DEP','Seguidor no DEP']; hint='Clica numa linha para abrir a ocorrência na aba Tabela.';
+    bodyRows=rows.map(r=>`<tr data-rowid="${r._id}"><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td><b>${sep_escHtml(r.csnA)}</b></td><td class="num">${sep_escHtml(r.iasA)}</td><td><b>${sep_escHtml(r.csnB||'')}</b></td><td class="num">${sep_escHtml(r.iasB||'')}</td><td class="num ${r._sepSecNum<Number($('sep_anaLimit')?.value||165)?'red':'blue'}">${sep_escHtml(r.sepSec||'')}</td><td class="num">${sep_escHtml(r.sepNm||'')}</td><td>${sep_escHtml(r._seq||'')}</td><td>${r.depCsn?`<span class="pill dep">${sep_escHtml(r.depCsn)}</span>`:'<span class="pill nodep">Sem DEP</span>'}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}${r.bNmAtDep?` s / ${sep_escHtml(r.bNmAtDep)} NM`:''}</td></tr>`).join('');
+  }
+  $('dataModalBody').innerHTML=`<div class="modalActions"><button type="button" class="secondary" id="modalExportBtn">Exportar estes dados</button><span class="small">${hint}</span></div><div class="analysisTableWrap" style="max-height:62vh"><table><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${bodyRows||`<tr><td colspan="${heads.length}" class="mutedCell">Sem linhas de origem para este indicador.</td></tr>`}</tbody></table></div>`;
+  $('sep_dataModalBackdrop').classList.add('open');
+  document.querySelectorAll('#dataModalBody tbody tr[data-rowid]').forEach(tr=>tr.onclick=()=>{selectedRowId=Number(tr.dataset.rowid); sep_closeDataModal(); activateTab('tabela'); renderTable(); renderViz(sep_results.find(r=>r._id===selectedRowId));});
+  const exp=$('modalExportBtn'); if(exp) exp.onclick=()=>sep_exportRowsAsExcel(rows,(data.title||'dados').replace(/[^\w\-]+/g,'_').toLowerCase()+'.xls');
+}
+function sep_closeDataModal(){ $('sep_dataModalBackdrop').classList.remove('open'); }
+function sep_wireModalUi(){
+  const b=$('sep_dataModalBackdrop'), c=$('dataModalClose');
+  if(c) c.onclick=closeDataModal;
+  if(b) b.addEventListener('click',ev=>{if(ev.target===b) sep_closeDataModal();});
+  document.addEventListener('keydown',ev=>{if(ev.key==='Escape') sep_closeDataModal();});
+  // Delegação global: garante que qualquer elemento/tabela/gráfico com data-modal-key abre o modal,
+  // mesmo que tenha sido criado depois do último sep_bindModalClicks().
+  if(!document.body.dataset.modalDelegationInstalled){
+    document.body.dataset.modalDelegationInstalled='1';
+    document.addEventListener('click',ev=>{
+      if(ev.__modalHandled) return;
+      const el=ev.target && ev.target.closest ? ev.target.closest('[data-modal-key]') : null;
+      if(!el || !document.body.contains(el)) return;
+      const key=el.dataset.modalKey;
+      if(!key || !sep_modalDatas.has(key)) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      sep_openDataModal(key);
     });
-    // Top 3 dias com mais tráfego
-    var top3=dayKeys.slice().sort(function(a,b){return perDay[b].total-perDay[a].total;}).slice(0,3);
-    ctx+='Top 3 dias com mais trafego: '+top3.map(function(d){
-      var df=d.length===8?(d.slice(6,8)+'/'+d.slice(4,6)+'/'+d.slice(0,4)):d;
-      return df+'('+perDay[d].total+')';
-    }).join(', ')+'\n';
   }
-
-  // ── PONTOS — resultados da aba Pontos ──────────────────────────────────────
-  if(typeof ptQueryResults!=='undefined' && ptQueryResults.length && typeof selectedPoint!=='undefined' && selectedPoint){
-    var ptRad=typeof $!=='undefined'&&$('ptRadius')?parseFloat($('ptRadius').value)||1:1;
-    ctx+='\n=== ABA PONTOS — PASSAGENS NO RAIO DE '+ptRad+'NM ===\n';
-    ctx+='Ponto seleccionado: '+selectedPoint.name+'\n';
-    ctx+='Total passagens: '+ptQueryResults.length+'\n';
-    // Por tipo
-    var ptTipo={ARR:0,DEP:0,NVL:0};
-    ptQueryResults.forEach(function(r){ ptTipo[r.tipo]=(ptTipo[r.tipo]||0)+1; });
-    ctx+='Por tipo: ARR='+ptTipo.ARR+' | DEP='+ptTipo.DEP+' | NVL='+ptTipo.NVL+'\n';
-    // Por companhia
-    var ptOp={};
-    ptQueryResults.forEach(function(r){ var pre=(r.csn||'?').match(/^[A-Z]{2,3}/); pre=pre?pre[0]:'?'; ptOp[pre]=(ptOp[pre]||0)+1; });
-    var topPtOp=Object.entries(ptOp).sort(function(a,b){return b[1]-a[1];}).slice(0,8).map(function(e){return e[0]+'('+e[1]+'x)';}).join(', ');
-    ctx+='Top operadores: '+topPtOp+'\n';
-    // Por dia
-    var ptDay={};
-    ptQueryResults.forEach(function(r){ if(r.date) ptDay[r.date]=(ptDay[r.date]||0)+1; });
-    var ptDayKeys=Object.keys(ptDay).sort();
-    if(ptDayKeys.length>1){
-      ctx+='Por dia: '+ptDayKeys.map(function(d){return d+'='+ptDay[d];}).join(' | ')+'\n';
-      var topPtDay=ptDayKeys.slice().sort(function(a,b){return ptDay[b]-ptDay[a];}).slice(0,3);
-      ctx+='Top 3 dias com mais passagens: '+topPtDay.map(function(d){return d+'('+ptDay[d]+'x)';}).join(', ')+'\n';
-    }
-    // Estatísticas IAS e altitude
-    var ptIas=ptQueryResults.filter(function(r){return r.ias&&r.ias!=='—'&&!isNaN(parseFloat(r.ias));}).map(function(r){return parseFloat(r.ias);});
-    if(ptIas.length){
-      var iSum=ptIas.reduce(function(a,b){return a+b;},0);
-      var iMin=Math.min.apply(null,ptIas), iMax=Math.max.apply(null,ptIas);
-      ctx+='IAS no ponto: min='+iMin.toFixed(0)+'kt | max='+iMax.toFixed(0)+'kt | media='+(iSum/ptIas.length).toFixed(0)+'kt\n';
-    }
-    var ptAlt=ptQueryResults.filter(function(r){return r.alt&&r.alt!=='—'&&!isNaN(parseFloat(r.alt));}).map(function(r){return parseFloat(r.alt);});
-    if(ptAlt.length){
-      var aSum=ptAlt.reduce(function(a,b){return a+b;},0);
-      ctx+='Altitude no ponto: min='+Math.min.apply(null,ptAlt).toFixed(0)+'ft | max='+Math.max.apply(null,ptAlt).toFixed(0)+'ft | media='+(aSum/ptAlt.length).toFixed(0)+'ft\n';
-    }
-  }
-
-  return ctx;
 }
-
-async function iaPerguntar(){
-  if(_iaLoading) return;
-  const q = document.getElementById('iaInput').value.trim();
-  if(!q){ alert('Escreve uma pergunta.'); return; }
-  if(!Object.keys(flights).length){ alert('Carrega dados primeiro.'); return; }
-  document.getElementById('iaInput').value='';
-  _iaLoading=true;
-  document.getElementById('iaSendBtn').disabled=true;
-  _iaAddMsg('user', q);
-  const aiDiv = _iaAddMsg('ai', '⏳ A analisar...', false); // false = nao guardar no historico
-  const bubble = aiDiv.querySelector('.ia-bubble');
-  var _model = document.getElementById('iaModelSel').value || iaGetModel();
-  const ctx = _iaBuildCtx();
-  if(!ctx){ bubble.textContent='⚠ Sem dados carregados.'; _iaLoading=false; document.getElementById('iaSendBtn').disabled=false; return; }
-  var _key = iaGetKey();
-  if(!_key){ bubble.textContent='⚠ Sem API Key configurada. Vai às Preferências e cola a tua chave.'; bubble.style.background='rgba(248,113,113,0.1)'; bubble.style.borderColor='var(--red,#f87171)'; _iaLoading=false; document.getElementById('iaSendBtn').disabled=false; return; }
-  var _prov = iaGetProvider();
-  const SYSTEM = 'Es um especialista em analise de dados de trafego aereo e radar. Responde SEMPRE em JSON valido, sem markdown, sem texto fora do JSON. Estrutura: {"texto":"explicacao em portugues de Portugal sem asteriscos","grafico":{"tipo":"bar|pie|line|doughnut","titulo":"titulo","dados":[{"nome":"label","valor":numero}]}} O campo grafico e OPCIONAL. Os valores em valor devem ser SEMPRE numeros inteiros ou decimais, NUNCA strings. Para listas usa hifen (-).';
-  try{
-    var res, raw='{}';
-    var _provObj=IA_PROVIDERS[_prov]||IA_PROVIDERS.anthropic;
-    var _type=_provObj.type||'openai';
-
-    if(_type==='anthropic'){
-      res = await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-api-key':_key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-        body:JSON.stringify({model:_model,max_tokens:2048,system:SYSTEM,messages:[{role:'user',content:ctx+'\nPERGUNTA: '+q}]})
-      });
-      const data=await res.json();
-      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
-      raw=data&&data.content&&data.content[0]&&data.content[0].text?data.content[0].text:'{}';
-
-    } else if(_type==='azure'){
-      var _azEndpoint=iaGetAzureEndpoint();
-      if(!_azEndpoint) throw new Error('Endpoint Azure não configurado. Vai às Preferências.');
-      var _azUrl=_azEndpoint.replace(/\/+$/,'')+'?api-version=2024-02-01';
-      res = await fetch(_azUrl,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','api-key':_key},
-        body:JSON.stringify({messages:[{role:'system',content:SYSTEM},{role:'user',content:ctx+'\nPERGUNTA: '+q}],temperature:0.2,max_tokens:2048,response_format:{type:'json_object'}})
-      });
-      const data=await res.json();
-      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
-      raw=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content?data.choices[0].message.content:'{}';
-
-    } else {
-      // OpenAI-compatible: OpenAI, Groq, Mistral
-      var _oaiUrl=_provObj.url;
-      res = await fetch(_oaiUrl,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+_key},
-        body:JSON.stringify({model:_model,messages:[{role:'system',content:SYSTEM},{role:'user',content:ctx+'\nPERGUNTA: '+q}],temperature:0.2,max_tokens:2048,response_format:{type:'json_object'}})
-      });
-      const data=await res.json();
-      if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:'HTTP '+res.status);
-      raw=data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content?data.choices[0].message.content:'{}';
-    }
-    const parsed=JSON.parse(raw.replace(/```json|```/g,'').trim());
-    var textoResposta=parsed.texto||'(sem resposta)';
-    bubble.textContent=textoResposta;
-    // Gravar resposta real no histórico (o loading foi criado com _record=false)
-    var histEntry={role:'ai', text:textoResposta, grafico:null, graficoImg:null};
-    _iaHistory.push(histEntry);
-    if(parsed.grafico&&parsed.grafico.dados&&parsed.grafico.dados.length){
-      _iaRenderChart(aiDiv,parsed.grafico,histEntry);
-      histEntry.grafico=parsed.grafico;
-    }
-  }catch(err){
-    bubble.textContent='⚠ Erro: '+err.message;
-    bubble.style.background='rgba(248,113,113,0.1)';
-    bubble.style.borderColor='var(--red)';
-  }
-  const chat=document.getElementById('iaChat');
-  if(chat) chat.scrollTop=99999;
-  _iaLoading=false;
-  document.getElementById('iaSendBtn').disabled=false;
-  document.getElementById('iaInput').focus();
+function sep_exportRowsAsExcel(rows,filename){
+  const visible=cols;
+  let html='<table><thead><tr>'+visible.map(c=>`<th>${c[1]}</th>`).join('')+'<th>Sequência</th></tr></thead><tbody>';
+  for(const r of rows){html+='<tr>'+visible.map(([k])=>`<td>${escapeHtml(String(r[k]??''))}</td>`).join('')+`<td>${escapeHtml(String(r._seq||''))}</td></tr>`}
+  html+='</tbody></table>';
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename||'dados_origem.xls'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-
-const _iaTipoMap={'histograma':'bar','barras':'bar','barra':'bar','colunas':'bar','coluna':'bar','linha':'line','linhas':'line','circular':'pie','pizza':'pie','rosca':'doughnut','anel':'doughnut'};
-
-function _iaRenderChart(container, grafico, histEntry){
-  const tipoRaw=(grafico.tipo||'bar').toLowerCase().trim();
-  const tipo=_iaTipoMap[tipoRaw]||(['bar','line','pie','doughnut'].includes(tipoRaw)?tipoRaw:'bar');
-  const titulo=grafico.titulo, dados=grafico.dados;
-  const labels=dados.map(function(d){return d.nome;}), values=dados.map(function(d){return parseFloat(d.valor)||0;});
-  if(values.every(function(v){return v===0;})) return; // nao renderizar grafico com dados a zero
-  const isPie=tipo==='pie'||tipo==='doughnut';
-  const COLORS=['#2563eb','#16a34a','#dc2626','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#0f766e','#6d28d9','#b45309','#be123c','#047857','#1d4ed8'];
-  const wrap=document.createElement('div');
-  wrap.style.cssText='margin-top:12px;background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:14px';
-  const ttl=document.createElement('div');
-  ttl.style.cssText='font-size:10px;color:var(--accent);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;font-weight:700';
-  ttl.textContent='▸ '+(titulo||'Grafico');
-  wrap.appendChild(ttl);
-  const cw=document.createElement('div');
-  cw.style.cssText='position:relative;height:200px;max-width:480px;';
-  const canvas=document.createElement('canvas');
-  cw.appendChild(canvas); wrap.appendChild(cw); container.appendChild(wrap);
-  const ch=new Chart(canvas,{
-    type:tipo,
-    data:{labels:labels,datasets:[{label:titulo||'',data:values,backgroundColor:isPie?COLORS.slice(0,values.length):COLORS[0]+'cc',borderColor:isPie?COLORS.slice(0,values.length):COLORS[0],borderWidth:isPie?2:1,borderRadius:tipo==='bar'?4:0}]},
-    options:{responsive:true,maintainAspectRatio:false,
-      animation:{onComplete:function(){
-        // Guardar PNG directamente no histEntry passado por referência
-        try{
-          if(histEntry) histEntry.graficoImg=canvas.toDataURL('image/png');
-        }catch(e){}
-      }},
-      plugins:{legend:{display:isPie,position:'right',labels:{color:'var(--text)',font:{size:10},boxWidth:10}},tooltip:{bodyColor:'var(--text)',titleColor:'var(--accent)'}},
-      scales:isPie?{}:{x:{ticks:{color:'var(--muted)',font:{size:9},maxRotation:45},grid:{color:'var(--border)'}},y:{ticks:{color:'var(--muted)',font:{size:9}},grid:{color:'var(--border)'},beginAtZero:true}}}
+function sep_sep_movementRowsTableHtml(rows,title){
+  let html=`<h3>${sep_escHtml(title)}</h3><table><thead><tr><th>Tipo</th><th>Pista</th><th>Data</th><th>Hora</th><th>Callsign</th><th>Companhia</th><th>IAS</th><th>Ficheiro</th></tr></thead><tbody>`;
+  if(!rows.length) html+='<tr><td colspan="8">Sem movimentos para os filtros atuais.</td></tr>';
+  for(const r of rows){html+=`<tr><td>${sep_escHtml(r.type||'')}</td><td>${sep_escHtml(r.pista||'')}</td><td>${sep_escHtml(r.data||'')}</td><td>${sep_escHtml(r.hora||'')}</td><td><b>${sep_escHtml(r.callsign||'')}</b></td><td>${sep_escHtml(r.company||'')}</td><td class="num">${sep_escHtml(r.ias||'')}</td><td>${sep_escHtml(r.fileName||'')}</td></tr>`}
+  return html+'</tbody></table>';
+}
+function sep_mean(vals){const a=vals.filter(Number.isFinite);return a.length?a.reduce((x,y)=>x+y,0)/a.length:NaN}
+function sep_median(vals){const a=vals.filter(Number.isFinite).sort((x,y)=>x-y);if(!a.length)return NaN;const m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2}
+function sep_modeBy(rows,key,labelFn){const m={};for(const r of rows){const k=key(r);if(!k)continue;m[k]=(m[k]||0)+1}const e=Object.entries(m).sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0])))[0];return e?`${labelFn?labelFn(e[0]):e[0]} (${e[1]})`:'—'}
+function sep_escHtml(s){return String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]||c))}
+function sep_escSvg(s){return sep_escHtml(s)}
+function sep_anaFilteredRows(){
+  const limit=Number($('sep_anaLimit')?.value||165), pista=$('sep_anaPista')?.value||'all', tipo=$('sep_anaTipo')?.value||'all', crit=$('sep_anaCrit')?.value||'all';
+  const data=$('anaData')?.value||'all', hour=$('sep_anaHour')?.value||'all', seq=$('sep_anaSeq')?.value||'all', depNm=$('sep_anaDepNm')?.value||'all';
+  const depNmLimit=depNm==='all'?Infinity:Number(depNm);
+  return sep_results.filter(r=>{
+    if(!r._hasB) return false;
+    if(data!=='all' && r.data!==data) return false;
+    if(hour!=='all' && (r.horaA||'').slice(0,2)!==hour) return false;
+    if(pista!=='all' && r.pista!==pista) return false;
+    if(tipo==='withDep' && !r._hasDep) return false;
+    if(tipo==='noDep' && r._hasDep) return false;
+    if(seq!=='all' && (r._seq||'')!==seq) return false;
+    if(depNm!=='all'){
+      if(!r._hasDep) return false;
+      if(!(r._depDistances||[]).some(nm=>Number(nm)<=depNmLimit)) return false;
+    }
+    if(crit==='crit' && !(r._sepSecNum < limit)) return false;
+    return true;
   });
-  _iaCharts.push(ch);
+}
+function sep_anaFilteredMovements(){
+  const data=$('anaData')?.value||'all', hour=$('sep_anaHour')?.value||'all', pista=$('sep_anaPista')?.value||'all';
+  return sep_movementRows.filter(m=>{
+    if(data!=='all' && m.data!==data) return false;
+    if(hour!=='all' && (m.hora||'').slice(0,2)!==hour) return false;
+    if(pista!=='all' && m.pista!==pista) return false;
+    return true;
+  });
+}
+function sep_refreshAnalysisFilterOptions(){
+  const dates=[...new Set(sep_results.map(r=>r.data).filter(Boolean))].sort();
+  const hours=[...new Set(sep_results.filter(r=>r._hasB).map(r=>(r.horaA||'').slice(0,2)).filter(Boolean))].sort();
+  setSelectOptions('anaData', dates, v=>v);
+  setSelectOptions('sep_anaHour', hours, v=>v+'h');
 }
 
-function _iaAddMsg(role, text, _record){
-  if(_record!==false) _iaHistory.push({role, text, grafico:null});
-  const chat=document.getElementById('iaChat');
-  if(!chat) return document.createElement('div');
-  const empt=chat.querySelector('.ia-empty'); if(empt) empt.remove();
-  const div=document.createElement('div');
-  div.style.cssText='display:flex;flex-direction:column;gap:4px;';
-  const lbl=document.createElement('div');
-  lbl.style.cssText='font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:0 4px;color:'+(role==='user'?'var(--accent)':'var(--green)');
-  lbl.textContent=role==='user'?'◈ TU':'◈ '+(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name||'IA').toUpperCase();
-  const bubble=document.createElement('div');
-  bubble.className='ia-bubble';
-  bubble.style.cssText='padding:10px 13px;border-radius:6px;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;border:1px solid '+(role==='user'?'rgba(0,200,255,0.2)':'rgba(34,211,160,0.2)')+';background:'+(role==='user'?'rgba(0,200,255,0.06)':'rgba(34,211,160,0.06)');
-  bubble.textContent=text;
-  div.appendChild(lbl); div.appendChild(bubble);
-  chat.appendChild(div);
-  chat.scrollTop=99999;
-  return div;
+function renderSepAnalysis(){
+  sep_buildData();
+  sep_refreshAnalysisFilterOptions();
+  sep_renderAnalysis();
+  sep_wireModalUi();
 }
 
-function iaExportar(fmt){
-  if(!_iaHistory.length){ alert('Sem conversa para exportar.'); return; }
-  const now=new Date();
-  const stamp=now.toISOString().replace('T',' ').substring(0,16);
 
-  if(fmt==='html'){
-    var provName=(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name)||'IA';
-    var h='<!DOCTYPE html><html><head><meta charset="utf-8"><title>An\u00e1lise IA \u2014 Flight Track Viewer</title>';
-    h+='<style>*{box-sizing:border-box;}body{margin:0;padding:24px;background:#f0f4f8;font-family:Segoe UI,Arial,sans-serif;color:#1e293b;}';
-    h+='.wrap{max-width:860px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,.10);}';
-    h+='h1{font-size:22px;color:#0f2744;border-bottom:2px solid #0f2744;padding-bottom:8px;margin-bottom:4px;}';
-    h+='.meta{font-size:11px;color:#64748b;margin-bottom:28px;}';
-    h+='.msg{margin-bottom:20px;}';
-    h+='.lbl-user{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#0284c7;margin-bottom:4px;}';
-    h+='.lbl-ai{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#16a34a;margin-bottom:4px;}';
-    h+='.box-user{background:#f0f9ff;border-left:4px solid #0284c7;padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;line-height:1.6;}';
-    h+='.box-ai{background:#f0fdf4;border-left:4px solid #16a34a;padding:10px 14px;border-radius:0 6px 6px 0;font-size:13px;line-height:1.6;white-space:pre-wrap;}';
-    h+='.chart-wrap{margin:12px 0 4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;}';
-    h+='.chart-ttl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#d97706;margin-bottom:8px;}';
-    h+='.chart-img{max-width:100%;height:auto;display:block;border-radius:4px;}';
-    h+='.tbl{border-collapse:collapse;margin-top:8px;font-size:12px;width:auto;min-width:200px;}';
-    h+='.tbl th{background:#0f2744;color:#fff;padding:5px 12px;text-align:left;}';
-    h+='.tbl td{padding:4px 12px;border:1px solid #e2e8f0;}';
-    h+='.tbl tr:nth-child(even) td{background:#f8faff;}';
-    h+='.sep{border:none;border-top:1px solid #e2e8f0;margin:20px 0;}';
-    h+='@media print{body{padding:0;}@page{margin:2cm;}}';
-    h+='</style></head><body><div class="wrap">';
-    h+='<h1>&#9881; An&#225;lise IA &#8212; Flight Track Viewer</h1>';
-    h+='<div class="meta">Exportado em: '+stamp+' &nbsp;&middot;&nbsp; Fornecedor: '+provName+'</div>';
-    _iaHistory.forEach(function(e){
-      if(!e||!e.text||e.text==='⏳ A analisar...') return;
-      if(e.role==='user'){
-        h+='<div class="msg"><div class="lbl-user">&#9658; Pergunta</div>';
-        h+='<div class="box-user">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div></div>';
-      } else {
-        h+='<div class="msg"><div class="lbl-ai">&#9672; '+provName+'</div>';
-        var txt=e.text.split('\n').map(function(l){
-          var s=l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-          if(s.match(/^- /)) s='&bull; '+s.slice(2);
-          return s;
-        }).join('<br>');
-        h+='<div class="box-ai">'+txt+'</div>';
-        if(e.grafico||e.graficoImg){
-          h+='<div class="chart-wrap"><div class="chart-ttl">&#128202; '+(e.grafico&&e.grafico.titulo?e.grafico.titulo.replace(/&/g,'&amp;'):'Gr&#225;fico')+'</div>';
-          if(e.graficoImg) h+='<img class="chart-img" src="'+e.graficoImg+'">';
-          if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
-            h+='<table class="tbl" style="margin-top:'+(e.graficoImg?'12px':'0')+';"><tr><th>Item</th><th>Valor</th></tr>';
-            e.grafico.dados.forEach(function(d){
-              h+='<tr><td>'+String(d.nome).replace(/&/g,'&amp;')+'</td><td style="text-align:right;">'+d.valor+'</td></tr>';
-            });
-            h+='</table>';
-          }
-          h+='</div>';
-        }
-        h+='<hr class="sep"></div>';
-      }
-    });
-    h+='</div></body></html>';
-    _iaDownload(new Blob([h],{type:'text/html;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.html');
+// Daily state
+let sep_dailyState={selectedDates:new Set(),selectedBlocks:new Set(),type:'all'};
+const SEP_DAY_BLOCKS=['00-04','04-08','08-12','12-16','16-20','20-24'];
+
+function sep_dailySetup(){
+  if(!$('sep_dayMonth')) return;
+  const dates=dailyAvailableDates();
+  const months=[...new Set(dates.map(dayMonthKey))].sort();
+  const cur=$('sep_dayMonth').value;
+  $('sep_dayMonth').innerHTML=months.map(m=>`<option value="${sep_escHtml(m)}">${sep_escHtml(m)}</option>`).join('');
+  if(months.includes(cur)) $('sep_dayMonth').value=cur; else if(months.length) $('sep_dayMonth').value=months[0];
+  if(!sep_dailyState.initialized){dates.forEach(d=>sep_dailyState.selectedDates.add(d)); sep_dailyState.initialized=true;}
+  sep_renderDailyControls(); sep_renderDaily();
+}
+function sep_renderDailyControls(){
+  if(!$('sep_dayCalendar')) return;
+  const dates=dailyAvailableDates(), avail=new Set(dates), month=$('sep_dayMonth').value||dayMonthKey(dates[0]||'');
+  const [yy,mm]=month.split('-').map(Number); const first=new Date(yy,mm-1,1); const last=new Date(yy,mm,0); const cells=[];
+  WEEK_DAYS.forEach(d=>cells.push(`<div class="calDow">${d}</div>`));
+  for(let i=0;i<first.getDay();i++) cells.push('<div class="calDay empty"></div>');
+  for(let day=1;day<=last.getDate();day++){
+    const d=`${yy}-${String(mm).padStart(2,'0')}-${String(day).padStart(2,'0')}`; const has=avail.has(d); const sel=sep_dailyState.selectedDates.has(d);
+    const cnt=sep_movementRows.filter(m=>m.data===d).length;
+    cells.push(`<button type="button" class="calDay ${has?'available':''} ${sel?'selected':''}" data-date="${d}" ${has?'':'disabled'}>${String(day).padStart(2,'0')}<span class="mini">${has?cnt:''}</span></button>`);
   }
-
-  else if(fmt==='excel'){
-    // Excel: tabela + imagem do gráfico (base64 inline)
-    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8"><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>An&#225;lise IA</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml></head><body>';
-    html+='<table border="1" style="font-family:Arial;font-size:10pt;"><thead><tr style="background:#0f2744;color:#fff;"><th>Tipo</th><th>Conte&#250;do</th></tr></thead><tbody>';
-    _iaHistory.forEach(function(e){
-      if(!e||!e.text||e.text==='⏳ A analisar...') return;
-      var tipo=e.role==='user'?'Pergunta':'Resposta IA';
-      var bg=e.role==='user'?'#f0f9ff':'#f0fdf4';
-      html+='<tr style="background:'+bg+';vertical-align:top;"><td style="font-weight:bold;white-space:nowrap;padding:4pt 8pt;">'+tipo+'</td><td style="padding:4pt 8pt;">'+e.text.split('\n').map(function(l){return l.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}).join('<br>')+'</td></tr>';
-      if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
-        html+='<tr><td colspan="2" style="padding:4pt 8pt;background:#fffbf0;"><strong>Gr&#225;fico: '+e.grafico.titulo+'</strong></td></tr>';
-        // Nota: Excel não suporta base64 inline — imagem omitida; ver exportação DOC para gráficos.
-        html+='<tr><td style="background:#e2e8f0;font-weight:bold;padding:3pt 8pt;">Item</td><td style="background:#e2e8f0;font-weight:bold;padding:3pt 8pt;">Valor</td></tr>';
-        e.grafico.dados.forEach(function(d,i){
-          html+='<tr style="background:'+(i%2?'#f8faff':'#fff')+';"><td style="padding:3pt 8pt;">'+String(d.nome).replace(/&/g,'&amp;')+'</td><td style="padding:3pt 8pt;text-align:right;">'+d.valor+'</td></tr>';
-        });
-        html+='<tr><td colspan="2" style="padding:2pt;"></td></tr>';
-      }
-    });
-    html+='</tbody></table></body></html>';
-    _iaDownload(new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.xls');
+  $('sep_dayCalendar').innerHTML=cells.join('');
+  document.querySelectorAll('#dayCalendar .calDay.available').forEach(b=>b.onclick=()=>{const d=b.dataset.date; if(sep_dailyState.selectedDates.has(d)) sep_dailyState.selectedDates.delete(d); else sep_dailyState.selectedDates.add(d); sep_renderDailyControls(); sep_renderDaily();});
+  $('sep_dayWeekBtns').innerHTML=WEEK_DAYS.map((w,i)=>`<button type="button" class="chipBtn week" data-week="${i}">${w}</button>`).join('');
+  document.querySelectorAll('#dayWeekBtns button').forEach(b=>b.onclick=()=>{const dow=Number(b.dataset.week); const month=$('sep_dayMonth').value; dates.filter(d=>dayMonthKey(d)===month && dateNoon(d).getDay()===dow).forEach(d=>sep_dailyState.selectedDates.add(d)); sep_renderDailyControls(); sep_renderDaily();});
+  $('sep_dayBlockBtns').innerHTML=SEP_DAY_BLOCKS.map(b=>`<button type="button" class="chipBtn ${sep_dailyState.selectedBlocks.has(b)?'selected':''}" data-block="${b}">${b}</button>`).join('');
+  document.querySelectorAll('#dayBlockBtns button').forEach(b=>b.onclick=()=>{const v=b.dataset.block; if(sep_dailyState.selectedBlocks.has(v)) sep_dailyState.selectedBlocks.delete(v); else sep_dailyState.selectedBlocks.add(v); sep_renderDailyControls(); sep_renderDaily();});
+  document.querySelectorAll('[data-dtype]').forEach(b=>b.classList.toggle('selected',b.dataset.dtype===sep_dailyState.type));
+}
+function sep_dailyRows(){
+  const q=($('sep_daySearch')?.value||'').trim().toUpperCase(); const dates=sep_dailyState.selectedDates, blocks=sep_dailyState.selectedBlocks;
+  return sep_results.filter(r=>r._hasB && dates.has(r.data) && blocks.has(dayBlockOfHour((r.horaA||'').slice(0,2))) && (!q || `${r.csnA} ${r.csnB} ${r.depCsn} ${r.pista} ${r.data}`.toUpperCase().includes(q)));
+}
+function sep_dailyMovements(){
+  const q=($('sep_daySearch')?.value||'').trim().toUpperCase(); const dates=sep_dailyState.selectedDates, blocks=sep_dailyState.selectedBlocks;
+  return sep_movementRows.filter(m=>dates.has(m.data) && blocks.has(dayBlockOfHour((m.hora||'').slice(0,2))) && (sep_dailyState.type==='all'||m.type===sep_dailyState.type) && (!q || `${m.callsign} ${m.company} ${m.pista} ${m.data}`.toUpperCase().includes(q)));
+}
+function sep_dayStats(movs, rows, limit){
+  const days=[...sep_dailyState.selectedDates].sort();
+  return days.map(d=>{const dm=movs.filter(m=>m.data===d), dr=rows.filter(r=>r.data===d), cr=dr.filter(r=>r._sepSecNum<limit); return {label:d.slice(5), date:d, arr:dm.filter(m=>m.type==='ARR').length, dep:dm.filter(m=>m.type==='DEP').length, total:dm.length, pairs:dr.length, crit:cr.length, _movRows:dm, _rows:dr, _critRows:cr};});
+}
+function sep_renderDaily(){
+  if(!$('dayChartMov')) return; modalDatas=new Map(); modalCounter=0;
+  const limit=dailyLimit(), movs=sep_dailyMovements(), rows=sep_dailyRows(), crit=rows.filter(r=>r._sepSecNum<limit), critDep=crit.filter(r=>r._hasDep);
+  const stats=sep_dayStats(movs, rows, limit); const hours=sep_movementHourSummary(movs);
+  const peakArr=[...hours].sort((a,b)=>b.arr-a.arr||a.hour.localeCompare(b.hour))[0], peakDep=[...hours].sort((a,b)=>b.dep-a.dep||a.hour.localeCompare(b.hour))[0];
+  const callsByDay=new Map(); for(const m of movs){if(!m.callsign) continue; if(!callsByDay.has(m.callsign)) callsByDay.set(m.callsign,new Set()); callsByDay.get(m.callsign).add(m.data);}
+  const common=[...callsByDay.entries()].map(([csn,set])=>({csn,days:[...set].sort(),count:set.size,_rows:movs.filter(m=>m.callsign===csn)})).filter(x=>x.count>1).sort((a,b)=>b.count-a.count||a.csn.localeCompare(b.csn));
+  $('dkDays').textContent=sep_dailyState.selectedDates.size; $('dkMov').textContent=movs.length.toLocaleString('pt-PT'); $('dkArr').textContent=movs.filter(m=>m.type==='ARR').length.toLocaleString('pt-PT'); $('dkDep').textContent=movs.filter(m=>m.type==='DEP').length.toLocaleString('pt-PT'); $('dkPairs').textContent=rows.length.toLocaleString('pt-PT'); $('dkCrit').textContent=crit.length.toLocaleString('pt-PT'); $('dkCritDep').textContent=critDep.length.toLocaleString('pt-PT'); $('dkPeakArr').textContent=peakArr?`${peakArr.hour}h (${peakArr.arr})`:'—'; $('dkPeakDep').textContent=peakDep?`${peakDep.hour}h (${peakDep.dep})`:'—'; $('dkCommon').textContent=common.length.toLocaleString('pt-PT');
+  sep_setKpiModal('dkMov','Movimentos nos dias/blocos selecionados',movs,'ARR+DEP filtrados'); sep_setKpiModal('dkArr','Aterragens nos dias/blocos selecionados',movs.filter(m=>m.type==='ARR'),'Movimentos ARR'); sep_setKpiModal('dkDep','Descolagens nos dias/blocos selecionados',movs.filter(m=>m.type==='DEP'),'Movimentos DEP'); sep_setKpiModal('dkPairs','Pares precedente/seguidor',rows,'Pares filtrados'); sep_setKpiModal('dkCrit','Pares abaixo do limite',crit,`Limite ${limit}s`); sep_setKpiModal('dkCritDep','Críticos com DEP',critDep,`Limite ${limit}s e com DEP`); sep_setKpiModal('dkPeakArr','Pico de aterragens',peakArr?peakArr._rows.filter(m=>m.type==='ARR'):[],peakArr?`Hora ${peakArr.hour}h`:``); sep_setKpiModal('dkPeakDep','Pico de descolagens',peakDep?peakDep._rows.filter(m=>m.type==='DEP'):[],peakDep?`Hora ${peakDep.hour}h`:``); sep_setKpiModal('dkCommon','Callsigns comuns entre dias',common.flatMap(c=>c._rows),'Voos que aparecem em mais de um dia selecionado');
+  stats.forEach(d=>{d._modalKeyTotal=sep_registerModalData(`Movimentos ${d.date}`,d._movRows,'ARR+DEP do dia'); d._modalKeyCrit=sep_registerModalData(`Críticos ${d.date}`,d._critRows,`Pares abaixo de ${limit}s`);});
+  $('dayChartMov').innerHTML=sep_groupedBarSvg(stats,{w:760,h:250,labelKey:'label',aKey:'arr',bKey:'dep',aLab:'ARR',bLab:'DEP',tipFn:d=>[`Data: ${d.date}`,`ARR: ${d.arr}`,`DEP: ${d.dep}`,`Movimentos: ${d.total}`,`Pares: ${d.pairs}`,`Críticos: ${d.crit}`]});
+  $('dayChartCrit').innerHTML=sep_barSvg(stats.map(d=>({label:d.label,count:d.crit,_rows:d._critRows,_modalKey:d._modalKeyCrit})),{w:760,h:250,labelKey:'label',valueKey:'count',criticalFn:d=>d.count>0,titleY:'Críticos',tipFn:d=>[`Data: ${d.label}`,`Críticos: ${d.count}`]});
+  const peakByDay=stats.map(d=>{const hs=sep_movementHourSummary(d._movRows); const p=[...hs].sort((a,b)=>b.total-a.total||a.hour.localeCompare(b.hour))[0]; return {label:d.label,count:p?p.total:0,hour:p?p.hour:'—',_rows:p?p._rows:[],_modalKey:sep_registerModalData(`Pico horário ${d.date}`,p?p._rows:[],p?`Hora ${p.hour}h`:'')};});
+  $('dayChartPeak').innerHTML=sep_barSvg(peakByDay,{w:760,h:250,labelKey:'label',valueKey:'count',titleY:'Mov/hora',tipFn:d=>[`Data: ${d.label}`,`Hora pico: ${d.hour}h`,`Movimentos: ${d.count}`]});
+  const comp=[...sep_companySummary(movs, rows, limit)].sort((a,b)=>b.movements-a.movements).slice(0,10); comp.forEach(c=>c._modalKey=sep_registerModalData(`Companhia ${c.company}`,c._movRows,`${c.movements} movimentos`));
+  $('dayChartCompany').innerHTML=sep_barSvg(comp.map(c=>({label:c.company,count:c.movements,_modalKey:c._modalKey})),{w:760,h:250,labelKey:'label',valueKey:'count',titleY:'Mov.',tipFn:d=>[`Companhia: ${d.label}`,`Movimentos: ${d.count}`]});
+  sep_renderDailyCommonTable(common); sep_renderDailyHourTable(movs, rows, limit); sep_bindModalClicks(); $('sep_dayStatus').textContent=`${[...sep_dailyState.selectedDates].sort().join(', ')||'sem dias'} · blocos ${[...sep_dailyState.selectedBlocks].join(', ')||'nenhum'} · ${movs.length} movimentos`;
+}
+function sep_renderDailyCommonTable(common){
+  $('dayCommonTbl').tHead.innerHTML='<tr><th>Callsign</th><th>Nº dias</th><th>Dias</th><th>Movimentos</th><th>Companhia</th></tr>';
+  $('dayCommonTbl').tBodies[0].innerHTML=common.slice(0,80).map(c=>`<tr class="modalSource" data-modal-key="${sep_registerModalData('Callsign comum · '+c.csn,c._rows,c.days.join(', '))}"><td><b>${sep_escHtml(c.csn)}</b></td><td class="num">${c.count}</td><td>${sep_escHtml(c.days.join(', '))}</td><td class="num">${c._rows.length}</td><td>${sep_escHtml(companyFromCallsign(c.csn))}</td></tr>`).join('') || '<tr><td colspan="5">Sem callsigns comuns nos dias selecionados.</td></tr>';
+}
+function sep_renderDailyHourTable(movs, rows, limit){
+  const dates=[...sep_dailyState.selectedDates].sort(), out=[]; for(const d of dates){ for(const h of [...Array(24)].map((_,i)=>String(i).padStart(2,'0'))){ const dm=movs.filter(m=>m.data===d&&(m.hora||'').slice(0,2)===h); const dr=rows.filter(r=>r.data===d&&(r.horaA||'').slice(0,2)===h); if(!dm.length&&!dr.length) continue; out.push({d,h,arr:dm.filter(m=>m.type==='ARR').length,dep:dm.filter(m=>m.type==='DEP').length,total:dm.length,pairs:dr.length,crit:dr.filter(r=>r._sepSecNum<limit).length,_rows:dm.concat(dr)}); }}
+  $('dayHourTbl').tHead.innerHTML='<tr><th>Data</th><th>Hora</th><th>ARR</th><th>DEP</th><th>Movimentos</th><th>Pares</th><th>Críticos</th></tr>';
+  $('dayHourTbl').tBodies[0].innerHTML=out.map(o=>`<tr class="modalSource" data-modal-key="${sep_registerModalData(`Resumo ${o.d} ${o.h}h`,o._rows,`${o.total} movimentos · ${o.pairs} pares`)}"><td>${sep_escHtml(o.d)}</td><td>${o.h}h</td><td class="num">${o.arr}</td><td class="num">${o.dep}</td><td class="num">${o.total}</td><td class="num">${o.pairs}</td><td class="num ${o.crit?'red':''}">${o.crit}</td></tr>`).join('') || '<tr><td colspan="7">Sem dados para os filtros escolhidos.</td></tr>';
+}
+function sep_wireDaily(){
+  if(!$('sep_dayMonth')) return;
+  $('sep_dayMonth').onchange=()=>{sep_renderDailyControls();sep_renderDaily();}; $('sep_dayApply').onclick=renderDaily; $('sep_daySearch').oninput=renderDaily; $('sep_dayAllDays').onclick=()=>{dailyAvailableDates().filter(d=>dayMonthKey(d)===$('sep_dayMonth').value).forEach(d=>sep_dailyState.selectedDates.add(d));sep_renderDailyControls();sep_renderDaily();}; $('sep_dayNoDays').onclick=()=>{dailyAvailableDates().filter(d=>dayMonthKey(d)===$('sep_dayMonth').value).forEach(d=>sep_dailyState.selectedDates.delete(d));sep_renderDailyControls();sep_renderDaily();}; $('sep_dayAllBlocks').onclick=()=>{SEP_DAY_BLOCKS.forEach(b=>sep_dailyState.selectedBlocks.add(b));sep_renderDailyControls();sep_renderDaily();}; $('sep_dayNoBlocks').onclick=()=>{sep_dailyState.selectedBlocks.clear();sep_renderDailyControls();sep_renderDaily();}; document.querySelectorAll('[data-dtype]').forEach(b=>b.onclick=()=>{sep_dailyState.type=b.dataset.dtype; sep_renderDailyControls(); sep_renderDaily();});
+}
+function sep_dailyContext(){
+  const limit=dailyLimit();
+  const movs=sep_dailyMovements();
+  const rows=sep_dailyRows();
+  const crit=rows.filter(r=>r._sepSecNum<limit);
+  const critDep=crit.filter(r=>r._hasDep);
+  const stats=sep_dayStats(movs, rows, limit);
+  const hours=sep_movementHourSummary(movs);
+  const peakArr=[...hours].sort((a,b)=>b.arr-a.arr||a.hour.localeCompare(b.hour))[0];
+  const peakDep=[...hours].sort((a,b)=>b.dep-a.dep||a.hour.localeCompare(b.hour))[0];
+  const callsByDay=new Map();
+  for(const m of movs){if(!m.callsign) continue; if(!callsByDay.has(m.callsign)) callsByDay.set(m.callsign,new Set()); callsByDay.get(m.callsign).add(m.data);}
+  const common=[...callsByDay.entries()].map(([csn,set])=>({csn,days:[...set].sort(),count:set.size,_rows:movs.filter(m=>m.callsign===csn)})).filter(x=>x.count>1).sort((a,b)=>b.count-a.count||a.csn.localeCompare(b.csn));
+  const hourRows=[];
+  const dates=[...sep_dailyState.selectedDates].sort();
+  for(const d of dates){
+    for(const h of [...Array(24)].map((_,i)=>String(i).padStart(2,'0'))){
+      const dm=movs.filter(m=>m.data===d&&(m.hora||'').slice(0,2)===h);
+      const dr=rows.filter(r=>r.data===d&&(r.horaA||'').slice(0,2)===h);
+      if(!dm.length&&!dr.length) continue;
+      hourRows.push({d,h,arr:dm.filter(m=>m.type==='ARR').length,dep:dm.filter(m=>m.type==='DEP').length,total:dm.length,pairs:dr.length,crit:dr.filter(r=>r._sepSecNum<limit).length,_rows:dm.concat(dr)});
+    }
   }
-
-  else if(fmt==='word'){
-    // Imagens já guardadas no histórico pelo onComplete do Chart.js
-
-    var provName=(IA_PROVIDERS[iaGetProvider()]&&IA_PROVIDERS[iaGetProvider()].name)||'IA';
-    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><style>body{font-family:Arial;font-size:11pt;color:#1e293b;margin:2cm;} h1{color:#0f2744;font-size:16pt;border-bottom:2px solid #0f2744;padding-bottom:6pt;} .pergunta-label{color:#0284c7;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:16pt 0 4pt;} .pergunta-box{background:#f0f9ff;border-left:4px solid #0284c7;padding:8pt 12pt;margin:0 0 12pt;font-size:11pt;} .ia-label{color:#16a34a;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:8pt 0 4pt;} .ia-box{background:#f0fdf4;border-left:4px solid #16a34a;padding:8pt 12pt;margin:0 0 6pt;font-size:11pt;white-space:pre-wrap;line-height:1.6;} .grafico-titulo{color:#d97706;font-size:9pt;font-weight:bold;text-transform:uppercase;letter-spacing:1pt;margin:8pt 0 4pt;} table{border-collapse:collapse;width:auto;min-width:200pt;margin:6pt 0 12pt;} th{background:#0f2744;color:#fff;padding:5pt 10pt;font-size:9pt;text-align:left;} td{padding:4pt 10pt;font-size:10pt;border:1px solid #e2e8f0;} tr:nth-child(even) td{background:#f8faff;} .separator{border:none;border-top:1px solid #e2e8f0;margin:14pt 0;} img{max-width:500pt;height:auto;display:block;margin:6pt 0 12pt;}</style></head><body>';
-    html+='<h1>&#128736; An&#225;lise IA &#8212; Flight Track Viewer</h1>';
-    html+='<p style="color:#64748b;font-size:9pt;">Exportado em: '+stamp+' &nbsp;&middot;&nbsp; Fornecedor: '+provName+'</p>';
-
-    var aiCount=0;
-    _iaHistory.forEach(function(e,i){
-      if(!e||!e.text||e.text==='⏳ A analisar...') return;
-      if(e.role==='user'){
-        html+='<p class="pergunta-label">&#9658; Pergunta</p>';
-        html+='<div class="pergunta-box">'+e.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</div>';
-      } else {
-        html+='<p class="ia-label">&#9672; '+provName+'</p>';
-        // Texto da resposta — preservar listas com bullets
-        var textoHtml=e.text.split('\n').map(function(ln){
-          var s=ln.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-          if(s.match(/^- /)) s='&bull; '+s.slice(2);
-          return s;
-        }).join('<br>');
-        html+='<div class="ia-box">'+textoHtml+'</div>';
-        // Gráfico: imagem PNG se disponível, senão tabela de dados
-        if(e.graficoImg){
-          html+='<p class="grafico-titulo">&#128202; '+(e.grafico&&e.grafico.titulo?e.grafico.titulo:'Gr&#225;fico')+'</p>';
-          html+='<img src="'+e.graficoImg+'" style="width:380pt;height:auto;display:block;margin:6pt 0 12pt;">';
-        } else if(e.grafico&&e.grafico.dados&&e.grafico.dados.length){
-          html+='<p class="grafico-titulo">&#128202; '+(e.grafico.titulo||'Gr&#225;fico')+'</p>';
-          html+='<table><tr><th>Item</th><th>Valor</th></tr>';
-          e.grafico.dados.forEach(function(d){
-            html+='<tr><td>'+String(d.nome).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</td><td>'+d.valor+'</td></tr>';
-          });
-          html+='</table>';
-        }
-        html+='<hr class="separator">';
-      }
-    });
-    html+='</body></html>';
-    _iaDownload(new Blob([html],{type:'application/msword;charset=utf-8'}),'IA_analise_'+stamp.replace(/[: ]/g,'-')+'.doc');
-  }
+  return {limit,movs,rows,crit,critDep,stats,hours,peakArr,peakDep,common,hourRows,dates,blocks:[...sep_dailyState.selectedBlocks].sort(),type:sep_dailyState.type,search:($('sep_daySearch')?.value||'').trim()};
+}
+function sep_dailyFilterRows(ctx){
+  return [
+    ['Mês visível', $('sep_dayMonth')?.value||''],
+    ['Dias selecionados', ctx.dates.join(', ')||'—'],
+    ['Blocos horários', ctx.blocks.join(', ')||'—'],
+    ['Tipo de movimento', ctx.type==='all'?'Todos':ctx.type],
+    ['Pesquisa', ctx.search||'—'],
+    ['Limite crítico herdado', ctx.limit+' s']
+  ];
 }
 
-function _iaDownload(blob,filename){
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement('a');
-  a.href=url; a.download=filename;
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){URL.revokeObjectURL(url);a.remove();},1000);
+function renderSepDaily(){
+  sep_buildData();
+  sep_dailySetup();
+  sep_wireDaily();
 }
+function sep_wireDaily(){
+  const dates=sep_dailyAvailableDates();
+  // Month selector
+  const months=[...new Set(dates.map(d=>d.slice(0,7)))].sort();
+  const ms=$('sep_dayMonth');
+  if(ms&&!ms.options.length){
+    months.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;ms.appendChild(o);});
+    if(months.length)ms.value=months[months.length-1];
+  }
+  ms&&(ms.onchange=()=>{sep_renderDailyControls();sep_renderDaily();});
+  $('sep_dayApply')&&($('sep_dayApply').onclick=sep_renderDaily);
+  $('sep_daySearch')&&($('sep_daySearch').oninput=sep_renderDaily);
+  $('sep_dayAllDays')&&($('sep_dayAllDays').onclick=()=>{
+    sep_dailyAvailableDates().filter(d=>d.slice(0,7)===$('sep_dayMonth').value)
+      .forEach(d=>sep_dailyState.selectedDates.add(d));
+    sep_renderDailyControls();sep_renderDaily();
+  });
+  $('sep_dayNoDays')&&($('sep_dayNoDays').onclick=()=>{
+    sep_dailyAvailableDates().filter(d=>d.slice(0,7)===$('sep_dayMonth').value)
+      .forEach(d=>sep_dailyState.selectedDates.delete(d));
+    sep_renderDailyControls();sep_renderDaily();
+  });
+  $('sep_dayAllBlocks')&&($('sep_dayAllBlocks').onclick=()=>{SEP_DAY_BLOCKS.forEach(b=>sep_dailyState.selectedBlocks.add(b));sep_renderDailyControls();sep_renderDaily();});
+  $('sep_dayNoBlocks')&&($('sep_dayNoBlocks').onclick=()=>{sep_dailyState.selectedBlocks.clear();sep_renderDailyControls();sep_renderDaily();});
+  document.querySelectorAll('#sep_dailyLayout [data-dtype]').forEach(b=>{
+    b.onclick=()=>{
+      sep_dailyState.type=b.dataset.dtype;
+      document.querySelectorAll('#sep_dailyLayout [data-dtype]').forEach(x=>{
+        x.style.background=x.dataset.dtype===b.dataset.dtype?'#5b4a42':'#eef2f7';
+        x.style.color=x.dataset.dtype===b.dataset.dtype?'white':'#334155';
+      });
+      sep_renderDailyControls();sep_renderDaily();
+    };
+  });
+  sep_renderDailyControls();
+}
+
+function sep_dailyAvailableDates(){
+  return [...new Set(sep_movementRows.map(m=>m.data).filter(Boolean))].sort();
+}
+
+function sep_renderDailyContent(ctx){
+  const el=$('sep_dailyContent');if(!el)return;
+  const {rows,movs,limit}=ctx;
+  // KPIs
+  const stats=sep_dayStats(movs,rows,limit);
+  const arr=movs.filter(m=>m.type==='ARR').length;
+  const dep=movs.filter(m=>m.type==='DEP').length;
+  const kpiHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px;">
+    ${[
+      ['Movimentos',movs.length,'#0f172a'],['Chegadas',arr,'#0b5cad'],['Descolagens',dep,'#f59e0b'],
+      ['Pares sep.',rows.length,'#374151'],['Críticos',stats.crit,'#b91c1c'],
+      ['Críticos c/DEP',stats.critDep,'#7c3aed'],['Dias sel.',[...sep_dailyState.selectedDates].length,'#0f766e']
+    ].map(([lbl,val,clr])=>`<div style="background:#fafafa;border:1px solid #d7dce3;border-radius:12px;padding:10px;">
+      <b style="font-size:20px;color:${clr};display:block;">${val}</b>
+      <span style="font-size:11px;color:#6b7280;">${lbl}</span></div>`).join('')}
+  </div>`;
+  // Movements by day chart
+  const byDay={};const byDayPairs={};const byDayCrit={};
+  [...sep_dailyState.selectedDates].sort().forEach(d=>{byDay[d]=0;byDayPairs[d]=0;byDayCrit[d]=0;});
+  for(const m of movs){if(byDay[m.data]!=null)byDay[m.data]++;}
+  for(const r of rows){if(byDayPairs[r.data]!=null)byDayPairs[r.data]++;}
+  for(const r of rows){if(byDayCrit[r.data]!=null&&r._sepSecNum<limit)byDayCrit[r.data]++;}
+  const dayKeys=Object.keys(byDay).sort();
+  const chartHtml=dayKeys.length>0?sep_barSvg(dayKeys.map(d=>({label:d.slice(5),value:byDay[d],color:'#0b5cad'})),{title:'Movimentos por dia',h:200,yLabel:'Movimentos'}):'';
+  const chart2Html=dayKeys.length>0?sep_barSvg(dayKeys.map(d=>({label:d.slice(5),value:byDayCrit[d],color:'#b91c1c'})),{title:'Pares críticos por dia',h:200,yLabel:'Pares críticos'}):'';
+  // Common callsigns table
+  const dateList=[...sep_dailyState.selectedDates].sort();
+  const callsByDay={};
+  for(const m of movs){
+    if(!callsByDay[m.data])callsByDay[m.data]=new Set();
+    callsByDay[m.data].add(m.callsign);
+  }
+  const common=dateList.length>1?[...callsByDay[dateList[0]]||[]].filter(c=>dateList.every(d=>callsByDay[d]&&callsByDay[d].has(c))).sort():[];
+  const commonHtml=common.length?`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;">
+    <div style="font-weight:900;font-size:14px;color:#2b2521;margin-bottom:8px;">Callsigns comuns entre todos os dias (${common.length})</div>
+    <div style="font-size:12px;color:#374151;line-height:1.8;">${common.join(', ')}</div></div>`:'';
+  // Hourly summary table
+  const hourRows=[];const hourMap={};
+  for(const m of movs){const h=(m.hora||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={h,arr:0,dep:0,pairs:0,crit:0};if(m.type==='ARR')hourMap[h].arr++;else hourMap[h].dep++;}
+  for(const r of rows){const h=(r.horaA||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={h,arr:0,dep:0,pairs:0,crit:0};hourMap[h].pairs++;if(r._sepSecNum<limit)hourMap[h].crit++;}
+  const hourTable=`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;overflow:auto;max-height:320px;">
+    <div style="font-weight:900;font-size:14px;color:#2b2521;margin-bottom:8px;">Resumo por hora</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr>${['Hora','ARR','DEP','Total','Pares','Críticos'].map(h=>`<th style="background:#e9e6e3;padding:6px 10px;text-align:left;font-size:11px;font-weight:800;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${Object.values(hourMap).sort((a,b)=>a.h.localeCompare(b.h)).map(r=>`<tr><td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;">${r.h}h</td><td style="padding:5px 10px;border-bottom:1px solid #eee;color:#0b5cad;">${r.arr}</td><td style="padding:5px 10px;border-bottom:1px solid #eee;color:#f59e0b;">${r.dep}</td><td style="padding:5px 10px;border-bottom:1px solid #eee;">${r.arr+r.dep}</td><td style="padding:5px 10px;border-bottom:1px solid #eee;">${r.pairs}</td><td style="padding:5px 10px;border-bottom:1px solid #eee;color:#b91c1c;font-weight:700;">${r.crit||0}</td></tr>`).join('')}</tbody>
+    </table></div>`;
+  el.innerHTML=kpiHtml+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chartHtml}</div>
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chart2Html}</div>
+  </div>`+commonHtml+hourTable;
+}
+
 </script>
 <div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
   <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:min(700px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.9);">
     <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;">
-      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v2.0</span>
+      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v1.3</span>
       <button onclick="document.getElementById('emailModal').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">✕</button>
     </div>
     <div style="flex:1;overflow:auto;padding:16px 18px;">
