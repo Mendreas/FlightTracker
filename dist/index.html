@@ -5208,6 +5208,12 @@ function renderFastResults(){
     const firstDep=depsIn[0]||null;
     var _depDistances=[];
     (function(){var _ias=(p.trail&&p.trail.iasTHR)||140;
+    depsIn.forEach(function(_d){if(p.trail.epochTHR&&_d.t){
+      var _s=p.trail.epochTHR-_d.t;
+      if(_s>0)_depDistances.push(+(_s*_ias/3600).toFixed(2));
+    }});})();
+    var _depDistances=[];
+    (function(){var _ias=(p.trail&&p.trail.iasTHR)||140;
     depsIn.forEach(function(_d){if(p.trail.epochTHR&&_d.t){var _s=p.trail.epochTHR-_d.t;if(_s>0)_depDistances.push(+(_s*_ias/3600).toFixed(2));}});})();
     var _depDistances=[];
     (function(){var _ias=(p.trail&&p.trail.iasTHR)||140;depsIn.forEach(function(_d){if(p.trail.epochTHR&&_d.t){var _s=p.trail.epochTHR-_d.t;if(_s>0)_depDistances.push(+(_s*_ias/3600).toFixed(2));}});})();
@@ -6692,6 +6698,8 @@ function sep_buildData(){
     const depCnt=depsIn.length;
     const seq=depCnt===0?'AA':depCnt===1?'ADA':depCnt===2?'ADDA':'AD…A';
     const firstDep=depsIn[0]||null;
+    var _depDistances=[];
+    (function(){var _ias=(p.trail&&p.trail.iasTHR)||140;depsIn.forEach(function(_d){if(p.trail.epochTHR&&_d.t){var _s=p.trail.epochTHR-_d.t;if(_s>0)_depDistances.push(+(_s*_ias/3600).toFixed(2));}});})();
     let bNmAtDep=null,bSecAtDep=null;
     if(firstDep&&p.trail.epochTHR&&p.trail.iasTHR){
       const secs=p.trail.epochTHR-firstDep.t;
@@ -6718,8 +6726,6 @@ function sep_buildData(){
       _depCount:depCnt,
       _id:sep_results.length,
       _depDistances:_depDistances,
-      _depCount:depCnt,
-      _id:sep_results.length,
       _viz:{A:{t:p.lead.epochTHR,csn:String((p.lead||{}).csn||"")},B:{t:p.trail.epochTHR,csn:String((p.trail||{}).csn||"")},deps:depsIn.map(function(_d){return{t:_d.t,csn:_d.csn||""};})},
       _hasB:true,
       _sepSecNum:Math.round(p.sep),
