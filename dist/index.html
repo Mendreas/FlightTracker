@@ -34,6 +34,19 @@ header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 1
 .day-btn{font-family:'JetBrains Mono',Consolas,'Courier New',monospace;font-size:10px;padding:4px 7px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:3px;transition:all .15s;letter-spacing:.5px;}
 .day-btn:hover{border-color:var(--accent);color:var(--accent);}
 .day-btn.sel{background:rgba(0,200,255,.12);border-color:var(--accent);color:var(--accent);font-weight:600;}
+/* Calendar grid */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;width:100%;}
+.cal-hdr{font-size:8px;text-align:center;color:var(--muted);font-weight:700;padding:2px 0;letter-spacing:.5px;}
+.cal-day{font-size:9px;text-align:center;padding:3px 1px;border-radius:4px;border:1px solid transparent;cursor:default;line-height:1.2;min-width:0;}
+.cal-day.has-data{border-color:var(--border);color:var(--text);cursor:pointer;}
+.cal-day.has-data:hover{border-color:var(--accent);background:rgba(0,200,255,.06);}
+.cal-day.sel{background:rgba(0,200,255,.15);border-color:var(--accent);color:var(--accent);font-weight:700;}
+.cal-day.empty{color:transparent;border-color:transparent;cursor:default;}
+.cal-day.no-data{color:var(--border);cursor:default;}
+.cal-day-count{display:block;font-size:7px;color:var(--muted);font-weight:400;}
+.cal-day.sel .cal-day-count{color:var(--accent);}
+.weekday-btn{font-size:9px;padding:2px 5px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:3px;}
+.weekday-btn.active{background:rgba(0,200,255,.12);border-color:var(--accent);color:var(--accent);}
 .block-grid{display:flex;flex-wrap:wrap;gap:3px;}
 .block-btn{font-family:'JetBrains Mono',Consolas,'Courier New',monospace;font-size:9px;padding:3px 6px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;border-radius:3px;transition:all .15s;}
 .block-btn:hover{border-color:var(--green);color:var(--green);}
@@ -383,15 +396,19 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="sb-hdr" style="flex-shrink:0;">Filtro de datas</div>
     <div class="sb-date-scroll" id="daySection">
       <div style="padding:8px 10px;">
+        <div class="sb-section-lbl">M&#234;s dispon&#237;vel</div>
+        <select id="calMonthSel" style="width:100%;height:28px;font-size:11px;border:1px solid var(--border);border-radius:5px;background:var(--panel);color:var(--text);padding:0 6px;margin-bottom:8px;" onchange="renderDayPicker()"><option value="">—</option></select>
         <div class="sb-section-lbl">Dias dispon&#237;veis</div>
-        <div class="day-grid" id="dayGrid"><span style="font-size:10px;color:var(--muted);">&#8212;</span></div>
-        <div class="sb-section-lbl" style="margin-top:8px;">Blocos hor&#225;rios</div>
+        <div id="calGrid" style="margin-bottom:6px;"></div>
+        <div class="sb-section-lbl" style="margin-top:6px;">Dias da semana</div>
+        <div id="weekdayBtns" style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:6px;"></div>
+        <div class="sb-section-lbl" style="margin-top:6px;">Blocos hor&#225;rios</div>
         <div class="block-grid" id="blockGrid"><span style="font-size:10px;color:var(--muted);">&#8212;</span></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px;">
-          <button class="btn" style="flex:1;font-size:9px;padding:4px 6px;" onclick="selDays(true)">Todos dias</button>
-          <button class="btn" style="flex:1;font-size:9px;padding:4px 6px;" onclick="selBlocks(true)">Todos blocos</button>
-          <button class="btn" style="flex:1;font-size:9px;padding:4px 6px;" onclick="selDays(false)">Nenhum dia</button>
-          <button class="btn" style="flex:1;font-size:9px;padding:4px 6px;" onclick="selBlocks(false)">Nenhum bloco</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;">
+          <button class="btn" style="font-size:9px;padding:3px 4px;" onclick="selDays(true)">Todos dias</button>
+          <button class="btn" style="font-size:9px;padding:3px 4px;" onclick="selBlocks(true)">Todos blocos</button>
+          <button class="btn" style="font-size:9px;padding:3px 4px;" onclick="selDays(false)">Nenhum dia</button>
+          <button class="btn" style="font-size:9px;padding:3px 4px;" onclick="selBlocks(false)">Nenhum bloco</button>
         </div>
       </div>
     </div>
@@ -759,15 +776,16 @@ tr:hover td{background:rgba(0,200,255,.03);}
 .sep-ad-wrap .card{background:#fff;border:1px solid #d7dce3;border-radius:16px;box-shadow:0 8px 22px rgba(20,30,40,.08);padding:12px;margin-bottom:12px;}
 .sep-ad-wrap label{font-size:12px;color:#6b7280;font-weight:700;display:block;margin-bottom:6px;}
 .sep-ad-wrap select,.sep-ad-wrap input[type="text"]{height:38px;border:1px solid #d7dce3;border-radius:10px;background:white;padding:0 10px;font-size:14px;color:#1f2937;}
-.sep-ad-wrap button{height:38px;border:0;border-radius:10px;background:#5b4a42;color:#fff;padding:0 14px;font-weight:700;cursor:pointer;}
-.sep-ad-wrap button.secondary{background:#e7e1dc;color:#3f332d;border:1px solid #d5cac2;}
+.sep-ad-wrap button{height:38px;border:0;border-radius:10px;background:var(--accent);color:#fff;padding:0 14px;font-weight:700;cursor:pointer;}
+.sep-ad-wrap button.secondary{background:var(--panel);color:var(--text);border:1px solid var(--border);}
+.sep-ad-wrap button.secondary{background:#e7e1dc;color:var(--text);border:1px solid #d5cac2;}
 .sep-ad-wrap .miniKpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
 .sep-ad-wrap .miniKpi{background:#fafafa;border:1px solid #d7dce3;border-radius:12px;padding:10px;cursor:pointer;}
 .sep-ad-wrap .miniKpi b{font-size:22px;color:#0f172a;display:block;}
 .sep-ad-wrap .miniKpi span{display:block;color:#6b7280;font-size:11px;margin-top:3px;}
 .sep-ad-wrap .analysisGrid{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px;}
 .sep-ad-wrap .chartCard{background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;min-height:280px;}
-.sep-ad-wrap .chartTitle{font-weight:900;color:#2b2521;margin:0 0 4px;font-size:14px;}
+.sep-ad-wrap .chartTitle{font-weight:900;color:var(--text);margin:0 0 4px;font-size:14px;}
 .sep-ad-wrap .chartSub{color:#6b7280;font-size:12px;margin-bottom:8px;}
 .sep-ad-wrap .chartSvg{width:100%;height:220px;display:block;background:#fbfcfd;border:1px solid #edf0f3;border-radius:10px;}
 .sep-ad-wrap .chartNote{font-size:11px;color:#64748b;margin-top:6px;}
@@ -778,7 +796,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
 .sep-ad-wrap .timelineSvg{height:300px;display:block;background:#fbfcfd;min-width:100%;}
 .sep-ad-wrap .timelineButtons{display:flex;gap:5px;flex-wrap:wrap;margin:4px 0 8px;}
 .sep-ad-wrap .timelineButtons button{height:25px;padding:0 8px;border-radius:999px;background:#eef2f7;color:#334155;border:1px solid #d8dee8;font-size:11px;}
-.sep-ad-wrap .timelineButtons button.active{background:#5b4a42;color:white;border-color:#5b4a42;}
+.sep-ad-wrap .timelineButtons button.active{background:var(--accent);color:white;border-color:var(--accent);}
 .sep-ad-wrap .timelineHint{font-size:11px;color:#64748b;margin:0 0 6px;}
 .sep-ad-wrap .timelineLegend{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:11px;color:#64748b;margin-top:6px;}
 .sep-ad-wrap .tlChip{display:inline-flex;gap:5px;align-items:center;}
@@ -786,12 +804,12 @@ tr:hover td{background:rgba(0,200,255,.03);}
 .sep-ad-wrap .analysisTableWrap{overflow:auto;max-height:280px;border:1px solid #d7dce3;border-radius:12px;background:#fff;}
 .sep-ad-wrap .analysisTableWrap table{font-size:12px;width:100%;border-collapse:collapse;}
 .sep-ad-wrap .analysisTableWrap th,.sep-ad-wrap .analysisTableWrap td{padding:7px 10px;border-bottom:1px solid #e5e7eb;text-align:left;}
-.sep-ad-wrap .analysisTableWrap th{background:#e9e6e3;color:#2b2521;font-weight:800;font-size:11px;position:sticky;top:0;}
+.sep-ad-wrap .analysisTableWrap th{background:#e9e6e3;color:var(--text);font-weight:800;font-size:11px;position:sticky;top:0;}
 .sep-ad-wrap .analysisTableWrap tr:hover td{background:#fff7ed;cursor:pointer;}
 .sep-ad-wrap .modalSource:hover td{background:#fff7ed!important;cursor:pointer;}
 .sep-ad-wrap .legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:12px;color:#64748b;margin-top:8px;}
 .sep-ad-wrap .dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:4px;}
-.sep-ad-wrap .dot.red{background:#b91c1c;}.sep-ad-wrap .dot.blue{background:#0b5cad;}.sep-ad-wrap .dot.dep{background:#f59e0b;}.sep-ad-wrap .dot.nodep{background:#0f766e;}
+.sep-ad-wrap .dot.red{background:#b91c1c;}.sep-ad-wrap .dot.blue{background:#0b5cad;}.sep-ad-wrap .dot.dep{background:#f59e0b;}.sep-ad-wrap .dot.nodep{background:var(--accent);}
 .sep-ad-wrap .analysisToolbar{display:flex;gap:12px;align-items:end;flex-wrap:wrap;}
 .sep-ad-wrap .small{font-size:12px;color:#6b7280;}
 @media(max-width:1050px){.sep-ad-wrap .analysisGrid{grid-template-columns:1fr;}}
@@ -950,7 +968,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
   </div>
 
 <!-- Data Modal (light) -->
-<div class="sep_dataModalBackdrop" id="sep_dataModalBackdrop">
+<div class="sep_dataModalBackdrop" id="sep_dataModalBackdrop" style="display:none;">
   <div class="sep_dataModal">
     <div class="sep_dataModalHeader">
       <div><div class="sep_dataModalTitle" id="sep_dataModalTitle"></div><div class="sep_dataModalSub" id="sep_dataModalSub"></div></div>
@@ -965,38 +983,14 @@ tr:hover td{background:rgba(0,200,255,.03);}
 </div></div>
         <!-- Análise Diária sub-tab -->
         <div id="anaSubAnaDaily" style="display:none;flex:1;overflow:auto;"><div class="sep-ad-wrap" style="font-family:Segoe UI,Roboto,Arial,sans-serif;color:#1f2937;background:#f5f6f8;min-height:100%;padding:12px;">
-<div style="display:grid;grid-template-columns:290px minmax(0,1fr);gap:12px;align-items:start;" id="sep_dailyLayout">
-  <!-- LEFT: calendar filter panel -->
-  <div style="position:sticky;top:8px;background:#fff;border:1px solid #d7dce3;border-radius:16px;box-shadow:0 8px 22px rgba(20,30,40,.08);padding:12px;">
-    <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#6b7280;font-weight:900;margin:4px 0 8px;">Mês disponível</div>
-    <select id="sep_dayMonth" style="width:100%;height:34px;border:1px solid #d7dce3;border-radius:8px;font-size:13px;padding:0 8px;color:#1f2937;background:white;margin-bottom:8px;"></select>
-    <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#6b7280;font-weight:900;margin:8px 0 6px;">Dias disponíveis</div>
-    <div id="sep_dayCalendar" style="margin-bottom:8px;"></div>
-    <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#6b7280;font-weight:900;margin:8px 0 6px;">Dias da semana</div>
-    <div id="sep_dayWeekBtns" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;"></div>
-    <div style="font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#6b7280;font-weight:900;margin:8px 0 6px;">Blocos horários</div>
-    <div id="sep_dayBlockBtns" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
-      <button id="sep_dayAllDays" style="height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;">Todos dias</button>
-      <button id="sep_dayNoDays" style="height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;">Nenhum dia</button>
-      <button id="sep_dayAllBlocks" style="height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;">Todos blocos</button>
-      <button id="sep_dayNoBlocks" style="height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;">Nenhum bloco</button>
-    </div>
-    <div style="display:flex;gap:6px;margin-top:6px;">
-      <button data-dtype="all" style="flex:1;height:30px;font-size:11px;background:#5b4a42;color:white;border:0;border-radius:8px;cursor:pointer;" id="sep_dtypeAll">Todos</button>
-      <button data-dtype="arr" style="flex:1;height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;" id="sep_dtypeArr">▼ ARR</button>
-      <button data-dtype="dep" style="flex:1;height:30px;font-size:11px;background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;cursor:pointer;" id="sep_dtypeDep">▲ DEP</button>
-    </div>
-    <button id="sep_dayApply" style="width:100%;margin-top:10px;height:38px;background:#0f766e;color:white;border:0;border-radius:10px;font-weight:700;cursor:pointer;font-size:13px;">▶ Aplicar filtro</button>
-    <input id="sep_daySearch" type="text" placeholder="🔍 TAP, RYR, BAW..." style="width:100%;margin-top:8px;height:34px;border:1px solid #d7dce3;border-radius:8px;font-size:13px;padding:0 10px;color:#1f2937;"/>
-    <div id="sep_dayStatus" style="font-size:11px;color:#6b7280;margin-top:8px;line-height:1.4;"></div>
-  </div>
-  <!-- RIGHT: analysis area -->
-  <div id="sep_dailyContent" style="min-width:0;">
-    <div style="text-align:center;padding:40px;color:#6b7280;">
-      <div style="font-size:32px;margin-bottom:8px;">📅</div>
-      <div style="font-weight:700;font-size:15px;">Seleciona dias no calendário e clica <em>Aplicar filtro</em></div>
-    </div>
+<div style="margin-bottom:10px;font-size:12px;color:#6b7280;line-height:1.5;padding:8px 12px;background:#fff;border:1px solid #d7dce3;border-radius:10px;">
+  ℹ️ A análise diária usa os dias e blocos horários seleccionados no <strong>painel esquerdo</strong> da aplicação. Selecciona os dias e clica <em>Aplicar filtro</em> antes de actualizar.
+</div>
+<button onclick="renderSepDaily()" style="height:36px;padding:0 18px;background:var(--accent);color:white;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;margin-bottom:12px;">🔄 Actualizar análise diária</button>
+<div id="sep_dailyContent">
+  <div style="text-align:center;padding:40px;color:#6b7280;">
+    <div style="font-size:32px;margin-bottom:8px;">📅</div>
+    <div style="font-weight:700;font-size:15px;">Selecciona dias no painel esquerdo e clica <em>Actualizar análise diária</em></div>
   </div>
 </div>
 </div></div>
@@ -1872,18 +1866,77 @@ uo.addEventListener('drop',onDrop,false);
 function renderDayPicker(){
   const files=Object.values(loadedFiles);
   const days=[...new Set(files.map(f=>f.date))].sort();
+  const daysSet=new Set(days);
+  const dayCounts={};
+  files.forEach(f=>{dayCounts[f.date]=(dayCounts[f.date]||0)+f.rows.length;});
   const blocksAvail=new Set(files.map(f=>f.block));
-  const dg=$('dayGrid');dg.innerHTML='';
-  if(!days.length){dg.innerHTML='<span style="font-size:10px;color:var(--muted);">\u2014</span>';return;}
-  const fragD=document.createDocumentFragment();
-  days.forEach(d=>{
-    const b=document.createElement('button');
-    b.className='day-btn'+(selDaysSet.has(d)?' sel':'');
-    b.textContent=fmtDate(d);b.dataset.day=d;
-    b.onclick=()=>{selDaysSet.has(d)?selDaysSet.delete(d):selDaysSet.add(d);b.classList.toggle('sel');};
-    fragD.appendChild(b);
-  });
-  dg.appendChild(fragD);
+  // Helper: from YYMMDD extract month key "2026-03" and label "Março 2026"
+  const MNAMES=['Janeiro','Fevereiro','Mar\xe7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const toMonthKey=d=>'20'+d.slice(0,2)+'-'+d.slice(2,4); // "260317" → "2026-03"
+  const toMonthLabel=mk=>{const yr=mk.slice(0,4),mo=parseInt(mk.slice(5,7));return MNAMES[mo-1]+' '+yr;}; // "2026-03" → "Março 2026"
+  const toDayNum=d=>parseInt(d.slice(4,6)); // "260317" → 17
+  const toDow=d=>new Date('20'+d.slice(0,2)+'-'+d.slice(2,4)+'-'+d.slice(4,6)+'T12:00:00').getDay();
+  // Month selector
+  const months=[...new Set(days.map(toMonthKey))].sort();
+  const ms=$('calMonthSel');
+  if(ms){
+    const curMon=ms.value;
+    ms.innerHTML=months.map(mk=>`<option value="${mk}">${toMonthLabel(mk)}</option>`).join('');
+    if(months.includes(curMon))ms.value=curMon;
+    else if(months.length)ms.value=months[months.length-1];
+  }
+  const selMonth=ms?ms.value:(months[months.length-1]||'');
+  // Calendar grid
+  const cg=$('calGrid');
+  if(cg){
+    if(!days.length){cg.innerHTML='<span style="font-size:10px;color:var(--muted);">—</span>';}
+    else{
+      const DOW=['Dom','Seg','Ter','Qua','Qui','Sex','S\xe1b'];
+      let cgHtml='<div class="cal-grid">';
+      DOW.forEach(d=>{cgHtml+=`<div class="cal-hdr">${d}</div>`;});
+      if(selMonth){
+        const yr=parseInt(selMonth.slice(0,4)),mo=parseInt(selMonth.slice(5,7));
+        const firstDow=new Date(yr,mo-1,1).getDay();
+        const daysInMonth=new Date(yr,mo,0).getDate();
+        for(let i=0;i<firstDow;i++)cgHtml+='<div class="cal-day empty"></div>';
+        for(let d=1;d<=daysInMonth;d++){
+          // YYMMDD key for this day
+          const yy=String(yr).slice(2),mm=String(mo).padStart(2,'0'),dd=String(d).padStart(2,'0');
+          const dayKey=yy+mm+dd; // e.g. "260317"
+          const hasData=daysSet.has(dayKey);
+          const isSel=selDaysSet.has(dayKey);
+          const cnt=dayCounts[dayKey]||0;
+          if(hasData){
+            const cntStr=cnt>999?(cnt/1000).toFixed(1)+'k':String(cnt);
+            cgHtml+=`<div class="cal-day has-data${isSel?' sel':''}" data-day="${dayKey}" title="${dd}/${mm}/${yr}\n${cnt.toLocaleString()} registos"><span>${d}</span><span class="cal-day-count">${cntStr}</span></div>`;
+          } else {
+            cgHtml+=`<div class="cal-day no-data"><span style="opacity:.2">${d}</span></div>`;
+          }
+        }
+      }
+      cgHtml+='</div>';
+      cg.innerHTML=cgHtml;
+      cg.querySelectorAll('.cal-day.has-data').forEach(el=>{
+        el.onclick=()=>{const d=el.dataset.day;if(selDaysSet.has(d)){selDaysSet.delete(d);el.classList.remove('sel');}else{selDaysSet.add(d);el.classList.add('sel');}};
+      });
+    }
+  }
+  // Weekday buttons — re-render if month changed
+  const wb=$('weekdayBtns');
+  if(wb){
+    const DOW=['Dom','Seg','Ter','Qua','Qui','Sex','S\xe1b'];
+    if(!wb.children.length){
+      wb.innerHTML=DOW.map((d,i)=>`<button class="weekday-btn" data-dow="${i}" title="Selec. todas as ${d}">${d}</button>`).join('');
+    }
+    wb.querySelectorAll('.weekday-btn').forEach(b=>{
+      const dow=parseInt(b.dataset.dow);
+      const matchDays=days.filter(d=>{if(selMonth&&toMonthKey(d)!==selMonth)return false;return toDow(d)===dow;});
+      const allSel=matchDays.length>0&&matchDays.every(d=>selDaysSet.has(d));
+      b.classList.toggle('active',allSel);
+      b.onclick=()=>{matchDays.forEach(d=>allSel?selDaysSet.delete(d):selDaysSet.add(d));renderDayPicker();};
+    });
+  }
+  // Block buttons
   const bg=$('blockGrid');bg.innerHTML='';
   const allBlocks=[...new Set([...ALL_BLOCKS,...blocksAvail])].sort();
   const fragB=document.createDocumentFragment();
@@ -1896,7 +1949,7 @@ function renderDayPicker(){
   });
   bg.appendChild(fragB);
 }
-function selDays(v){const days=[...new Set(Object.values(loadedFiles).map(f=>f.date))];selDaysSet=v?new Set(days):new Set();document.querySelectorAll('.day-btn').forEach(b=>b.classList.toggle('sel',v));}
+function selDays(v){const days=[...new Set(Object.values(loadedFiles).map(f=>f.date))];selDaysSet=v?new Set(days):new Set();renderDayPicker();}
 function selBlocks(v){const avail=new Set(Object.values(loadedFiles).map(f=>f.block));selBlocksSet=v?new Set(avail):new Set();document.querySelectorAll('.block-btn:not(.nodata)').forEach(b=>b.classList.toggle('sel',v));}
 
 async function applyFilter(){
@@ -2318,6 +2371,18 @@ function switchTab(id,el){
       if(id==='seq')refreshSeqPointList();
       if(id==='kpi')renderKpis();
       if(id==='ana'){switchAnaTab(_anaTab||'fast');}
+      if(id==='pts'){
+        buildPointModeButtons();
+        if(activeAirport==='LPPT'&&pointMode==='ALL'){
+          setPointMode('APP_02');
+          // Auto-select first point (PESEX) if none selected
+          if(!selectedPoint){
+            const pts=allPoints().filter(p=>POINT_GROUPS['APP_02'].includes(p.name));
+            if(pts.length){selectedPoint=pts[0];if($('ptSelName'))$('ptSelName').textContent=pts[0].name;}
+          }
+        }
+        renderPointList();
+      }
       if(id==='ias'){if(!iasLimits)loadIasLimits();renderIasManage();}
       if(id==='iasapp'){buildIasAppRwyButtons();renderIasAppResults();}
       if(id==='ana')renderAnaResults();
@@ -4402,7 +4467,7 @@ function iasAppHistogramSvg(samples,limit,tol,title,rwyLbl,W,H){
     else counts[bi].g++;
   }
   const maxT=Math.max(1,...counts.map(c=>c.g+c.y+c.r));
-  const COL={g:'#22c55e',y:'#eab308',r:'#ef4444'};
+  const COL={g:'var(--accent)',y:'#eab308',r:'#ef4444'};
   let bars='';
   for(let i=0;i<nBins;i++){
     const x0=pad.l+(i/nBins)*iw;
@@ -4453,10 +4518,10 @@ function iasAppChartsGlossaryBlock(tol){
     <dt>Mediana</dt><dd>Valor que divide a distribuição ao meio (metade das observações abaixo, metade acima).</dd>
     <dt>Limite (linha tracejada)</dt><dd>Velocidade máxima publicada (AIP) para o fix.</dd>
     <dt>Tolerância (±${t} kt)</dt><dd>Igual ao campo da aba Velocidades APP. Cada observação é classificada face a <i>limite ± tolerância</i>.</dd>
-    <dt>Cores nas barras</dt><dd><span style="color:#16a34a;font-weight:700;">Verde</span>: IAS entre limite−tol e limite+tol (conforme). <span style="color:#ca8a04;font-weight:700;">Amarelo</span>: abaixo de limite−tol. <span style="color:#dc2626;font-weight:700;">Vermelho</span>: acima de limite+tol.</dd>
+    <dt>Cores nas barras</dt><dd><span style="color:var(--accent);font-weight:700;">Verde</span>: IAS entre limite−tol e limite+tol (conforme). <span style="color:#ca8a04;font-weight:700;">Amarelo</span>: abaixo de limite−tol. <span style="color:#dc2626;font-weight:700;">Vermelho</span>: acima de limite+tol.</dd>
   </dl>
   <div class="ias-app-chart-legend" style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);">
-    <span><i style="background:#22c55e;"></i> Conforme</span>
+    <span><i style="background:var(--accent);"></i> Conforme</span>
     <span><i style="background:#eab308;"></i> Abaixo do limite (com tolerância)</span>
     <span><i style="background:#ef4444;"></i> Acima do limite (com tolerância)</span>
     <span style="margin-left:auto;color:var(--muted);">Linha tracejada = limite publicado</span>
@@ -6279,11 +6344,59 @@ function _drawProfileChart(canvas,pts){
   ctx.fillStyle='#94a3b8';ctx.fillText('Alt (ft)',PAD.l+92,19);
 }
 async function _autoAnalyseAndAlert(){
-  await new Promise(r=>setTimeout(r,400)); // esperar que applyFilter termine
+  await new Promise(r=>setTimeout(r,400));
   if(!Object.keys(flights).length){_computeAlerts();return;}
+
+  // ── 0. Definir defaults: RWY 02, ponto PESEX ─────────────────────────────
+  // Final: pré-seleccionar RWY 02
+  buildFinRwyOptions();
+  const finRwyEl=$('finRwy');
+  if(finRwyEl){
+    const has02=[...finRwyEl.options].some(o=>o.value==='02');
+    if(has02)finRwyEl.value='02';
+  }
+
+  // ── 1. Final analysis ─────────────────────────────────────────────────────
   if(!finalResults.length)await runFinalAnalysis();
+
+  // ── 2. ROT + Alerts ───────────────────────────────────────────────────────
   if(!_anaTabLoaded.rot){detectROT();_anaTabLoaded.rot=true;}
   _computeAlerts();
+
+  // ── 3. Ponto PESEX — configurar modo APP 02 e seleccionar ponto ──────────
+  if(activeAirport==='LPPT'){
+    setPointMode('APP_02');
+    const pesex=allPoints().find(p=>p.name==='PESEX');
+    if(pesex){
+      selectedPoint=pesex;
+      if($('ptSelName'))$('ptSelName').textContent='PESEX';
+    }
+    // Pontos: correr queryPoint automaticamente
+    if(selectedPoint){
+      try{queryPoint();}catch(e){}
+    }
+    // Sequência: seleccionar PESEX e correr
+    const seqSel=$('seqPointSel');
+    if(seqSel){
+      refreshSeqPointList();
+      if([...seqSel.options].some(o=>o.value==='PESEX')){
+        seqSel.value='PESEX';
+        try{querySequence();}catch(e){}
+      }
+    }
+  }
+
+  // ── 4. IAS STAR ───────────────────────────────────────────────────────────
+  if(!iasResults){
+    try{await runIasCompliance();}catch(e){}
+  }
+
+  // ── 5. IAS APP ────────────────────────────────────────────────────────────
+  if(!iasAppResults){
+    try{runIasAppCompliance();}catch(e){}
+  }
+
+  // ── 6. Holdings + Go-arounds ─────────────────────────────────────────────
   if(!_anaTabLoaded.hold){await detectHoldings();_anaTabLoaded.hold=true;_computeAlerts();}
   if(!_anaTabLoaded.ga){await detectGoArounds();_anaTabLoaded.ga=true;_computeAlerts();}
 }
@@ -6476,6 +6589,22 @@ function _downloadEmailHtml(){
 }
 
 
+function sep_setSelectOptions(id, values, labelFn){
+  const el=$(id);if(!el)return;
+  const cur=el.value;
+  el.innerHTML='<option value="">Todas</option>';
+  values.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=labelFn?labelFn(v):v;el.appendChild(o);});
+  if([...el.options].some(o=>o.value===cur))el.value=cur;
+}
+function sep_dayMonthKey(d){return d?d.slice(0,7):'';}
+function sep_dateNoon(d){return new Date(d+'T12:00:00');}
+function sep_dayBlockOfHour(h){const n=Number(h);if(!Number.isFinite(n))return '';const s=Math.floor(n/4)*4;return `${String(s).padStart(2,'0')}-${String(s+4).padStart(2,'0')}`;}
+
+// Funções auxiliares portadas da v19 (não existem no FT original)
+function companyFromCallsign(csn){const s=String(csn||'').trim().toUpperCase();if(!s)return 'SEM CSN';const m=s.match(/^([A-Z]{2,4})(?=\d)/);if(m)return m[1];const m2=s.match(/^([A-Z]{2,4})/);return m2?m2[1]:s.slice(0,4);}
+function sep_companyFromCallsign(csn){return companyFromCallsign(csn);}
+function sep_cmp(a,b){const na=parseFloat(String(a).replace(',','.')),nb=parseFloat(String(b).replace(',','.'));if(Number.isFinite(na)&&Number.isFinite(nb))return na-nb;return String(a).localeCompare(String(b),'pt');}
+
 // ═══════════════════════════════════════════════════════════════
 // SEPARAÇÃO — módulo de análise (Fase 3+4)
 // ═══════════════════════════════════════════════════════════════
@@ -6505,22 +6634,23 @@ function sep_buildData(){
       const secs=p.trail.epochTHR-firstDep.t;
       if(secs>0){const nmPerSec=(p.trail.iasTHR||140)/3600;bNmAtDep=secs*nmPerSec;bSecAtDep=secs;}
     }
+    const _lead=p.lead||{}, _trail=p.trail||{};
     sep_results.push({
-      horaA:p.lead.tTHRstr||'',
-      pistaA:p.lead.rwy||'',
-      callA:p.lead.csn||'',
-      iasA:p.lead.iasTHR!=null?Math.round(p.lead.iasTHR):null,
-      horaB:p.trail.tTHRstr||'',
-      callB:p.trail.csn||'',
-      iasB:p.trail.iasTHR!=null?Math.round(p.trail.iasTHR):null,
+      horaA:_lead.tTHRstr||'',
+      pistaA:String(_lead.rwy||''),
+      callA:String(_lead.csn||''),
+      iasA:_lead.iasTHR!=null?Math.round(_lead.iasTHR):null,
+      horaB:_trail.tTHRstr||'',
+      callB:String(_trail.csn||''),
+      iasB:_trail.iasTHR!=null?Math.round(_trail.iasTHR):null,
       sepSec:Math.round(p.sep),
       sepNm:+(p.sep*(140/3600)).toFixed(2),
-      depCsn:firstDep?firstDep.csn:'',
+      depCsn:firstDep?String(firstDep.csn||''):'',
       depHora:firstDep?epochToHHMMSS(firstDep.t):'',
       bSecAtDep:bSecAtDep!=null?Math.round(bSecAtDep):null,
       bNmAtDep:bNmAtDep!=null?+bNmAtDep.toFixed(2):null,
       seq,
-      data:p.lead.date||'',
+      data:_lead._dateRaw||_lead.date||'',
       _hasDep:depCnt>0,
       _hasB:true,
       _sepSecNum:Math.round(p.sep),
@@ -6530,7 +6660,7 @@ function sep_buildData(){
   for(const r of finalResults||[]){
     sep_movementRows.push({
       type:'ARR',callsign:r.csn||'',hora:r.tTHRstr||'',
-      pista:r.rwy||'',data:r.date||'',t:r.epochTHR||0,
+      pista:r.rwy||'',data:r._dateRaw||r.date||'',t:r.epochTHR||0,
     });
   }
   // Add DEP movements
@@ -6779,9 +6909,10 @@ function sep_renderCriticalTable(rows,limit){
   document.querySelectorAll('#critTbl tbody tr').forEach(tr=>tr.onclick=()=>{selectedRowId=Number(tr.dataset.rowid); activateTab('tabela'); renderTable(); renderViz(sep_results.find(r=>r._id===selectedRowId));});
 }
 function sep_barSvg(data,opt){
-  const w=opt.w,h=opt.h,padL=42,padB=38,padT=18,padR=14, plotW=w-padL-padR, plotH=h-padT-padB, max=Math.max(1,...data.map(d=>d[opt.valueKey]));
+  const w=opt.w||600,h=opt.h||200,padL=42,padB=38,padT=18,padR=14, plotW=w-padL-padR, plotH=h-padT-padB;
+  const _vk=opt.valueKey||'value'; const max=Math.max(1,...data.map(d=>d[_vk]));
   const bw=plotW/Math.max(1,data.length)*0.72, gap=plotW/Math.max(1,data.length);
-  const bars=data.map((d,i)=>{const val=d[opt.valueKey], bh=val/max*plotH, x=padL+i*gap+(gap-bw)/2, y=padT+plotH-bh, col=opt.criticalFn&&opt.criticalFn(d)?'#b91c1c':'#0b5cad'; const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(d)):''; return `<g class="modalSource" data-modal-key="${d._modalKey||''}" data-tip="1">${tip}<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${col}"/><text x="${x+bw/2}" y="${Math.max(11,y-5)}" text-anchor="middle" font-size="10" fill="#334155">${val}</text><text x="${x+bw/2}" y="${h-15}" text-anchor="middle" font-size="10" fill="#475569">${sep_escSvg(d[opt.labelKey])}</text></g>`}).join('');
+  const bars=data.map((d,i)=>{const val=d[_vk], bh=val/max*plotH, x=padL+i*gap+(gap-bw)/2, y=padT+plotH-bh, col=opt.criticalFn&&opt.criticalFn(d)?'#b91c1c':(opt.color||d.color||'#0b5cad'); const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(d)):''; const _lk=opt.labelKey||'label'; return `<g data-tip="1">${tip}<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${col}"/><text x="${x+bw/2}" y="${Math.max(11,y-5)}" text-anchor="middle" font-size="10" fill="#334155">${val}</text><text x="${x+bw/2}" y="${h-15}" text-anchor="middle" font-size="10" fill="#475569">${sep_escSvg(String(d[_lk]||''))}</text></g>`}).join('');
   return `<svg class="chartSvg" viewBox="0 0 ${w} ${h}"><line x1="${padL}" y1="${padT+plotH}" x2="${w-padR}" y2="${padT+plotH}" stroke="#cbd5e1"/><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#cbd5e1"/><text x="8" y="14" font-size="10" fill="#64748b">${sep_escSvg(opt.titleY||'')}</text>${bars}</svg>`;
 }
 function sep_groupedBarSvg(data,opt){
@@ -6805,7 +6936,7 @@ function sep_scatterSvg(pts,opt){
   const limitX=xScale(opt.limit||0);
   const grid=[3,4,5,6].filter(v=>v<maxY);
   const gridSvg=grid.map(v=>`<line x1="${padL}" y1="${yScale(v)}" x2="${w-padR}" y2="${yScale(v)}" stroke="#e2e8f0"/><text x="8" y="${yScale(v)+4}" font-size="10" fill="#64748b">${v}NM</text>`).join('');
-  const points=pts.map(p=>{const col=p.dep?'#f59e0b':'#0f766e'; const stroke=p.crit?'#b91c1c':'#334155'; const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(p)):''; return `<g class="modalSource" data-modal-key="${p._modalKey||''}" data-tip="1">${tip}<circle cx="${xScale(p.x)}" cy="${yScale(p.y)}" r="4.5" fill="${col}" stroke="${stroke}" stroke-width="${p.crit?2:1}" opacity=".9"/></g>`}).join('');
+  const points=pts.map(p=>{const col=p.dep?'#f59e0b':'var(--accent)'; const stroke=p.crit?'#b91c1c':'#334155'; const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(p)):''; return `<g class="modalSource" data-modal-key="${p._modalKey||''}" data-tip="1">${tip}<circle cx="${xScale(p.x)}" cy="${yScale(p.y)}" r="4.5" fill="${col}" stroke="${stroke}" stroke-width="${p.crit?2:1}" opacity=".9"/></g>`}).join('');
   return `<svg class="chartSvg" viewBox="0 0 ${w} ${h}"><line x1="${padL}" y1="${padT+plotH}" x2="${w-padR}" y2="${padT+plotH}" stroke="#cbd5e1"/><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#cbd5e1"/>${gridSvg}<line x1="${limitX}" y1="${padT}" x2="${limitX}" y2="${padT+plotH}" stroke="#b91c1c" stroke-dasharray="5 4"/><text x="${limitX+4}" y="14" font-size="10" fill="#b91c1c">${opt.limit}s</text>${points}<text x="${w-140}" y="${h-10}" font-size="10" fill="#64748b">separação (s)</text><text x="6" y="14" font-size="10" fill="#64748b">distância B</text></svg>`;
 }
 function sep_companySummary(movs, pairs, limit){
@@ -6836,8 +6967,9 @@ function sep_bindModalClicks(){
 function sep_openDataModal(key){
   const data=sep_modalDatas.get(key); if(!data) return;
   const rows=data.rows||[];
-  $('dataModalTitle').textContent=data.title||'Dados de origem';
-  $('dataModalSub').textContent=(data.subtitle?data.subtitle+' · ':'')+`${rows.length.toLocaleString('pt-PT')} linha(s) de origem`;
+  const _mt=$('sep_dataModalTitle');const _bd=$('sep_dataModalBackdrop');if(_bd)_bd.style.display='flex';
+  if(_mt)_mt.textContent=data.title||'Dados de origem';
+  const _ms=$('sep_dataModalSub');if(_ms)_ms.textContent=(data.subtitle?data.subtitle+' · ':'')+`${rows.length.toLocaleString('pt-PT')} linha(s) de origem`;
   const isMov=rows.some(r=>r && r._isMovement);
   let heads, bodyRows, hint;
   if(isMov){
@@ -6847,14 +6979,21 @@ function sep_openDataModal(key){
     heads=['Pista','Data','Hora THR precedente','Precedente','IAS prec.','Seguidor','IAS seg.','Sep. s','Sep. NM','Seq.','DEP','Hora DEP','Seguidor no DEP']; hint='Clica numa linha para abrir a ocorrência na aba Tabela.';
     bodyRows=rows.map(r=>`<tr data-rowid="${r._id}"><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td><b>${sep_escHtml(r.csnA)}</b></td><td class="num">${sep_escHtml(r.iasA)}</td><td><b>${sep_escHtml(r.csnB||'')}</b></td><td class="num">${sep_escHtml(r.iasB||'')}</td><td class="num ${r._sepSecNum<Number($('sep_anaLimit')?.value||165)?'red':'blue'}">${sep_escHtml(r.sepSec||'')}</td><td class="num">${sep_escHtml(r.sepNm||'')}</td><td>${sep_escHtml(r._seq||'')}</td><td>${r.depCsn?`<span class="pill dep">${sep_escHtml(r.depCsn)}</span>`:'<span class="pill nodep">Sem DEP</span>'}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}${r.bNmAtDep?` s / ${sep_escHtml(r.bNmAtDep)} NM`:''}</td></tr>`).join('');
   }
-  $('dataModalBody').innerHTML=`<div class="modalActions"><button type="button" class="secondary" id="modalExportBtn">Exportar estes dados</button><span class="small">${hint}</span></div><div class="analysisTableWrap" style="max-height:62vh"><table><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${bodyRows||`<tr><td colspan="${heads.length}" class="mutedCell">Sem linhas de origem para este indicador.</td></tr>`}</tbody></table></div>`;
+  $('sep_dataModalBody').innerHTML=`<div class="modalActions"><button type="button" class="secondary" id="modalExportBtn">Exportar estes dados</button><span class="small">${hint}</span></div><div class="analysisTableWrap" style="max-height:62vh"><table><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${bodyRows||`<tr><td colspan="${heads.length}" class="mutedCell">Sem linhas de origem para este indicador.</td></tr>`}</tbody></table></div>`;
   $('sep_dataModalBackdrop').classList.add('open');
   document.querySelectorAll('#dataModalBody tbody tr[data-rowid]').forEach(tr=>tr.onclick=()=>{selectedRowId=Number(tr.dataset.rowid); sep_closeDataModal(); activateTab('tabela'); renderTable(); renderViz(sep_results.find(r=>r._id===selectedRowId));});
   const exp=$('modalExportBtn'); if(exp) exp.onclick=()=>sep_exportRowsAsExcel(rows,(data.title||'dados').replace(/[^\w\-]+/g,'_').toLowerCase()+'.xls');
 }
-function sep_closeDataModal(){ $('sep_dataModalBackdrop').classList.remove('open'); }
+function sep_closeDataModal(){const b=$('sep_dataModalBackdrop');if(b){b.style.display='none';}}
 function sep_wireModalUi(){
-  const b=$('sep_dataModalBackdrop'), c=$('dataModalClose');
+  // Wire refresh + export buttons
+  const btnR=$('sep_btnAnaRefresh');
+  if(btnR&&!btnR._wired){btnR._wired=true;btnR.onclick=()=>renderSepAnalysis();}
+  const btnE=$('sep_btnExportAnalysis');
+  if(btnE&&!btnE._wired){btnE._wired=true;btnE.onclick=()=>sep_exportAnalysisExcel&&sep_exportAnalysisExcel();}
+  const btnPdf=$('btnExportPdf');
+  if(btnPdf&&!btnPdf._wired){btnPdf._wired=true;btnPdf.onclick=()=>sep_exportAnalysisPdf&&sep_exportAnalysisPdf();}
+  const b=$('sep_dataModalBackdrop'), c=$('sep_dataModalClose');
   if(c) c.onclick=closeDataModal;
   if(b) b.addEventListener('click',ev=>{if(ev.target===b) sep_closeDataModal();});
   document.addEventListener('keydown',ev=>{if(ev.key==='Escape') sep_closeDataModal();});
@@ -6924,15 +7063,23 @@ function sep_anaFilteredMovements(){
 function sep_refreshAnalysisFilterOptions(){
   const dates=[...new Set(sep_results.map(r=>r.data).filter(Boolean))].sort();
   const hours=[...new Set(sep_results.filter(r=>r._hasB).map(r=>(r.horaA||'').slice(0,2)).filter(Boolean))].sort();
-  setSelectOptions('anaData', dates, v=>v);
-  setSelectOptions('sep_anaHour', hours, v=>v+'h');
+  const rwys=[...new Set(sep_results.map(r=>r.pistaA).filter(Boolean))].sort();
+  const seqs=[...new Set(sep_results.map(r=>r.seq).filter(Boolean))].sort();
+  sep_setSelectOptions('anaData', dates, v=>v);
+  sep_setSelectOptions('sep_anaHour', hours, v=>v+'h');
+  sep_setSelectOptions('sep_anaPista', rwys, v=>'RWY '+v);
+  sep_setSelectOptions('sep_anaSeq', seqs, v=>v);
 }
 
 function renderSepAnalysis(){
   sep_buildData();
-  sep_refreshAnalysisFilterOptions();
-  sep_renderAnalysis();
-  sep_wireModalUi();
+  if(!sep_results.length){
+    const el=$('anaSubAnaData');if(el){const c=el.querySelector('.sep-ad-wrap');if(c)c.innerHTML='<div style="padding:40px;text-align:center;color:#6b7280;"><div style="font-size:32px;margin-bottom:8px;">📊</div><div style="font-weight:700;">Sem pares de separação calculados.<br>Abre a aba <em>Separação entre chegadas</em> primeiro e verifica se tens dados carregados.</div></div>';}
+    return;
+  }
+  try{sep_refreshAnalysisFilterOptions();}catch(e){}
+  try{sep_renderAnalysis();}catch(e){console.warn('sep_renderAnalysis error',e);}
+  try{sep_wireModalUi();}catch(e){}
 }
 
 
@@ -7049,9 +7196,87 @@ function sep_dailyFilterRows(ctx){
 }
 
 function renderSepDaily(){
+  // Use global FT data (sep_results already filtered by applyFilter)
   sep_buildData();
-  sep_dailySetup();
-  sep_wireDaily();
+  if(!sep_movementRows.length){
+    const el=$('sep_dailyContent');if(el)el.innerHTML='<div style="padding:30px;text-align:center;color:#6b7280;font-weight:700;">Sem dados. Carrega ficheiros CSV e aplica o filtro.</div>';
+    return;
+  }
+  // Build day list from globally selected days
+  const selectedDates=new Set([...selDaysSet]);
+  const selectedBlocks=new Set([...selBlocksSet]);
+  // Use sep_renderDailyContentGlobal
+  sep_renderDailyContentGlobal(selectedDates, selectedBlocks);
+}
+function sep_renderDailyContentGlobal(selectedDates, selectedBlocks){
+  const el=$('sep_dailyContent');if(!el)return;
+  const limit=parseInt($('fastThreshold')&&$('fastThreshold').value)||160;
+  const dateList=[...selectedDates].sort();
+  if(!dateList.length){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:#6b7280;font-weight:700;">Nenhum dia seleccionado no painel esquerdo.</div>';
+    return;
+  }
+  // Filter movements and pairs to selected dates+blocks
+  const blockHours=(bl)=>{const [s,e]=bl.split('-').map(Number);const hs=[];for(let h=s;h<e;h++)hs.push(String(h).padStart(2,'0'));return hs;};
+  const activeHours=new Set([...selectedBlocks].flatMap(blockHours));
+  const movs=sep_movementRows.filter(m=>{
+    if(!selectedDates.has(m.data))return false;
+    if(selectedBlocks.size){const h=(m.hora||'').slice(0,2);if(!activeHours.has(h))return false;}
+    return true;
+  });
+  const rows=sep_results.filter(r=>{
+    if(!selectedDates.has(r.data))return false;
+    if(selectedBlocks.size){const h=(r.horaA||'').slice(0,2);if(!activeHours.has(h))return false;}
+    return true;
+  });
+  const arr=movs.filter(m=>m.type==='ARR').length;
+  const dep=movs.filter(m=>m.type==='DEP').length;
+  const crit=rows.filter(r=>r._sepSecNum<limit).length;
+  const critDep=rows.filter(r=>r._sepSecNum<limit&&r._hasDep).length;
+  // KPIs
+  const kpiHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+    ${[['Dias sel.',dateList.length,'var(--accent)'],['Movimentos',movs.length,'#0f172a'],['Chegadas',arr,'#0b5cad'],
+       ['Descolagens',dep,'#f59e0b'],['Pares sep.',rows.length,'#374151'],
+       ['Críticos',crit,'#b91c1c'],['Críticos c/DEP',critDep,'#7c3aed']
+    ].map(([l,v,c])=>`<div style="background:#fafafa;border:1px solid #d7dce3;border-radius:12px;padding:10px;">
+      <b style="font-size:20px;color:${c};display:block;">${v}</b>
+      <span style="font-size:11px;color:#6b7280;">${l}</span></div>`).join('')}
+  </div>`;
+  // By-day chart
+  const byDayMovs={},byDayCrit={};
+  dateList.forEach(d=>{byDayMovs[d]=0;byDayCrit[d]=0;});
+  for(const m of movs){if(byDayMovs[m.data]!=null)byDayMovs[m.data]++;}
+  for(const r of rows){if(r._sepSecNum<limit&&byDayCrit[r.data]!=null)byDayCrit[r.data]++;}
+  const chartMovs=sep_barSvg(dateList.map(d=>({label:d.slice(5),value:byDayMovs[d]})),{title:'Movimentos por dia',h:200,w:580,color:'#0b5cad',valueKey:'value'});
+  const chartCrit=sep_barSvg(dateList.map(d=>({label:d.slice(5),value:byDayCrit[d]})),{title:'Pares críticos por dia',h:200,w:580,color:'#b91c1c',valueKey:'value'});
+  // Common callsigns
+  const callsByDay={};
+  for(const m of movs){if(!callsByDay[m.data])callsByDay[m.data]=new Set();callsByDay[m.data].add(m.callsign);}
+  const common=dateList.length>1?[...(callsByDay[dateList[0]]||[])].filter(c=>dateList.every(d=>callsByDay[d]&&callsByDay[d].has(c))).sort():[];
+  const commonHtml=common.length?`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;">
+    <div style="font-weight:900;font-size:14px;color:#374151;margin-bottom:8px;">Callsigns comuns entre todos os dias (${common.length})</div>
+    <div style="font-size:12px;color:#374151;line-height:1.9;">${common.join(', ')}</div></div>`:'';
+  // Hourly summary
+  const hourMap={};
+  for(const m of movs){const h=(m.hora||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={h,arr:0,dep:0,pairs:0,crit:0};if(m.type==='ARR')hourMap[h].arr++;else hourMap[h].dep++;}
+  for(const r of rows){const h=(r.horaA||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={h,arr:0,dep:0,pairs:0,crit:0};hourMap[h].pairs++;if(r._sepSecNum<limit)hourMap[h].crit++;}
+  const hourTable=`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;overflow:auto;max-height:320px;">
+    <div style="font-weight:900;font-size:14px;color:#374151;margin-bottom:8px;">Resumo por hora</div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr>${['Hora','ARR','DEP','Total','Pares','Críticos'].map(h=>`<th style="background:#e9e6e3;padding:6px 10px;text-align:left;font-size:11px;font-weight:800;position:sticky;top:0;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${Object.values(hourMap).sort((a,b)=>a.h.localeCompare(b.h)).map(r=>`<tr>
+        <td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;">${r.h}h</td>
+        <td style="padding:5px 10px;border-bottom:1px solid #eee;color:#0b5cad;">${r.arr}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid #eee;color:#f59e0b;">${r.dep}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid #eee;">${r.arr+r.dep}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid #eee;">${r.pairs}</td>
+        <td style="padding:5px 10px;border-bottom:1px solid #eee;color:#b91c1c;font-weight:700;">${r.crit||0}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  el.innerHTML=kpiHtml+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chartMovs}</div>
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chartCrit}</div>
+  </div>`+commonHtml+hourTable;
 }
 function sep_wireDaily(){
   const dates=sep_dailyAvailableDates();
@@ -7081,7 +7306,7 @@ function sep_wireDaily(){
     b.onclick=()=>{
       sep_dailyState.type=b.dataset.dtype;
       document.querySelectorAll('#sep_dailyLayout [data-dtype]').forEach(x=>{
-        x.style.background=x.dataset.dtype===b.dataset.dtype?'#5b4a42':'#eef2f7';
+        x.style.background=x.dataset.dtype===b.dataset.dtype?'var(--accent)':'#eef2f7';
         x.style.color=x.dataset.dtype===b.dataset.dtype?'white':'#334155';
       });
       sep_renderDailyControls();sep_renderDaily();
@@ -7105,7 +7330,7 @@ function sep_renderDailyContent(ctx){
     ${[
       ['Movimentos',movs.length,'#0f172a'],['Chegadas',arr,'#0b5cad'],['Descolagens',dep,'#f59e0b'],
       ['Pares sep.',rows.length,'#374151'],['Críticos',stats.crit,'#b91c1c'],
-      ['Críticos c/DEP',stats.critDep,'#7c3aed'],['Dias sel.',[...sep_dailyState.selectedDates].length,'#0f766e']
+      ['Críticos c/DEP',stats.critDep,'#7c3aed'],['Dias sel.',[...sep_dailyState.selectedDates].length,'var(--accent)']
     ].map(([lbl,val,clr])=>`<div style="background:#fafafa;border:1px solid #d7dce3;border-radius:12px;padding:10px;">
       <b style="font-size:20px;color:${clr};display:block;">${val}</b>
       <span style="font-size:11px;color:#6b7280;">${lbl}</span></div>`).join('')}
@@ -7128,14 +7353,14 @@ function sep_renderDailyContent(ctx){
   }
   const common=dateList.length>1?[...callsByDay[dateList[0]]||[]].filter(c=>dateList.every(d=>callsByDay[d]&&callsByDay[d].has(c))).sort():[];
   const commonHtml=common.length?`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;">
-    <div style="font-weight:900;font-size:14px;color:#2b2521;margin-bottom:8px;">Callsigns comuns entre todos os dias (${common.length})</div>
+    <div style="font-weight:900;font-size:14px;color:var(--text);margin-bottom:8px;">Callsigns comuns entre todos os dias (${common.length})</div>
     <div style="font-size:12px;color:#374151;line-height:1.8;">${common.join(', ')}</div></div>`:'';
   // Hourly summary table
   const hourRows=[];const hourMap={};
   for(const m of movs){const h=(m.hora||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={h,arr:0,dep:0,pairs:0,crit:0};if(m.type==='ARR')hourMap[h].arr++;else hourMap[h].dep++;}
   for(const r of rows){const h=(r.horaA||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={h,arr:0,dep:0,pairs:0,crit:0};hourMap[h].pairs++;if(r._sepSecNum<limit)hourMap[h].crit++;}
   const hourTable=`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;overflow:auto;max-height:320px;">
-    <div style="font-weight:900;font-size:14px;color:#2b2521;margin-bottom:8px;">Resumo por hora</div>
+    <div style="font-weight:900;font-size:14px;color:var(--text);margin-bottom:8px;">Resumo por hora</div>
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr>${['Hora','ARR','DEP','Total','Pares','Críticos'].map(h=>`<th style="background:#e9e6e3;padding:6px 10px;text-align:left;font-size:11px;font-weight:800;">${h}</th>`).join('')}</tr></thead>
       <tbody>${Object.values(hourMap).sort((a,b)=>a.h.localeCompare(b.h)).map(r=>`<tr><td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;">${r.h}h</td><td style="padding:5px 10px;border-bottom:1px solid #eee;color:#0b5cad;">${r.arr}</td><td style="padding:5px 10px;border-bottom:1px solid #eee;color:#f59e0b;">${r.dep}</td><td style="padding:5px 10px;border-bottom:1px solid #eee;">${r.arr+r.dep}</td><td style="padding:5px 10px;border-bottom:1px solid #eee;">${r.pairs}</td><td style="padding:5px 10px;border-bottom:1px solid #eee;color:#b91c1c;font-weight:700;">${r.crit||0}</td></tr>`).join('')}</tbody>
