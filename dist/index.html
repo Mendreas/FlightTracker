@@ -934,9 +934,9 @@ tr:hover td{background:rgba(0,200,255,.03);}
       <div class="chartTitle">Timeline operacional</div>
       <div class="chartSub">Sequência temporal das chegadas precedentes, DEP intermédios e chegadas seguidoras, usando os filtros ativos.</div>
       <div class="timelineControls">
-        <div><label>Zoom</label><select id="sep_tlZoom"><option value="all">Dia completo com scroll horizontal</option><option value="4">Janela de 4 horas</option><option value="2" selected>Janela de 2 horas</option><option value="1">Janela de 1 hora</option></select></div>
-        <div><label>Hora foco</label><select id="sep_tlHour"><option value="auto">Automático</option></select></div>
-        <div><label>Etiquetas</label><select id="sep_tlLabels"><option value="crit" selected>Só pares críticos</option><option value="none">Sem callsigns</option><option value="all">Todos os callsigns</option></select></div>
+        <div><label>Zoom</label><select id="sep_tlZoom" onchange="sep_renderAnalysis()"><option value="all">Dia completo com scroll horizontal</option><option value="4">Janela de 4 horas</option><option value="2" selected>Janela de 2 horas</option><option value="1">Janela de 1 hora</option></select></div>
+        <div><label>Hora foco</label><select id="sep_tlHour" onchange="sep_renderAnalysis()"><option value="auto">Automático</option></select></div>
+        <div><label>Etiquetas</label><select id="sep_tlLabels" onchange="sep_renderAnalysis()"><option value="crit" selected>Só pares críticos</option><option value="none">Sem callsigns</option><option value="all">Todos os callsigns</option></select></div>
       </div>
       <div class="timelineHint">Usa os botões horários para isolar uma janela. No modo “dia completo”, a timeline fica larga de propósito: usa o scroll horizontal para analisar por períodos sem esmagar os eventos.</div>
       <div id="sep_tlHourButtons" class="timelineButtons"></div>
@@ -6915,15 +6915,16 @@ function sep_setTimelineHourOptions(events){
 }
 function sep_renderTimeline(rows,limit){
   const host=$('sep_chartTimeline'); if(!host) return;
+  const _tod=v=>Number.isFinite(v)?(((v%86400)+86400)%86400):NaN;
   const allEvents=[];
   for(const r of rows){
     const v=r._viz||{}, A=v.A, B=v.B, deps=v.deps||[];
     if(!A || !Number.isFinite(A.t)) continue;
     const crit=r._sepSecNum < limit;
     const base={rowId:r._id,pista:r.pista,data:r.data,crit,seq:r._seq||'',sep:r.sepSec||'',nm:r.sepNm||'',pre:r.csnA||'',seg:r.csnB||''};
-    allEvents.push({...base,type:'precedente',t:epochToSecOfDay(A.t),csn:r.csnA||A.csn||'',label:'Precedente na THR'});
-    for(const d of deps){if(Number.isFinite(d.t)) allEvents.push({...base,type:'dep',t:epochToSecOfDay(d.t),csn:d.csn||'',label:'DEP intermédio',depNm:d.bNm,depSec:d.bSec});}
-    if(B && Number.isFinite(B.t)) allEvents.push({...base,type:'seguidor',t:epochToSecOfDay(B.t),csn:r.csnB||B.csn||'',label:'Seguidor na THR'});
+    allEvents.push({...base,type:'precedente',t:_tod(A.t),csn:r.csnA||A.csn||'',label:'Precedente na THR'});
+    for(const d of deps){if(Number.isFinite(d.t)) allEvents.push({...base,type:'dep',t:_tod(d.t),csn:d.csn||'',label:'DEP intermédio',depNm:d.bNm,depSec:d.bSec});}
+    if(B && Number.isFinite(B.t)) allEvents.push({...base,type:'seguidor',t:_tod(B.t),csn:r.csnB||B.csn||'',label:'Seguidor na THR'});
   }
   if(!allEvents.length){host.innerHTML='<div class="placeholder" style="height:360px">Sem eventos para a timeline com os filtros atuais.</div>'; return;}
   allEvents.sort((a,b)=>a.t-b.t || String(a.type).localeCompare(String(b.type)));
@@ -6945,7 +6946,7 @@ function sep_renderTimeline(rows,limit){
     const pad=Math.max(60,(maxAll-minAll)*0.02); minT=minAll-pad; maxT=maxAll+pad;
   }
   const events=allEvents.filter(e=>e.t>=minT && e.t<=maxT);
-  const visibleRows=rows.filter(r=>{const v=r._viz||{}, A=v.A, B=v.B; return (A&&A.t>=minT&&A.t<=maxT) || (B&&B.t>=minT&&B.t<=maxT) || ((v.deps||[]).some(d=>d.t>=minT&&d.t<=maxT));});
+  const visibleRows=rows.filter(r=>{const v=r._viz||{}, A=v.A, B=v.B; const ta=A?_tod(A.t):NaN, tb=B?_tod(B.t):NaN; return (A&&ta>=minT&&ta<=maxT) || (B&&tb>=minT&&tb<=maxT) || ((v.deps||[]).some(d=>{const td=_tod(d.t);return td>=minT&&td<=maxT;}));});
   if(!events.length){host.innerHTML='<div class="placeholder" style="height:320px">Sem eventos nesta janela horária da timeline.</div>'; return;}
   const durationH=Math.max((maxT-minT)/3600, 0.5);
   const pxPerHour=zoom==='all'?900:(zoom==='4'?1200:(zoom==='2'?1500:2000));
@@ -6958,11 +6959,20 @@ function sep_renderTimeline(rows,limit){
   let ticks='';
   for(let t=tickStart;t<=maxT;t+=tickStep){const x=xScale(t), strong=t%3600===0; ticks+=`<line x1="${x}" y1="${padT}" x2="${x}" y2="${h-padB}" stroke="${strong?'#cbd5e1':'#e8edf3'}"/><text x="${x}" y="${h-26}" text-anchor="middle" font-size="10" fill="#64748b">${strong?fmtTime(t).slice(0,5):fmtTime(t).slice(3,5)}</text>`;}
   const laneSvg=lanes.map(p=>{const y=yLane(p);return `<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="#cbd5e1"/><text x="16" y="${y+4}" font-size="13" font-weight="900" fill="#334155">RWY ${p}</text>`;}).join('');
-  const segments=visibleRows.map(r=>{const v=r._viz||{}, A=v.A, B=v.B;if(!A||!B||!Number.isFinite(A.t)||!Number.isFinite(B.t))return '';const y=yLane(r.pista);const x1=Math.max(padL,Math.min(w-padR,xScale(A.t))), x2=Math.max(padL,Math.min(w-padR,xScale(B.t)));const col=r._sepSecNum<limit?'#b91c1c':'#94a3b8';const tip=sep_tooltipLines([`Par precedente/seguidor: ${r.csnA} → ${r.csnB}`,`RWY ${r.pista} · ${r.data}`,`Separação: ${r.sepSec} s · ${r.sepNm} NM`,`Sequência: ${r._seq||''}`,r.depCsn?`DEP: ${r.depCsn}`:'Sem DEP intermédio']);return `<g class="timelineEvent" data-rowid="${r._id}">${tip}<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${col}" stroke-width="${r._sepSecNum<limit?4:2}" opacity=".58"/></g>`;}).join('');
+  const segments=visibleRows.map(r=>{const v=r._viz||{}, A=v.A, B=v.B;if(!A||!B||!Number.isFinite(A.t)||!Number.isFinite(B.t))return '';const y=yLane(r.pista);const x1=Math.max(padL,Math.min(w-padR,xScale(_tod(A.t)))), x2=Math.max(padL,Math.min(w-padR,xScale(_tod(B.t))));const col=r._sepSecNum<limit?'#b91c1c':'#94a3b8';const tip=sep_tooltipLines([`Par precedente/seguidor: ${r.csnA} → ${r.csnB}`,`RWY ${r.pista} · ${r.data}`,`Separação: ${r.sepSec} s · ${r.sepNm} NM`,`Sequência: ${r._seq||''}`,r.depCsn?`DEP: ${r.depCsn}`:'Sem DEP intermédio']);return `<g class="timelineEvent" data-rowid="${r._id}">${tip}<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="${col}" stroke-width="${r._sepSecNum<limit?4:2}" opacity=".58"/></g>`;}).join('');
+  const _lblLastEnd={};
   const markers=events.map((e,idx)=>{const x=xScale(e.t), y=yLane(e.pista)+(e.type==='precedente'?-16:(e.type==='seguidor'?16:0));let col=e.type==='dep'?'#f59e0b':(e.type==='seguidor'?'#7c3aed':'#0b5cad');let stroke=e.crit?'#b91c1c':'#334155';const tip=sep_tooltipLines([e.label+`: ${e.csn}`,`Hora: ${fmtTime(e.t)} · RWY ${e.pista} · ${e.data}`,`Par: ${e.pre} → ${e.seg}`,`Separação: ${e.sep} s · ${e.nm} NM`,`Sequência: ${e.seq}`,e.type==='dep'?`Seguidor à THR no DEP: ${e.depSec||''} s · ${e.depNm||''} NM`:null,e.crit?`Abaixo do limite ${limit}s`:`Dentro/igual ao limite ${limit}s`]);
     const shape=e.type==='dep'?`<rect x="${x-5}" y="${y-5}" width="10" height="10" rx="2" fill="${col}" stroke="${stroke}" stroke-width="${e.crit?2:1}"/>`:`<circle cx="${x}" cy="${y}" r="5.5" fill="${col}" stroke="${stroke}" stroke-width="${e.crit?2:1}"/>`;
-    const showLabel=labelMode==='all' || (labelMode==='crit' && e.crit);
-    const labelY=e.type==='precedente'?y-16:(e.type==='seguidor'?y+26:y-18); const label=showLabel?`<g><rect x="${x+7}" y="${labelY-10}" width="${Math.max(34,(e.csn||'').length*6.2)}" height="13" rx="3" fill="#fbfcfd" opacity=".82"/><text x="${x+9}" y="${labelY}" font-size="11" fill="#334155">${sep_escSvg(e.csn)}</text></g>`:'';
+    let showLabel=labelMode==='all' || (labelMode==='crit' && e.crit);
+    const labelY=e.type==='precedente'?y-16:(e.type==='seguidor'?y+26:y-18);
+    let label='';
+    if(showLabel){
+      const lblW=Math.max(34,(e.csn||'').length*6.2);
+      const lblKey=e.pista+':'+labelY;
+      if(_lblLastEnd[lblKey]!=null && (x+7) < _lblLastEnd[lblKey]+4){ showLabel=false; }
+      else { _lblLastEnd[lblKey]=x+7+lblW; }
+    }
+    if(showLabel){ label=`<g><rect x="${x+7}" y="${labelY-10}" width="${Math.max(34,(e.csn||'').length*6.2)}" height="13" rx="3" fill="#fbfcfd" opacity=".82"/><text x="${x+9}" y="${labelY}" font-size="11" fill="#334155">${sep_escSvg(e.csn)}</text></g>`; }
     return `<g class="timelineEvent" data-rowid="${e.rowId}">${tip}${shape}${label}</g>`;
   }).join('');
   const critCount=visibleRows.filter(r=>r._sepSecNum<limit).length;
