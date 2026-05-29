@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -12,6 +15,22 @@ jobs:
     steps:
       - name: Download do código
         uses: actions/checkout@v4
+
+      - name: Injectar API Key no HTML
+        shell: pwsh
+        run: |
+          $file = "dist/index.html"
+          $key  = "${{ secrets.ANTHROPIC_API_KEY }}"
+          if ($key -ne "") {
+            # Substituicao binaria-segura (Latin-1, byte<->char 1:1) para nao corromper a codificacao
+            $enc  = [System.Text.Encoding]::GetEncoding('iso-8859-1')
+            $html = $enc.GetString([System.IO.File]::ReadAllBytes($file))
+            $html = $html.Replace('__ANTHROPIC_API_KEY__', $key)
+            [System.IO.File]::WriteAllBytes($file, $enc.GetBytes($html))
+            Write-Host "API Key injectada com sucesso."
+          } else {
+            Write-Host "Secret ANTHROPIC_API_KEY nao definido - placeholder mantido."
+          }
 
       - name: Instalar Rust
         uses: dtolnay/rust-toolchain@stable
@@ -29,15 +48,28 @@ jobs:
       - name: Instalar Tauri CLI
         run: npm install -g @tauri-apps/cli@1
 
-      - name: Build Tauri
-        run: tauri build
+      - name: Build Tauri (NSIS)
+        run: tauri build --bundles nsis
         env:
           TAURI_PRIVATE_KEY: ''
           TAURI_KEY_PASSWORD: ''
 
-      - name: Publicar instalador
+      - name: Guardar instalador como artifact
         uses: actions/upload-artifact@v4
         with:
           name: Flight-Track-Viewer-Installer
           path: src-tauri/target/release/bundle/nsis/*.exe
           retention-days: 30
+
+      - name: Publicar GitHub Release (Windows)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Flight Track Viewer — versão mais recente
+          body: |
+            Instalador Windows e DMG macOS da versão mais recente.
+            Instala directamente sobre versão anterior — dados e sessão preservados.
+          files: src-tauri/target/release/bundle/nsis/*.exe
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

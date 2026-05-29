@@ -1,0 +1,4 @@
+# Segredos e artefactos com a chave embutida — NUNCA versionar
+chave.txt
+*-com-chave.html
+dist/*-com-chave.html
