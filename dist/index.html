@@ -7371,6 +7371,134 @@ function sep_renderDailyContent(ctx){
   </div>`+commonHtml+hourTable;
 }
 
+
+function sep_exportAnalysisExcel(){
+  const limit=Number($('sep_anaLimit')?.value||165), rows=sep_anaFilteredRows();
+  let html='<html><head><meta charset="UTF-8"></head><body>';
+  html+=`<h2>Análise LPPT - limite ${limit}s</h2>`;
+  html+='<h3>Pares filtrados</h3><table border="1"><tr><th>Pista</th><th>Data</th><th>Hora A</th><th>Callsign precedente</th><th>IAS precedente</th><th>Callsign seguidor</th><th>IAS seguidor</th><th>Sep. s</th><th>Sep. NM</th><th>Seq.</th><th>DEP</th><th>Hora DEP</th><th>Seguidor à THR no DEP (s)</th><th>Seguidor à THR no DEP (NM)</th></tr>';
+  for(const r of rows){html+=`<tr><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td>${sep_escHtml(r.csnA)}</td><td>${sep_escHtml(r.iasA)}</td><td>${sep_escHtml(r.csnB)}</td><td>${sep_escHtml(r.iasB)}</td><td>${sep_escHtml(r.sepSec)}</td><td>${sep_escHtml(r.sepNm)}</td><td>${sep_escHtml(r._seq||'')}</td><td>${sep_escHtml(r.depCsn||'')}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}</td><td>${sep_escHtml(r.bNmAtDep||'')}</td></tr>`}
+  html+='</table>';
+  html+='<h3>Top 10 críticos</h3><table border="1"><tr><th>Pista</th><th>Data</th><th>Hora A</th><th>Precedente</th><th>Seguidor</th><th>Seq.</th><th>Sep. s</th><th>Sep. NM</th><th>DEP</th></tr>';
+  for(const r of [...rows].sort((a,b)=>a._sepSecNum-b._sepSecNum).slice(0,10)){html+=`<tr><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td>${sep_escHtml(r.csnA)}</td><td>${sep_escHtml(r.csnB)}</td><td>${sep_escHtml(r._seq||'')}</td><td>${sep_escHtml(r.sepSec)}</td><td>${sep_escHtml(r.sepNm)}</td><td>${sep_escHtml(r.depCsn||'')}</td></tr>`}
+  html+='</table>';
+  const movs=sep_anaFilteredMovements(); const comps=sep_companySummary(movs, rows, limit);
+  html+='<h3>Movimentos ARR+DEP</h3><table border="1"><tr><th>Tipo</th><th>Pista</th><th>Data</th><th>Hora</th><th>Callsign</th><th>Companhia</th><th>IAS</th><th>Ficheiro</th></tr>';
+  for(const m of movs){html+=`<tr><td>${sep_escHtml(m.type||'')}</td><td>${sep_escHtml(m.pista||'')}</td><td>${sep_escHtml(m.data||'')}</td><td>${sep_escHtml(m.hora||'')}</td><td>${sep_escHtml(m.callsign||'')}</td><td>${sep_escHtml(m.company||'')}</td><td>${sep_escHtml(m.ias||'')}</td><td>${sep_escHtml(m.fileName||'')}</td></tr>`}
+  html+='</table><h3>Resumo por companhia</h3><table border="1"><tr><th>Companhia</th><th>Movimentos</th><th>ARR</th><th>DEP</th><th>Ocorrências críticas</th><th>Taxa</th></tr>';
+  for(const c of comps){html+=`<tr><td>${sep_escHtml(c.company)}</td><td>${c.movements}</td><td>${c.arr}</td><td>${c.dep}</td><td>${c.critical}</td><td>${(c.rate*100).toFixed(1)}%</td></tr>`}
+  html+='</table></body></html>';
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='analise_separacao_thr_lppt.xls'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function sep_exportAnalysisPdf(){
+  sep_renderAnalysis();
+  const limit=Number($('sep_anaLimit')?.value||165);
+  const rows=sep_anaFilteredRows();
+  const movs=sep_anaFilteredMovements();
+  const critRows=rows.filter(r=>r._sepSecNum<limit);
+  const depRows=rows.filter(r=>r._hasDep);
+  const noDepRows=rows.filter(r=>!r._hasDep);
+  const comps=sep_companySummary(movs, rows, limit);
+  const topRows=[...rows].sort((a,b)=>a._sepSecNum-b._sepSecNum).slice(0,10);
+  const filterRows=sep_reportActiveFilters();
+  const kpis=[...document.querySelectorAll('.miniKpi')].map(k=>({v:k.querySelector('b')?.textContent||'', l:k.querySelector('span')?.textContent||''}));
+  const mainKpis=[...document.querySelectorAll('#grafico .grid .metric')].map(k=>({v:k.querySelector('b')?.textContent||'', l:k.querySelector('span')?.textContent||''}));
+  const now=new Date().toLocaleString('pt-PT');
+  const critRate=rows.length ? (critRows.length/rows.length*100).toFixed(1) : '0.0';
+  const depCritRate=critRows.length ? (depRows.filter(r=>r._sepSecNum<limit).length/critRows.length*100).toFixed(1) : '0.0';
+  const minSep=rows.length ? Math.min(...rows.map(r=>r._sepSecNum).filter(Number.isFinite)).toFixed(1) : '—';
+  const peakHour=hourSummary(rows,limit).sort((a,b)=>b.crit-a.crit||b.pairs-a.pairs||a.hour.localeCompare(b.hour))[0];
+  const runwayStats=['02','20'].map(p=>{const pr=rows.filter(r=>r.pista===p), pc=pr.filter(r=>r._sepSecNum<limit); return [p,pr.length,pc.length,pr.filter(r=>r._hasDep).length,pr.length?(pc.length/pr.length*100).toFixed(1)+'%':'0.0%'];});
+  const seqStats=['AA','ADA','ADDA','AD...A'].map(seq=>{const sr=rows.filter(r=>(r._seq||'')===seq), sc=sr.filter(r=>r._sepSecNum<limit); return [seq,sr.length,sc.length,sr.length?(sc.length/sr.length*100).toFixed(1)+'%':'0.0%'];});
+  const compTop=comps.slice(0,10).map(c=>[c.company,c.movements,c.arr,c.dep,c.critical,(c.rate*100).toFixed(1)+'%']);
+  const topTable=topRows.map(r=>[r.pista,r.data,r.horaA,r.csnA,r.csnB||'',r.sepSec||'',r.sepNm||'',r._seq||'',r.depCsn||'',r.depHora||'']);
+  const exec=[
+    `Foram analisados ${rows.length} pares precedente/seguidor dentro dos filtros ativos.`,
+    `${critRows.length} pares ficaram abaixo do limite de ${limit} segundos (${critRate}% da amostra filtrada).`,
+    `${depRows.filter(r=>r._sepSecNum<limit).length} dos pares críticos tiveram DEP entre chegadas (${depCritRate}% dos críticos).`,
+    `A menor separação observada foi ${minSep} segundos.`,
+    peakHour?`A hora com maior concentração crítica foi ${peakHour.hour}h, com ${peakHour.crit} pares abaixo do limite.`:'Não há hora crítica identificável no filtro atual.',
+    comps.length?`A análise por companhia deve ser lida por taxa de ocorrências por movimento, para evitar comparar apenas volumes absolutos.`:'Sem movimentos suficientes para análise por companhia.'
+  ];
+  let html='<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Relatório analítico - LPPT Tracker Radar</title><style>'+sep_reportCss()+'</style></head><body>';
+  html+=`<h1>LPPT Tracker Radar — relatório analítico</h1><div class="sub">Gerado em ${sep_escHtml(now)}. Relatório orientado a conclusões; o detalhe completo deve ser obtido pela exportação Excel.</div>`;
+  html+='<h2>Filtros ativos</h2><table class="filterTable"><tbody>'+filterRows.map(([a,b])=>`<tr><th>${sep_escHtml(a)}</th><td>${sep_escHtml(b)}</td></tr>`).join('')+'</tbody></table>';
+  html+='<section class="exec"><h2>Sumário executivo</h2>'+sep_narrativeList(exec)+'</section>';
+  html+='<h2>Indicadores principais</h2><div class="kpiGrid">'+mainKpis.concat(kpis).map(k=>`<div class="kpi"><b>${sep_escHtml(k.v)}</b><span>${sep_escHtml(k.l)}</span></div>`).join('')+'</div>';
+  html+='<h2>Leitura operacional</h2><div class="insights">';
+  html+=`<div class="insight"><h3>Separação precedente/seguidor</h3><p>A distribuição de separações permite perceber se os casos abaixo do limite estão concentrados muito perto do valor de referência ou se existem eventos claramente abaixo do esperado.</p></div>`;
+  html+=`<div class="insight"><h3>DEP entre chegadas</h3><p>A posição do seguidor no momento do DEP permite avaliar se a utilização do intervalo entre chegadas ocorreu com o seguidor ainda distante da THR ou já em aproximação curta.</p></div>`;
+  html+=`<div class="insight"><h3>Comparação por pista</h3><p>A análise por pista separa o volume de tráfego da taxa de ocorrência, evitando concluir apenas pelo maior número absoluto de movimentos.</p></div>`;
+  html+=`<div class="insight"><h3>Companhias</h3><p>O ranking por companhia usa taxa de ocorrências críticas por movimento. Assim, companhias com poucos movimentos devem ser interpretadas com cautela.</p></div>`;
+  html+='</div>';
+  html+='<div class="pageBreak"></div><h1>Gráficos principais</h1>';
+  html+=sep_reportChartOnly('sep_chartHist','Distribuição das separações entre precedente e seguidor','Mostra a concentração dos pares por intervalos de separação em segundos.');
+  html+=sep_reportChartOnly('sep_chartHour','Resumo por hora','Identifica os períodos horários com maior densidade de pares e eventos críticos.');
+  html+=sep_reportChartOnly('chartRunway','Análise por pista','Compara volume, pares críticos e DEP entre chegadas por pista.');
+  html+=sep_reportChartOnly('sep_chartSeq','Tipo de sequência','Compara AA, ADA, ADDA e AD...A.');
+  html+=sep_reportChartOnly('sep_chartMovHour','Movimentos por hora','Mostra ARR+DEP por hora.');
+  html+=sep_reportChartOnly('chartCompanyInfractions','Top 10 companhias por taxa de ocorrências críticas','Ranking por taxa, não apenas por número absoluto.');
+  html+=sep_reportChartOnly('sep_chartDepDist','Posição do seguidor no momento do DEP','Agrupa a distância do seguidor à THR quando ocorreu DEP entre chegadas.');
+  html+=sep_reportChartOnly('sep_chartTimeline','Timeline operacional','Sequência temporal dos pares e DEP intermédios.');
+  html+='<div class="pageBreak"></div><h1>Dados resumidos de suporte</h1>';
+  html+=sep_compactRowsTable('Resumo por pista',['Pista','Pares','Críticos','Com DEP','Taxa crítica'],runwayStats,10);
+  html+=sep_compactRowsTable('Resumo por sequência',['Sequência','Pares','Críticos','Taxa crítica'],seqStats,10);
+  html+=sep_tableElementHtml('sep_hourTbl','Resumo por hora');
+  html+=sep_compactRowsTable('Top 10 situações mais críticas',['Pista','Data','Hora precedente','Precedente','Seguidor','Sep. s','Sep. NM','Sequência','DEP','Hora DEP'],topTable,10);
+  html+=sep_compactRowsTable('Top 10 companhias por taxa crítica',['Companhia','Movimentos','ARR','DEP','Ocorrências críticas','Taxa'],compTop,10);
+  html+='</body></html>';
+  const w=window.open('','_blank');
+  if(!w){alert('O browser bloqueou a janela do relatório. Permite pop-ups para esta página e tenta novamente.');return;}
+  w.document.open(); w.document.write(html); w.document.close();
+  setTimeout(()=>{w.focus(); w.print();},600);
+}
+function sep_reportCss(){
+  return '@page{size:A4 landscape;margin:11mm}body{font-family:Segoe UI,Arial,sans-serif;color:#172033;margin:0;font-size:10.5px;line-height:1.35}h1{font-size:21px;margin:0 0 4px;color:#3f332d}h2{font-size:15px;margin:16px 0 8px;color:#3f332d;break-after:avoid}h3{font-size:12px;margin:10px 0 5px;color:#334155}.sub{color:#64748b;margin-bottom:10px}.exec{border-left:5px solid #6b564d;background:#f8fafc;border-radius:10px;padding:10px 12px;margin:10px 0 12px}.insights{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.insight{border:1px solid #d7dce3;border-radius:10px;padding:8px;background:#fff}.kpiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 10px}.kpi{border:1px solid #d7dce3;border-radius:8px;padding:7px;background:#fafafa}.kpi b{font-size:17px;display:block}.filterTable,.reportTable,table{border-collapse:collapse;width:100%;font-size:9.5px}th,td{border:1px solid #d7dce3;padding:4px 5px;text-align:left;vertical-align:top}th{background:#e9e6e3;color:#2b2521}.num{text-align:right}.chartSection{break-inside:avoid;page-break-inside:avoid;margin:0 0 14px}.chartBox{border:1px solid #d7dce3;border-radius:8px;padding:6px;background:#fbfcfd;margin-bottom:6px;overflow:hidden}.chartBox svg{max-width:100%;height:auto}.chartSvg{width:100%;height:auto}.timelineSvg{max-width:100%;height:auto}.timelineScroller{overflow:visible!important}.pageBreak{break-before:page}.small{font-size:9px;color:#64748b}.muted{color:#64748b}.dataModalBackdrop,.dataModal{display:none!important}button{display:none!important}';
+}
+function sep_narrativeList(items){return '<ul>'+items.filter(Boolean).map(x=>`<li>${sep_escHtml(x)}</li>`).join('')+'</ul>';}
+function sep_reportChartOnly(id,title,desc){
+  const el=$(id); if(!el) return '';
+  return `<section class="chartSection"><h2>${sep_escHtml(title)}</h2>${desc?`<p class="muted">${sep_escHtml(desc)}</p>`:''}<div class="chartBox">${el.innerHTML}</div></section>`;
+}
+function sep_compactRowsTable(title, headers, rows, maxRows=20){
+  return `<h3>${sep_escHtml(title)}</h3><table><thead><tr>${headers.map(h=>`<th>${sep_escHtml(h)}</th>`).join('')}</tr></thead><tbody>`+
+    rows.slice(0,maxRows).map(r=>'<tr>'+r.map((c,i)=>`<td${typeof c==='number'?' class="num"':''}>${sep_escHtml(c==null?'':String(c))}</td>`).join('')+'</tr>').join('')+
+    `</tbody></table>${rows.length>maxRows?`<div class="small">Mostradas ${maxRows} de ${rows.length} linhas. A extração Excel contém o detalhe completo.</div>`:''}`;
+}
+function sep_rowsTableHtml(rows, title){
+  const heads=['Pista','Data','Hora THR precedente','Precedente','IAS precedente','Seguidor','IAS seguidor','Sep. s','Sep. NM','Sequência','DEP','Hora DEP','Seguidor à THR no DEP (s)','Seguidor à THR no DEP (NM)'];
+  let html=`<h3>${sep_escHtml(title)}</h3><table><thead><tr>${heads.map(h=>`<th>${sep_escHtml(h)}</th>`).join('')}</tr></thead><tbody>`;
+  if(!rows.length){ html+='<tr><td colspan="14">Sem dados para os filtros atuais.</td></tr>'; }
+  for(const r of rows){
+    html+=`<tr><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td><b>${sep_escHtml(r.csnA)}</b></td><td class="num">${sep_escHtml(r.iasA)}</td><td><b>${sep_escHtml(r.csnB||'')}</b></td><td class="num">${sep_escHtml(r.iasB||'')}</td><td class="num">${sep_escHtml(r.sepSec||'')}</td><td class="num">${sep_escHtml(r.sepNm||'')}</td><td>${sep_escHtml(r._seq||'')}</td><td>${sep_escHtml(r.depCsn||'')}</td><td>${sep_escHtml(r.depHora||'')}</td><td class="num">${sep_escHtml(r.bSecAtDep||'')}</td><td class="num">${sep_escHtml(r.bNmAtDep||'')}</td></tr>`;
+  }
+  html+='</tbody></table>';
+  return html;
+}
+function sep_tableElementHtml(id, title){
+  const el=$(id);
+  if(!el) return '';
+  return `<h3>${sep_escHtml(title)}</h3>${el.outerHTML}`;
+}
+function sep_chartReportHtml(id, title, sourceRows, sourceTitle){
+  const el=$(id);
+  if(!el) return '';
+  const srcHtml=sourceRows?(sourceRows.some(r=>r&&r._isMovement)?sep_sep_movementRowsTableHtml(sourceRows, sourceTitle||('Dados de origem — '+title)):sep_rowsTableHtml(sourceRows, sourceTitle||('Dados de origem — '+title))):'';
+  return `<section class="chartSection"><h2>${sep_escHtml(title)}</h2><div class="chartBox">${el.innerHTML}</div>${srcHtml}</section>`;
+}
+function sep_reportActiveFilters(){
+  const getSel=id=>{const e=$(id); return e ? (e.options[e.selectedIndex]?.text || e.value || '') : ''};
+  return [
+    ['Limite crítico', getSel('sep_anaLimit')+' s'],
+    ['Data', getSel('anaData')],
+    ['Hora', getSel('anaHour')],
+    ['Pista', getSel('anaPista')],
+    ['Tipo', getSel('anaTipo')],
+    ['Sequência', getSel('anaSeq')],
+    ['Seguidor no DEP até', getSel('anaDepNm')],
+    ['Mostrar', getSel('sep_anaCrit')]
+  ];
+}
 </script>
 <div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
   <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:min(700px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.9);">
