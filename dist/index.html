@@ -1071,10 +1071,30 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <button class="btn" id="prefPastaBtn" onclick="document.getElementById('addDir').click()">&#x2191; Pasta</button>
           <button class="btn" id="prefFicheirosBtn" onclick="document.getElementById('addFiles').click()">&#x2191; Ficheiros</button>
           <button class="btn" style="color:#f87171;" onclick="_clearSession()">&#x1F5D1; Limpar sessão guardada</button>
-          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v1.3</button>
+          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v2.0</button>
         </div>
-      </div>
-    </div>
+        <div class="kpi-h" style="margin-top:16px;margin-bottom:8px;">&#x1F916; Análise IA — Configuração</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+          <select id="prefIaProvider" onchange="_iaOnProviderChange()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;">
+            <option value="anthropic">Claude (Anthropic) — recomendado</option>
+            <option value="openai">OpenAI (ChatGPT)</option>
+            <option value="mistral">Mistral AI</option>
+            <option value="azure">Azure OpenAI</option>
+            <option value="groq">Groq (Llama)</option>
+          </select>
+          <select id="prefIaModel" onchange="iaSaveKey()" style="background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:5px 8px;outline:none;cursor:pointer;min-width:180px;"></select>
+        </div>
+        <div id="prefAzureEndpointRow" style="display:none;margin-bottom:6px;">
+          <input type="text" id="prefAzureEndpoint" placeholder="https://SEU-RECURSO.openai.azure.com/openai/deployments/SEU-DEPLOYMENT" onchange="iaSaveKey()" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:10px;padding:6px 10px;outline:none;" autocomplete="off">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="password" id="prefIaKey" placeholder="Cola aqui a tua API Key..." onchange="iaSaveKey()" style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;padding:6px 10px;outline:none;" autocomplete="off">
+          <button class="btn" onclick="iaSaveKey(true)" style="white-space:nowrap;">&#x2713; Guardar</button>
+          <button class="btn" onclick="iaClearKey()" style="color:#f87171;white-space:nowrap;">&#x1F5D1; Limpar</button>
+        </div>
+        <div id="prefIaStatus" style="font-size:10px;color:var(--muted);margin-top:5px;padding:0 2px;"></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7;">A chave é guardada localmente neste dispositivo e nunca vai para o GitHub.</div>
+      </div>div>
   </div>
 </div>
 
@@ -6205,9 +6225,7 @@ function _fillFlightModal(csn, color){
   }
 }
 
-function closeFlightModal(){
-  var m=document.getElementById('flightModal');if(m&&m.parentNode)m.parentNode.removeChild(m);
-}
+
 window.addEventListener('load',()=>{
   if(!Object.keys(loadedFiles).length) _restoreSession();
 });
@@ -7335,42 +7353,7 @@ function sep_renderDailyContentGlobal(selectedDates, selectedBlocks){
     <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chartCrit}</div>
   </div>`+commonHtml+hourTable;
 }
-function sep_wireDaily(){
-  const dates=sep_dailyAvailableDates();
-  // Month selector
-  const months=[...new Set(dates.map(d=>d.slice(0,7)))].sort();
-  const ms=$('sep_dayMonth');
-  if(ms&&!ms.options.length){
-    months.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;ms.appendChild(o);});
-    if(months.length)ms.value=months[months.length-1];
-  }
-  ms&&(ms.onchange=()=>{sep_renderDailyControls();sep_renderDaily();});
-  $('sep_dayApply')&&($('sep_dayApply').onclick=sep_renderDaily);
-  $('sep_daySearch')&&($('sep_daySearch').oninput=sep_renderDaily);
-  $('sep_dayAllDays')&&($('sep_dayAllDays').onclick=()=>{
-    sep_dailyAvailableDates().filter(d=>d.slice(0,7)===$('sep_dayMonth').value)
-      .forEach(d=>sep_dailyState.selectedDates.add(d));
-    sep_renderDailyControls();sep_renderDaily();
-  });
-  $('sep_dayNoDays')&&($('sep_dayNoDays').onclick=()=>{
-    sep_dailyAvailableDates().filter(d=>d.slice(0,7)===$('sep_dayMonth').value)
-      .forEach(d=>sep_dailyState.selectedDates.delete(d));
-    sep_renderDailyControls();sep_renderDaily();
-  });
-  $('sep_dayAllBlocks')&&($('sep_dayAllBlocks').onclick=()=>{SEP_DAY_BLOCKS.forEach(b=>sep_dailyState.selectedBlocks.add(b));sep_renderDailyControls();sep_renderDaily();});
-  $('sep_dayNoBlocks')&&($('sep_dayNoBlocks').onclick=()=>{sep_dailyState.selectedBlocks.clear();sep_renderDailyControls();sep_renderDaily();});
-  document.querySelectorAll('#sep_dailyLayout [data-dtype]').forEach(b=>{
-    b.onclick=()=>{
-      sep_dailyState.type=b.dataset.dtype;
-      document.querySelectorAll('#sep_dailyLayout [data-dtype]').forEach(x=>{
-        x.style.background=x.dataset.dtype===b.dataset.dtype?'var(--accent)':'#eef2f7';
-        x.style.color=x.dataset.dtype===b.dataset.dtype?'white':'#334155';
-      });
-      sep_renderDailyControls();sep_renderDaily();
-    };
-  });
-  sep_renderDailyControls();
-}
+
 
 function sep_dailyAvailableDates(){
   return [...new Set(sep_movementRows.map(m=>m.data).filter(Boolean))].sort();
@@ -7557,6 +7540,78 @@ function sep_reportActiveFilters(){
   ];
 }
 
+const IA_PROVIDERS = {
+  anthropic: {
+    name: 'Claude (Anthropic)',
+    url: 'https://api.anthropic.com/v1/messages',
+    type: 'anthropic',
+    models: [
+      ['claude-sonnet-4-5','Claude Sonnet 4.5 (recomendado)'],
+      ['claude-haiku-4-5','Claude Haiku 4.5 (mais rápido)'],
+      ['claude-opus-4-5','Claude Opus 4.5 (mais potente)']
+    ]
+  },
+  openai: {
+    name: 'OpenAI (ChatGPT)',
+    url: 'https://api.openai.com/v1/chat/completions',
+    type: 'openai',
+    models: [
+      ['gpt-4o','GPT-4o (recomendado)'],
+      ['gpt-4o-mini','GPT-4o Mini (mais rápido)'],
+      ['gpt-4-turbo','GPT-4 Turbo']
+    ]
+  },
+  mistral: {
+    name: 'Mistral AI',
+    url: 'https://api.mistral.ai/v1/chat/completions',
+    type: 'openai',
+    models: [
+      ['mistral-large-latest','Mistral Large (recomendado)'],
+      ['mistral-small-latest','Mistral Small (mais rápido)'],
+      ['open-mixtral-8x22b','Mixtral 8x22B']
+    ]
+  },
+  azure: {
+    name: 'Azure OpenAI',
+    url: '',
+    type: 'azure',
+    models: [
+      ['gpt-4o','GPT-4o'],
+      ['gpt-4','GPT-4'],
+      ['gpt-35-turbo','GPT-3.5 Turbo']
+    ]
+  },
+  groq: {
+    name: 'Groq (Llama)',
+    url: 'https://api.groq.com/openai/v1/chat/completions',
+    type: 'openai',
+    models: [
+      ['llama-3.3-70b-versatile','Llama 3.3 70B'],
+      ['llama-3.1-8b-instant','Llama 3.1 8B (mais rápido)'],
+      ['mixtral-8x7b-32768','Mixtral 8x7B']
+    ]
+  }
+};
+
+// Placeholder substituído pelo GitHub Actions durante o build
+// Se não vazio, é usado como chave por defeito (apenas na primeira execução)
+const _IA_BAKED_KEY = '__ANTHROPIC_API_KEY__';
+const _IA_BAKED_PROV = 'anthropic';
+
+let _iaLoading = false;
+let _iaCharts = [];
+let _iaHistory = [];
+
+function iaGetProvider(){ return localStorage.getItem('ia_provider')||'anthropic'; }
+function iaGetKey(){
+  var k=localStorage.getItem('ia_key_'+iaGetProvider())||'';
+  // Se não há chave guardada, usar a baked-in (injectada no build)
+  if(!k && iaGetProvider()===_IA_BAKED_PROV && _IA_BAKED_KEY && !_IA_BAKED_KEY.startsWith('__')) k=_IA_BAKED_KEY;
+  return k;
+}
+function iaGetModel(){ return localStorage.getItem('ia_model_'+iaGetProvider())||(IA_PROVIDERS[iaGetProvider()].models[0][0]); }
+function iaGetAzureEndpoint(){ return localStorage.getItem('ia_azure_endpoint')||''; }
+
 function _iaOnProviderChange(){
   var prov=document.getElementById('prefIaProvider').value;
   var azRow=document.getElementById('prefAzureEndpointRow');
@@ -7631,7 +7686,7 @@ function _iaPopulatePrefModels(){
   if(keyEl && !keyEl.value) keyEl.placeholder='Cola aqui a API Key do '+ IA_PROVIDERS[prov].name+'...';
 }
 
-function _iaInit(){
+async function _iaInit(){
   // Sincronizar painel preferências
   var provSel=document.getElementById('prefIaProvider');
   var prov0=iaGetProvider();
