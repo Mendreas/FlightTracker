@@ -80,6 +80,7 @@ header{background:var(--panel);border-bottom:1px solid var(--border);padding:0 1
 .tab.on{color:var(--accent);border-bottom-color:var(--accent);}
 .panel{display:none;flex:1;overflow:hidden;}
 .panel.on{display:flex;flex-direction:column;}
+#panel-ia.on,#panel-pref.on{display:flex!important;flex-direction:column!important;flex:1!important;}
 #map{flex:1;background:#0d1117;}
 .tbl-wrap{flex:1;overflow:auto;}
 .tbl-wrap::-webkit-scrollbar{width:6px;height:6px;}
@@ -1002,7 +1003,8 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <div id="anaSubOper" style="display:none;"></div>
         <div class="empty" id="anaEmpty" style="display:none;"><div class="empty-ico">&#x1F50D;</div><div class="empty-ttl">Abre uma sub-aba para analisar</div></div>
         <div id="anaContent" style="display:none;"></div>
-      
+      </div>
+    </div>
     <div class="panel" id="panel-ia" style="flex-direction:column;overflow:hidden;">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
         <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">&#x1F916; Análise IA</span>
@@ -1015,8 +1017,8 @@ tr:hover td{background:rgba(0,200,255,.03);}
         </div>
       </div>
       <div id="iaChat" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;">
-        <div class="ia-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--border);text-align:center;gap:10px;min-height:200px;">
-          <div style="font-size:32px;">&#x25CE;</div>
+        <div class="ia-empty" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:200px;color:var(--muted);text-align:center;gap:10px;">
+          <div style="font-size:32px;opacity:.4;">&#x25CE;</div>
           <div style="font-size:11px;letter-spacing:1px;color:var(--muted);">CARREGA DADOS E FAZ UMA PERGUNTA</div>
           <div style="font-size:10px;color:var(--muted);opacity:.6;">A IA analisa os voos já carregados no FlightTracker</div>
         </div>
@@ -1034,8 +1036,6 @@ tr:hover td{background:rgba(0,200,255,.03);}
         Fornecedor: <span id="iaFooterProv">—</span> &nbsp;·&nbsp; Configura em <strong>Preferências → Análise IA</strong>
       </div>
     </div>
-  </div>
-</div>
     <div class="panel" id="panel-pref">
       <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
         <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">Preferencias</span>
@@ -1071,7 +1071,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         </div>
         <div id="prefIaStatus" style="font-size:10px;color:var(--muted);margin-top:5px;padding:0 2px;"></div>
         <div style="font-size:10px;color:var(--muted);margin-top:4px;opacity:.7;">A chave é guardada localmente neste dispositivo e nunca vai para o GitHub.</div>
-      </div>div>
+      </div></div>
   </div>
 </div>
 
