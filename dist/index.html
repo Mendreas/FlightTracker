@@ -1054,7 +1054,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <button class="btn" id="prefPastaBtn" onclick="document.getElementById('addDir').click()">&#x2191; Pasta</button>
           <button class="btn" id="prefFicheirosBtn" onclick="document.getElementById('addFiles').click()">&#x2191; Ficheiros</button>
           <button class="btn" style="color:#f87171;" onclick="_clearSession()">&#x1F5D1; Limpar sessão guardada</button>
-          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v2.0</button>
+          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v2.5</button>
         </div>
         <div class="kpi-h" style="margin-top:16px;margin-bottom:8px;">&#x1F916; Análise IA — Configuração</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
@@ -6503,95 +6503,146 @@ function _renderAlerts(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// v1.3 — EMAIL DE NOVIDADES
+// v2.5 — EMAIL DE NOVIDADES (editável)
 // ═══════════════════════════════════════════════════════════════════════════
 function _emailHtml(){
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flight Track Viewer v1.3</title></head>
-<body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4f8;padding:30px 0;">
+<title>Flight Track Viewer v2.5</title></head>
+<body style="margin:0;padding:0;background-color:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f0f4f8" style="background-color:#f0f4f8;padding:30px 0;">
 <tr><td align="center">
-<table width="620" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+<table width="640" cellpadding="0" cellspacing="0" bgcolor="#ffffff" style="background-color:#ffffff;border-radius:12px;overflow:hidden;">
 
 <!-- HEADER -->
-<tr><td style="background:linear-gradient(135deg,#0f1923 0%,#1a2d45 60%,#0f2744 100%);padding:36px 40px 28px;text-align:center;">
-  <div style="font-size:32px;margin-bottom:8px;">✈</div>
+<tr><td bgcolor="#11233d" style="background-color:#11233d;padding:36px 40px 28px;text-align:center;">
+  <div style="font-size:32px;margin-bottom:8px;color:#ffffff;">✈</div>
   <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">Flight Track Viewer</h1>
-  <div style="display:inline-block;background:rgba(99,102,241,0.25);border:1px solid rgba(99,102,241,0.5);color:#a5b4fc;padding:4px 16px;border-radius:20px;font-size:13px;margin-top:10px;letter-spacing:1px;">VERSÃO 1.3</div>
-  <p style="color:#94a3b8;font-size:13px;margin:14px 0 0;">Nova versão disponível com funcionalidades de análise avançadas</p>
+  <table cellpadding="0" cellspacing="0" align="center" style="margin:12px auto 0;"><tr><td bgcolor="#4f46e5" style="background-color:#4f46e5;padding:5px 16px;border-radius:20px;font-size:13px;letter-spacing:1px;color:#ffffff;font-weight:700;">VERSÃO 2.5</td></tr></table>
+  <p style="color:#cbd5e1;font-size:13px;margin:14px 0 0;">Análise de separação entre chegadas, análise de dados, análise diária e assistente IA</p>
 </td></tr>
 
 <!-- INTRO -->
 <tr><td style="padding:30px 40px 10px;">
-  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Está disponível a versão <strong>1.3</strong> do Flight Track Viewer com quatro novas funcionalidades operacionais. Esta versão pode ser instalada directamente sobre a anterior.</p>
+  <p style="color:#374151;font-size:14px;line-height:1.6;margin:0;">Está disponível a versão <strong>2.5</strong> do Flight Track Viewer. Esta versão reestrutura por completo a aba <strong>Análise Operacional</strong>, focando-a na <strong>separação entre chegadas</strong>, e acrescenta novos painéis de <strong>Análise de Dados</strong>, <strong>Análise Diária</strong> (com comparação entre dias e padrões por dia da semana) e um assistente de <strong>Análise IA</strong>. Pode ser instalada directamente sobre a versão anterior — os dados e a sessão são preservados.</p>
+</td></tr>
+
+<!-- COMO SELECIONAR -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f1f5f9" style="background-color:#f1f5f9;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;">
+    <tr><td bgcolor="#334155" style="background-color:#334155;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">🗓 Selecção de dias, mês e blocos horários (painel esquerdo)</span>
+    </td></tr>
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      O painel esquerdo passa a ter um <strong>calendário por mês</strong> onde se escolhem os dias com dados, atalhos por <strong>dia da semana</strong> e por <strong>blocos horários</strong> (00-04, 04-08, 08-12, 12-16, 16-20, 20-24), além de <em>Todos dias / Nenhum dia</em> e <em>Todos blocos / Nenhum bloco</em>. A selecção feita aqui alimenta todas as análises. Depois de escolher, clica em <strong>Aplicar filtro</strong>.
+    </td></tr>
+  </table>
 </td></tr>
 
 <!-- FEATURE 1 -->
 <tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8faff;border:1px solid #e0e7ff;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#4f46e5;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">📈 Perfil IAS / Altitude por voo</span>
+  <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f8faff" style="background-color:#f8faff;border:1px solid #e0e7ff;border-radius:10px;overflow:hidden;">
+    <tr><td bgcolor="#0b5cad" style="background-color:#0b5cad;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">✈ Separação entre chegadas</span>
     </td></tr>
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      No modal de detalhe de voo (clique numa linha no mapa), passa a aparecer um <strong>gráfico dual-axis</strong> com a evolução da <span style="color:#0891b2;font-weight:600;">IAS (kt)</span> e da <span style="color:#059669;font-weight:600;">altitude (ft)</span> em função da distância ao THR — nos últimos 20 NM de cada chegada. Permite ver visualmente se o voo estabilizou antes dos gates definidos.
+      A aba <strong>Análise Operacional</strong> foi reorganizada para se focar na separação entre chegadas consecutivas (as antigas sub-abas HOLDINGS, GO-AROUNDS e OPERADORES foram removidas; a deteção continua activa para os alertas automáticos). A tabela ganhou:
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        <li>Botão <strong>Todos</strong> com código de cor — <span style="color:#b91c1c;font-weight:600;">vermelho</span> abaixo do limite, <span style="color:#d97706;font-weight:600;">amarelo</span> na zona intermédia, <span style="color:#059669;font-weight:600;">verde</span> acima do limite. Filtros adicionais <em>Abaixo</em> e <em>Entre limite e 240s</em>.</li>
+        <li>Coluna <strong>Sequência</strong> — padrão de tráfego entre as duas chegadas: <strong>AA</strong> (directa), <strong>ADA</strong> (uma descolagem), <strong>ADDA</strong> (duas) ou <strong>AD…A</strong> (três ou mais).</li>
+        <li>Coluna <strong>DEP</strong> — callsign da primeira descolagem entre as duas chegadas, quando existe.</li>
+        <li>Coluna <strong>Seguidor no DEP</strong> — distância estimada do seguidor à THR no momento em que o DEP descolou (NM).</li>
+      </ul>
     </td></tr>
   </table>
 </td></tr>
 
 <!-- FEATURE 2 -->
 <tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fff8;border:1px solid #d1fae5;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#059669;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">🏢 Análise por Operador / Companhia</span>
+  <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f8fff8" style="background-color:#f8fff8;border:1px solid #d1fae5;border-radius:10px;overflow:hidden;">
+    <tr><td bgcolor="#059669" style="background-color:#059669;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">📊 Análise de Dados (nova)</span>
     </td></tr>
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Nova sub-aba <strong>OPERADORES</strong> na aba Análise Op. Agrega automaticamente por prefixo ICAO (TAP, RYR, EZY…): volumes ARR/DEP, ROT médio, go-arounds, violações IAS STAR e APP. Tabela ordenável e exportável para CSV — ideal para feedback a companhias aéreas.
+      Painel estatístico completo sobre os pares de separação carregados:
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        <li><strong>KPIs de separação</strong>: total de pares, abaixo do limite, com/sem DEP intercalar, menor separação, média e mediana.</li>
+        <li><strong>KPIs de movimento</strong>: total de movimentos, pico de chegadas, pico de descolagens, hora mais movimentada, pista principal.</li>
+        <li><strong>Gráficos</strong>: distribuição das separações, pares por hora/pista/sequência, movimentos por hora e por companhia, taxa de infracção por companhia, posição do seguidor no DEP, IAS do seguidor e <strong>separação vs distância do seguidor</strong> — este último agora com <strong>botões de filtro</strong> (<em>Todos</em> / <em>&lt; limite</em> / <em>≥ limite</em>) para melhor legibilidade.</li>
+        <li><strong>Timeline operacional</strong> com zoom (dia completo, 4h, 2h, 1h), <strong>botões de hora</strong> para focar uma hora do dia e etiquetas anti-sobreposição.</li>
+        <li><strong>Top 10 situações críticas</strong> (tabela clicável), resumo por hora e por companhia, e <strong>exportação Excel</strong>.</li>
+      </ul>
     </td></tr>
   </table>
 </td></tr>
 
 <!-- FEATURE 3 -->
 <tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fffbf0;border:1px solid #fde68a;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#d97706;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">🚨 Alertas Automáticos após carregamento</span>
+  <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f8faff" style="background-color:#f8faff;border:1px solid #bfdbfe;border-radius:10px;overflow:hidden;">
+    <tr><td bgcolor="#2563eb" style="background-color:#2563eb;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">📅 Análise Diária (nova)</span>
     </td></tr>
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Após carregar dados, um <strong>painel de alertas</strong> surge automaticamente com eventos notáveis: ROT acima de 55s, go-arounds, holdings acima de 5 minutos e violações IAS. Cada alerta é dispensável individualmente. Permite uma visão imediata do que merece atenção antes de entrar em qualquer aba de análise.
+      Painel para análise e comparação entre dias, recalculado para os dias e blocos escolhidos no painel esquerdo:
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        <li><strong>10 KPIs diários</strong>: dias seleccionados, movimentos ARR+DEP, aterragens, descolagens, pares precedente/seguidor, pares abaixo do limite, críticos com DEP, <strong>pico de aterragens</strong>, <strong>pico de descolagens</strong> e callsigns comuns aos dias.</li>
+        <li><strong>4 gráficos</strong>: movimentos por dia (ARR/DEP), ocorrências críticas por dia, <strong>pico horário por dia</strong> e <strong>companhias por dia</strong>.</li>
+        <li>Tabela de <strong>callsigns comuns</strong> entre os dias seleccionados (útil para padrões semanais).</li>
+        <li><strong>Resumo por dia e hora</strong> detalhado (Data · Hora · ARR · DEP · Movimentos · Pares · Críticos).</li>
+      </ul>
+      Todos os KPIs, barras e linhas são clicáveis e abrem os dados de origem.
     </td></tr>
   </table>
 </td></tr>
 
-<!-- FEATURE 4 -->
+<!-- FEATURE 4 (NOVO) -->
 <tr><td style="padding:10px 40px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;overflow:hidden;">
-    <tr><td style="background:#7c3aed;padding:12px 18px;">
-      <span style="color:#fff;font-size:13px;font-weight:700;">✉ Email de novidades (Preferências)</span>
+  <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#fffbf0" style="background-color:#fffbf0;border:1px solid #fde68a;border-radius:10px;overflow:hidden;">
+    <tr><td bgcolor="#d97706" style="background-color:#d97706;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">📆 Padrões por dia da semana (novo)</span>
     </td></tr>
     <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Em <strong>Preferências → Email novidades v1.3</strong> é possível gerar este email directamente a partir da aplicação, com prévia visual e opções de abrir no Outlook ou guardar como ficheiro HTML.
+      Dentro da Análise Diária, uma nova secção agrupa os dias seleccionados por <strong>dia da semana</strong> (todas as segundas vs. todas as terças, etc.) para detetar padrões — por exemplo, perceber se há mais infracções às quartas do que às quintas. Usa <strong>médias por dia</strong> (e não totais) para comparar de forma justa quando há números diferentes de cada dia:
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        <li><strong>Destaques</strong>: dia da semana com mais movimentos (média/dia), com mais críticos (média/dia) e com maior <strong>taxa de críticos</strong> (%).</li>
+        <li><strong>Gráficos</strong> de média de movimentos e média de pares críticos por dia da semana.</li>
+        <li><strong>Tabela</strong>: nº de dias, totais e médias por dia, taxa de críticos e as datas de cada dia da semana.</li>
+      </ul>
+    </td></tr>
+  </table>
+</td></tr>
+
+<!-- FEATURE 5 -->
+<tr><td style="padding:10px 40px;">
+  <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#fdf4ff" style="background-color:#fdf4ff;border:1px solid #e9d5ff;border-radius:10px;overflow:hidden;">
+    <tr><td bgcolor="#7c3aed" style="background-color:#7c3aed;padding:12px 18px;">
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">🤖 Análise IA</span>
+    </td></tr>
+    <tr><td style="padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
+      Novo painel <strong>Análise IA</strong> que responde a perguntas em linguagem natural sobre os voos já carregados (separações, picos, companhias, padrões…). Configurável em <strong>Preferências → Análise IA</strong> (Claude/Anthropic recomendado, com suporte para outros fornecedores) e com exportação da conversa em <strong>HTML, Excel e Word</strong>.
     </td></tr>
   </table>
 </td></tr>
 
 <!-- DOWNLOAD -->
 <tr><td style="padding:24px 40px;">
-  <div style="background:linear-gradient(135deg,#1e3a5f,#0f2744);border-radius:10px;padding:24px;text-align:center;">
-    <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da versão 1.3</p>
+  <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#163150" style="background-color:#163150;border-radius:10px;">
+    <tr><td style="padding:24px;text-align:center;">
+    <p style="color:#cbd5e1;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da versão 2.5</p>
     <table cellpadding="0" cellspacing="0" align="center"><tr>
       <td style="padding:0 8px;">
-        <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_1.3.0_x64-setup.exe" style="display:inline-block;background:#3b82f6;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ Windows (.exe)</a>
+        <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_2.5.0_x64-setup.exe" style="display:inline-block;background-color:#3b82f6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ Windows (.exe)</a>
       </td>
       <td style="padding:0 8px;">
-        <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_1.3.0_aarch64.dmg" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ macOS (.dmg)</a>
+        <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_2.5.0_aarch64.dmg" style="display:inline-block;background-color:#6366f1;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">⬇ macOS (.dmg)</a>
       </td>
     </tr></table>
-    <p style="color:#64748b;font-size:11px;margin:14px 0 0;">Instalação directa sobre versão anterior · Dados e sessão preservados</p>
-  </div>
+    <p style="color:#94a3b8;font-size:11px;margin:14px 0 0;">Instalação directa sobre versão anterior · Dados e sessão preservados</p>
+    </td></tr>
+  </table>
 </td></tr>
 
 <!-- FOOTER -->
-<tr><td style="background:#f8faff;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
+<tr><td bgcolor="#f8faff" style="background-color:#f8faff;border-top:1px solid #e5e7eb;padding:20px 40px;text-align:center;">
   <p style="color:#9ca3af;font-size:12px;margin:0;">Paulo Leal · NAV Portugal, E.P.E. · paulo.leal@nav.pt</p>
   <p style="color:#d1d5db;font-size:11px;margin:6px 0 0;">Flight Track Viewer é uma ferramenta interna de análise de tráfego aéreo</p>
 </td></tr>
@@ -6601,29 +6652,45 @@ function _emailHtml(){
 </table>
 </body></html>`;
 }
+let _emailIframe=null;
 function _openEmailModal(){
   const m=$('emailModal');if(!m)return;
   m.style.display='flex';
   const prev=$('emailPreview');
   if(prev){
     const iframe=document.createElement('iframe');
-    iframe.style.cssText='width:100%;height:500px;border:none;border-radius:6px;';
+    iframe.style.cssText='width:100%;height:480px;border:none;border-radius:6px;background:#fff;';
     iframe.srcdoc=_emailHtml();
+    // Permite editar o conteúdo da prévia directamente (WYSIWYG)
+    iframe.addEventListener('load',()=>{try{iframe.contentDocument.designMode='on';}catch(e){}});
     prev.innerHTML='';prev.appendChild(iframe);
+    _emailIframe=iframe;
   }
 }
+// Lê o corpo do email a partir da prévia (com edições do utilizador), ou o template original
+function _emailBodyHtml(){
+  try{
+    if(_emailIframe&&_emailIframe.contentDocument&&_emailIframe.contentDocument.documentElement){
+      return '<!DOCTYPE html>'+_emailIframe.contentDocument.documentElement.outerHTML;
+    }
+  }catch(e){}
+  return _emailHtml();
+}
+function _emailVal(id,fallback){const el=$(id);const v=el&&el.value!=null?el.value.trim():'';return v||fallback;}
 async function _sendEmailOutlook(){
-  const to='carlos.jesus@nav.pt,carolina.rosa@nav.pt';
-  const cc='paulo.leal@nav.pt';
-  const subject='Flight Track Viewer v1.3 — Novas funcionalidades';
-  const htmlBody=_emailHtml();
-  // Build RFC 2822 .eml with HTML body so Outlook renders it properly
-  const eml='MIME-Version: 1.0\r\nFrom: paulo.leal@nav.pt\r\nTo: '+to+'\r\nCC: '+cc+'\r\nSubject: '+subject+'\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+htmlBody;
+  const subject=_emailVal('emailSubject','Flight Track Viewer v2.5 — Novas funcionalidades');
+  const htmlBody=_emailBodyHtml();
+  // Build RFC 2822 .eml with HTML body so Outlook renders it properly.
+  // X-Unsent: 1 -> faz o Outlook abrir como RASCUNHO por enviar (botao "Enviar"),
+  // em vez de mensagem recebida (que so permite Responder/Reencaminhar).
+  // To/CC ficam vazios de proposito: sao preenchidos no proprio cliente de email.
+  let eml='X-Unsent: 1\r\nMIME-Version: 1.0\r\n';
+  eml+='Subject: '+subject+'\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+htmlBody;
   if(window.__TAURI__&&window.__TAURI__.fs&&window.__TAURI__.path){
     try{
       const tmpDir=await window.__TAURI__.path.tempDir();
       const sep=(tmpDir.endsWith('/')||tmpDir.endsWith('\\')?'':'/');
-      const emlPath=tmpDir+sep+'FlightTracker_v1.3_novidades.eml';
+      const emlPath=tmpDir+sep+'FlightTracker_v2.5_novidades.eml';
       await window.__TAURI__.fs.writeTextFile(emlPath,eml);
       await window.__TAURI__.shell.open(emlPath);
       return;
@@ -6633,16 +6700,16 @@ async function _sendEmailOutlook(){
   const blob=new Blob([eml],{type:'message/rfc822'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v1.3_novidades.eml';
+  a.href=url;a.download='FlightTracker_v2.5_novidades.eml';
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
 function _downloadEmailHtml(){
-  const html=_emailHtml();
+  const html=_emailBodyHtml();
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v1.3_novidades.html';
+  a.href=url;a.download='FlightTracker_v2.5_novidades.html';
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
@@ -8483,15 +8550,15 @@ function _iaDownload(blob,filename){
 <div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
   <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:min(700px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.9);">
     <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;">
-      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v1.3</span>
+      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v2.5</span>
       <button onclick="document.getElementById('emailModal').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">✕</button>
     </div>
     <div style="flex:1;overflow:auto;padding:16px 18px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-        <button class="btn primary" onclick="_sendEmailOutlook()" style="font-size:11px;">📧 Abrir Outlook</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center;">
+        <button class="btn primary" onclick="_sendEmailOutlook()" style="font-size:11px;">📧 Abrir no email</button>
         <button class="btn" onclick="_downloadEmailHtml()" style="font-size:11px;">⬇ Guardar HTML</button>
-        <span style="font-size:10px;color:#64748b;align-self:center;">Para: carlos.jesus@nav.pt, carolina.rosa@nav.pt · CC: paulo.leal@nav.pt</span>
       </div>
+      <p style="font-size:10px;color:#64748b;margin:0 0 12px;line-height:1.5;">Abre a mensagem já formatada no teu cliente de email — os <strong>destinatários (Para/CC)</strong> são preenchidos lá, no momento do envio. A pré-visualização abaixo é <strong>editável</strong>: clica no texto para alterar antes de abrir/guardar.</p>
       <div id="emailPreview" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;"></div>
     </div>
   </div>
