@@ -321,7 +321,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
       <div>
         <span class="upload-plane">&#x2708;&#xFE0F;</span>
         <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v2.5</span></h2>
-        <p style="margin-bottom:18px;color:#64748b;">Escolhe como queres carregar os dados de voo:</p>
+        <p style="margin-bottom:18px;color:#64748b;">Escolhe o <b>modo de carregamento</b> (painel direito) e depois carrega os CSV ou restaura a sessão anterior.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
           <div class="upload-card">
             <div style="font-size:28px;margin-bottom:8px;">&#x1F4C1;</div>
@@ -353,7 +353,21 @@ tr:hover td{background:rgba(0,200,255,.03);}
         </div>
       </div>
       <div class="upload-side">
-        <h3>Ferramentas</h3>
+        <h3>1. Modo de carregamento</h3>
+        <p style="font-size:11px;color:#475569;margin:0 0 8px;">Escolhe <b>antes</b> de carregar CSV ou restaurar a sessão anterior.</p>
+        <select id="loadModeSel" onchange="_setLoadMode(this.value)" style="width:100%;font-size:12px;padding:6px 8px;border:1px solid var(--border,#cbd5e1);border-radius:6px;margin-bottom:6px;">
+          <option value="essential">Essencial (recomendado — mais rápido)</option>
+          <option value="full">Completo (guarda todas as colunas)</option>
+        </select>
+        <p style="font-size:11px;color:#64748b;margin-top:0;"><b>Essencial</b> mantém só as colunas usadas pelas análises (descarta MAC, vx/vy, x/y, ts, gspADD, rectime…) — ideal para carregar um mês. <b>Completo</b> preserva todas as colunas do CSV.</p>
+        <label style="display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#475569;margin-bottom:10px;cursor:pointer;line-height:1.4;">
+          <input type="checkbox" id="skipUnknownDatesChk" onchange="_setSkipUnknownDates(this.checked)" style="margin-top:2px;">
+          <span>Ignorar ficheiros <b>sem data reconhecível</b> no nome (não perguntar). Útil ao arrastar pastas com ficheiros extra.</span>
+        </label>
+        <h3>2. Carregar dados</h3>
+        <button type="button" id="restoreSessionBtn" class="upload-btn-file" style="display:none;width:100%;margin-bottom:8px;background:#6366f1;" onclick="_restoreSession()">↩ Restaurar sessão anterior</button>
+        <p style="font-size:11px;color:#64748b;margin:0;">Usa as opções à esquerda (pasta, ficheiros, calendário ou drag &amp; drop).</p>
+        <h3 style="margin-top:14px;">Ferramentas</h3>
         <p>Gera automaticamente um mês de ficheiros CSV normalizados a partir de várias pastas de origem.</p>
         <button class="upload-btn-file" onclick="openMonthGenModal()">Gerar mês</button>
         <p>Também podes carregar pontos guardados (<b>points.json</b>) nesta área lateral.</p>
@@ -994,7 +1008,11 @@ tr:hover td{background:rgba(0,200,255,.03);}
 <div style="margin-bottom:10px;font-size:12px;color:#6b7280;line-height:1.5;padding:8px 12px;background:#fff;border:1px solid #d7dce3;border-radius:10px;">
   ℹ️ A análise diária usa os dias e blocos horários seleccionados no <strong>painel esquerdo</strong> da aplicação. Selecciona os dias e clica <em>Aplicar filtro</em> antes de actualizar.
 </div>
-<button onclick="renderSepDaily()" style="height:36px;padding:0 18px;background:var(--accent);color:white;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;margin-bottom:12px;">🔄 Actualizar análise diária</button>
+<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
+<button onclick="renderSepDaily()" style="height:36px;padding:0 18px;background:var(--accent);color:white;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px;">🔄 Actualizar análise diária</button>
+<button id="sep_btnExportDaily" onclick="sep_exportDailyExcel()" style="height:36px;padding:0 14px;background:var(--accent);color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;">⬇ Excel</button>
+<button id="sep_btnExportDailyPdf" onclick="sep_exportDailyPdf()" style="height:36px;padding:0 14px;background:var(--accent);color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;">📄 Relatório PDF</button>
+</div>
 <div id="sep_dailyContent">
   <div style="text-align:center;padding:40px;color:#6b7280;">
     <div style="font-size:32px;margin-bottom:8px;">📅</div>
@@ -1104,6 +1122,22 @@ const EXP_FIELDS=[
   {key:'modea',  label:'Mode A (squawk)',           fn:r=>r.modea||r.modeA||''},
   {key:'trnr',   label:'Track Nr',                  fn:r=>r.trknr||r.trkNr||''},
 ];
+
+// ── Modo de carregamento: "essential" (lista branca, leve) ou "full" (todas as colunas) ──
+// No modo essencial guardamos apenas as colunas usadas pelas análises/exportação,
+// descartando colunas pesadas e sem uso (x, y, vx, vy, ts, gspADD, mac, macA, rectime).
+const ESSENTIAL_COLS=['csn','tod','latitude','lat','longitude','lon','modec','baroh','tas','tasa','iar','iara','roc','gspa','modes','modea','trknr'];
+let _loadMode=(function(){try{return localStorage.getItem('ft_loadMode')||'essential';}catch(e){return 'essential';}})();
+function _keepColsForParse(){return _loadMode==='full'?null:ESSENTIAL_COLS;}
+function _trimRowsToMode(rows){
+  if(_loadMode==='full'||!rows||!rows.length)return rows;
+  const keep=new Set([...ESSENTIAL_COLS,'_date','_block','_filename','_csn']);
+  return rows.map(r=>{const o={};for(const k of Object.keys(r))if(keep.has(k))o[k]=r[k];return o;});
+}
+function _setLoadMode(m){_loadMode=(m==='full')?'full':'essential';try{localStorage.setItem('ft_loadMode',_loadMode);}catch(e){}}
+// Ignorar ficheiros cujo nome/caminho não tem data reconhecível (AAMMDD_HH-HH), sem perguntar.
+let _skipUnknownDates=(function(){try{return localStorage.getItem('ft_skipUnknownDates')==='1';}catch(e){return false;}})();
+function _setSkipUnknownDates(v){_skipUnknownDates=!!v;try{localStorage.setItem('ft_skipUnknownDates',_skipUnknownDates?'1':'0');}catch(e){}}
 
 const PT_MARKER_LIMIT=8000;
 const TABLE_ROW_HEIGHT=24;
@@ -1363,7 +1397,7 @@ function showWarn(msg){
 // ---------- Web Worker CSV parser pool ----------
 const WORKER_SRC = `
 self.onmessage=function(e){
-  var d=e.data, id=d.id, t=d.text, filename=d.filename, date=d.date, block=d.block;
+  var d=e.data, id=d.id, t=d.text, filename=d.filename, date=d.date, block=d.block, keep=d.keep;
   try{
     if(t.charCodeAt(0)===0xFEFF) t=t.slice(1);
     function parseLine(line,sep){
@@ -1389,6 +1423,8 @@ self.onmessage=function(e){
     var headers=parseLine(firstLine,sep).map(function(h){return h.trim().replace(/^"|"$/g,'').toLowerCase();});
     var idxLat=headers.indexOf('latitude'); if(idxLat<0) idxLat=headers.indexOf('lat');
     var idxLon=headers.indexOf('longitude'); if(idxLon<0) idxLon=headers.indexOf('lon');
+    var keepIdx=null;
+    if(keep && keep.length){ keepIdx=new Array(headers.length); for(var k=0;k<headers.length;k++){ keepIdx[k]=keep.indexOf(headers[k])>=0; } }
     var rows=[], start=nl+1, n=t.length;
     while(start<n){
       var end=t.indexOf('\\n',start); if(end<0) end=n;
@@ -1399,7 +1435,7 @@ self.onmessage=function(e){
       var vals=parseLine(line,sep);
       if(idxLat>=0){ var lv=(vals[idxLat]||'').trim(); if(!lv) continue; }
       var o={};
-      for(var j=0;j<headers.length;j++){ o[headers[j]]=(vals[j]||'').trim().replace(/^"|"$/g,''); }
+      for(var j=0;j<headers.length;j++){ if(keepIdx && !keepIdx[j]) continue; o[headers[j]]=(vals[j]||'').trim().replace(/^"|"$/g,''); }
       o._date=date; o._block=block; o._filename=filename;
       rows.push(o);
     }
@@ -1455,7 +1491,7 @@ function parseInWorker(task){
   const id=++p.nextId;
   return new Promise(resolve=>{
     p.cbs.set(id,resolve);
-    p.queue.push({id,...task});
+    p.queue.push({id,keep:_keepColsForParse(),...task});
     drainQueue();
   });
 }
@@ -1475,11 +1511,12 @@ function parseCSVSync(text,filename,date,block){
     out.push(cur);return out;
   };
   const headers=parseLine(lines[0]).map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase());
+  const _keep=_keepColsForParse();const _keepSet=_keep?new Set(_keep):null;
   const rows=[];
   for(let i=1;i<lines.length;i++){
     const line=lines[i];if(!line)continue;
     const vals=parseLine(line);
-    const o={};for(let j=0;j<headers.length;j++)o[headers[j]]=(vals[j]||'').trim().replace(/^"|"$/g,'');
+    const o={};for(let j=0;j<headers.length;j++){if(_keepSet&&!_keepSet.has(headers[j]))continue;o[headers[j]]=(vals[j]||'').trim().replace(/^"|"$/g,'');}
     if(o.latitude===undefined&&o.lat===undefined)continue;
     if((o.latitude||o.lat||'').toString().trim()==='')continue;
     o._date=date;o._block=block;o._filename=filename;
@@ -1552,7 +1589,15 @@ async function loadFiles(files,dropStats){
     pt.textContent=errors>0?`${total-errors} carregado(s), ${errors} ignorado(s) \u2014 ${ms} ms`:`${total} ficheiro(s) carregado(s) em ${ms} ms`;
     setTimeout(()=>{pw.style.display='none';pt.style.display='none';},1500);
     const ug=buildUnknownGroups();
-    if(Object.keys(ug).length>0)showDateModal(ug);else finishLoading();
+    const ugCount=Object.values(ug).reduce((s,x)=>s+x.count,0);
+    if(ugCount>0 && _skipUnknownDates){
+      // Descartar ficheiros sem data reconhecível, sem perguntar
+      for(const info of Object.values(ug)) for(const k of info.keys) delete loadedFiles[k];
+      console.log(`[loadFiles] ${ugCount} ficheiro(s) sem data reconhecível ignorado(s) (opção activa).`);
+      pt.style.display='';pt.textContent=`${ugCount} ficheiro(s) sem data ignorado(s).`;
+      setTimeout(()=>{pt.style.display='none';},2500);
+      finishLoading();
+    } else if(Object.keys(ug).length>0){ showDateModal(ug); } else { finishLoading(); }
   }catch(err){
     console.error(err);pw.style.display='none';pt.style.display='none';
     alert('Erro ao carregar: '+err.message);
@@ -2200,6 +2245,7 @@ function clearAll(){
   $('sTxt').textContent='Sem dados';
   $('uploadOv').style.display='flex';
   setSplashMode(true);
+  _updateRestoreBtn();
 }
 
 function nearestPoint(rows,latlng){
@@ -6017,11 +6063,29 @@ async function _saveSession(){
     store.clear();
     const entries=Object.entries(loadedFiles);
     for(const[k,fd]of entries){
-      store.put({...fd,_key:k});
+      const trimmed=fd.rows?_trimRowsToMode(fd.rows):fd.rows;
+      store.put({...fd,rows:trimmed,_key:k});
     }
     await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
-    console.log('[session] guardada:',entries.length,'ficheiros');
+    console.log('[session] guardada:',entries.length,'ficheiros · modo',_loadMode);
   }catch(e){console.warn('[session] save failed',e);}
+}
+async function _countSavedSession(){
+  try{
+    const db=await _openIDB();
+    const tx=db.transaction('files','readonly');
+    const req=tx.objectStore('files').getAll();
+    const all=await new Promise((res,rej)=>{req.onsuccess=()=>res(req.result||[]);req.onerror=rej;});
+    return all.length;
+  }catch(e){return 0;}
+}
+async function _updateRestoreBtn(){
+  const btn=$('restoreSessionBtn');if(!btn)return;
+  const n=await _countSavedSession();
+  if(n>0){
+    btn.style.display='';
+    btn.textContent=`↩ Restaurar sessão anterior (${n} ficheiro(s))`;
+  }else{btn.style.display='none';}
 }
 async function _restoreSession(){
   try{
@@ -6029,16 +6093,17 @@ async function _restoreSession(){
     const tx=db.transaction('files','readonly');
     const req=tx.objectStore('files').getAll();
     const all=await new Promise((res,rej)=>{req.onsuccess=()=>res(req.result);req.onerror=rej;});
-    if(!all||!all.length){console.log('[session] vazia');return;}
+    if(!all||!all.length){alert('Não há sessão guardada.');return;}
     for(const fd of all){
       const k=fd._key;
       const obj={...fd};delete obj._key;
+      if(obj.rows)obj.rows=_trimRowsToMode(obj.rows);
       loadedFiles[k]=obj;
     }
     finishLoading();
-    showWarn('✅ Sessão anterior restaurada ('+all.length+' ficheiro(s)). Usa Preferências → Limpar sessão para apagar.');
-    console.log('[session] restaurada:',all.length,'ficheiros');
-  }catch(e){console.warn('[session] restore failed',e);}
+    showWarn('✅ Sessão restaurada ('+all.length+' ficheiro(s)) · modo '+(_loadMode==='full'?'Completo':'Essencial')+'. Preferências → Limpar sessão para apagar.');
+    console.log('[session] restaurada:',all.length,'ficheiros · modo',_loadMode);
+  }catch(e){console.warn('[session] restore failed',e);alert('Erro ao restaurar sessão: '+(e.message||e));}
 }
 async function _clearSession(){
   try{
@@ -6046,6 +6111,7 @@ async function _clearSession(){
     const tx=db.transaction('files','readwrite');
     tx.objectStore('files').clear();
     await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
+    _updateRestoreBtn();
     alert('Sessão guardada apagada com sucesso.\nOs dados actuais mantêm-se em memória até ao próximo refresh.');
   }catch(e){alert('Erro ao limpar sessão: '+e.message);}
 }
@@ -6211,7 +6277,12 @@ function _fillFlightModal(csn, color){
 
 
 window.addEventListener('load',()=>{
-  if(!Object.keys(loadedFiles).length) _restoreSession();
+  // Não restaurar automaticamente — o utilizador escolhe o modo e decide carregar/restaurar.
+  const _lm=$('loadModeSel'); if(_lm) _lm.value=_loadMode;
+  const _sk=$('skipUnknownDatesChk'); if(_sk) _sk.checked=_skipUnknownDates;
+  $('uploadOv').style.display='flex';
+  setSplashMode(true);
+  _updateRestoreBtn();
 });
 
 
@@ -6406,13 +6477,14 @@ async function _autoAnalyseAndAlert(){
   await new Promise(r=>setTimeout(r,400));
   if(!Object.keys(flights).length){_computeAlerts();return;}
 
-  // ── 0. Definir defaults: RWY 02, ponto PESEX ─────────────────────────────
-  // Final: pré-seleccionar RWY 02
+  // ── 0. Definir defaults: AMBAS as pistas, ponto PESEX ────────────────────
+  // Final: analisar AMBAS as pistas (02 + 20). Forçar "02" deixava a RWY 20
+  // sem dados na Análise de Dados/Separação, porque finalResults só continha 02.
   buildFinRwyOptions();
   const finRwyEl=$('finRwy');
   if(finRwyEl){
-    const has02=[...finRwyEl.options].some(o=>o.value==='02');
-    if(has02)finRwyEl.value='02';
+    const hasBoth=[...finRwyEl.options].some(o=>o.value==='BOTH');
+    finRwyEl.value=hasBoth?'BOTH':((finRwyEl.options[0]&&finRwyEl.options[0].value)||'');
   }
 
   // ── 1. Final analysis ─────────────────────────────────────────────────────
@@ -6736,6 +6808,8 @@ function sep_cmp(a,b){const na=parseFloat(String(a).replace(',','.')),nb=parseFl
 // ═══════════════════════════════════════════════════════════════
 let sep_results=[], sep_movementRows=[];
 let sep_modalDatas=new Map(), sep_modalCounter=0;
+let sep_dailyExportCtx=null;
+let sep_analysisExportCtx=null;
 
 function sep_buildData(){
   sep_results=[];sep_movementRows=[];
@@ -6885,6 +6959,56 @@ function sep_renderAnalysis(){
   sep_renderCriticalTable(rows,limit);
   sep_renderHourTable(rows,limit);
   sep_renderCompanyTable(comps,limit);
+  const busyHourVal=sep_modeBy(rows,r=>(r.horaA||'').slice(0,2),v=>v+'h');
+  const mainRwyVal=sep_modeBy(rows,r=>r.pista,v=>'RWY '+v);
+  const seqOrder=['AA','ADA','ADDA','AD...A'];
+  const seqStats=seqOrder.map(seq=>{const rr=rows.filter(r=>(r._seq||(!r._hasDep?'AA':'ADA'))===seq),cr=rr.filter(r=>r._sepSecNum<limit);return {label:seq,total:rr.length,crit:cr.length,rate:rr.length?Math.round(cr.length/rr.length*1000)/10:0};});
+  const rwyStats=['02','20'].map(p=>{const rr=rows.filter(r=>r.pista===p),cr=rr.filter(r=>r._sepSecNum<limit);return {label:'RWY '+p,total:rr.length,crit:cr.length,dep:rr.filter(r=>r._hasDep).length,rate:rr.length?Math.round(cr.length/rr.length*1000)/10:0};});
+  const landingMap={};
+  for(const r of sep_results){const h=(r.horaA||'').slice(0,2)||'??';if(!landingMap[h])landingMap[h]=new Set();landingMap[h].add(r.csnA+'|'+r.horaA+'|'+r.pista);}
+  const hourMap={};
+  for(const r of rows){const h=(r.horaA||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={hora:h+'h',chegadas:landingMap[h]?.size||0,pares:0,crit:0,dep:0,min:Infinity,seps:[]};const o=hourMap[h];o.pares++;if(r._sepSecNum<limit)o.crit++;if(r._hasDep)o.dep+=(r._depCount||1);o.min=Math.min(o.min,r._sepSecNum);o.seps.push(r._sepSecNum);}
+  const hourTable=Object.values(hourMap).sort((a,b)=>a.hora.localeCompare(b.hora)).map(d=>({hora:d.hora,chegadas:d.chegadas,pares:d.pares,crit:d.crit,dep:d.dep,min:Number.isFinite(d.min)?d.min.toFixed(1)+' s':'—',avg:sep_mean(d.seps).toFixed(1)+' s'}));
+  sep_analysisExportCtx={
+    limit,
+    filters:sep_reportActiveFilters(),
+    meta:{files:Object.keys(loadedFiles||{}).length,radarRows:sep_movementRows.length,landings:finalResults?finalResults.length:0,allPairs:sep_results.length},
+    kpiRows:[
+      ['pares precedente/seguidor analisados',rows.length],
+      ['pares abaixo do limite',critRows.length],
+      ['abaixo do limite com DEP',critDep],
+      ['abaixo do limite sem DEP',critNoDep],
+      ['menor separação',Number.isFinite(minSep)?minSep.toFixed(1)+' s':'—'],
+      ['média da separação',Number.isFinite(avgSep)?avgSep.toFixed(1)+' s':'—'],
+      ['mediana da separação',Number.isFinite(medSep)?medSep.toFixed(1)+' s':'—'],
+      ['hora mais crítica',bestHour?`${bestHour[0]}h (${bestHour[1]})`:'—'],
+      ['hora mais movimentada',busyHourVal||'—'],
+      ['pista mais usada',mainRwyVal||'—'],
+      ['DEP entre chegadas',depTotal],
+      ['movimentos ARR+DEP',movs.length],
+      ['pico de aterragens',peakArr?`${peakArr.hour}h (${peakArr.arr})`:'—'],
+      ['pico de descolagens',peakDep?`${peakDep.hour}h (${peakDep.dep})`:'—'],
+      ['pico de movimentos',peakMov?`${peakMov.hour}h (${peakMov.total})`:'—']
+    ],
+    totals:{pairs:rows.length,crit:critRows.length,critDep,critNoDep,movs:movs.length,depTotal,minSep,avgSep,medSep},
+    seqStats,rwyStats,
+    comps:comps.map(c=>({company:c.company,movements:c.movements,arr:c.arr,dep:c.dep,critical:c.critical,rate:(c.rate*100).toFixed(1)+'%'})),
+    topCrit:[...rows].sort((a,b)=>a._sepSecNum-b._sepSecNum).slice(0,10).map(r=>({pista:r.pista,data:r.data,horaA:r.horaA,csnA:r.csnA,csnB:r.csnB,seq:r._seq||'',sepSec:String(r.sepSec),sepNm:String(r.sepNm),depCsn:r.depCsn||''})),
+    hourTable,
+    sepDistFilter:sep_sepDistFilter,
+    charts:{
+      hist:$('sep_chartHist')?.innerHTML||'',
+      hour:$('sep_chartHour')?.innerHTML||'',
+      rwy:$('sep_chartRwy')?.innerHTML||'',
+      seq:$('sep_chartSeq')?.innerHTML||'',
+      movHour:$('sep_chartMovHour')?.innerHTML||'',
+      compMov:$('sep_chartCompMov')?.innerHTML||'',
+      compInf:$('sep_chartCompInf')?.innerHTML||'',
+      depDist:$('sep_chartDepDist')?.innerHTML||'',
+      sepDist:$('sep_chartSepDist')?.innerHTML||'',
+      ias:$('sep_chartIas')?.innerHTML||''
+    }
+  };
   sep_bindModalClicks();
 }
 function sep_renderHist(rows,limit){
@@ -7367,6 +7491,7 @@ function renderSepDaily(){
   // Use global FT data (sep_results already filtered by applyFilter)
   sep_buildData();
   if(!sep_movementRows.length){
+    sep_dailyExportCtx=null;
     const el=$('sep_dailyContent');if(el)el.innerHTML='<div style="padding:30px;text-align:center;color:#6b7280;font-weight:700;">Sem dados. Carrega ficheiros CSV e aplica o filtro.</div>';
     return;
   }
@@ -7381,6 +7506,7 @@ function sep_renderDailyContentGlobal(selectedDates, selectedBlocks){
   const limit=Number($('sep_anaLimit')?.value||165);
   const dateList=[...selectedDates].sort();
   if(!dateList.length){
+    sep_dailyExportCtx=null;
     el.innerHTML='<div style="padding:30px;text-align:center;color:#6b7280;font-weight:700;">Nenhum dia seleccionado no painel esquerdo.</div>';
     return;
   }
@@ -7488,14 +7614,15 @@ function sep_renderDailyContentGlobal(selectedDates, selectedBlocks){
     return a;
   });
   const r1=x=>Math.round(x*10)/10;
+  let wdChartMov='', wdChartCrit='';
   let wdSection='';
   if(wdList.length){
     const maxMov=[...wdList].sort((p,q)=>q.avgMov-p.avgMov)[0];
     const maxCrit=[...wdList].sort((p,q)=>q.avgCrit-p.avgCrit)[0];
     const maxRate=[...wdList].sort((p,q)=>q.rate-p.rate)[0];
     wdList.forEach(a=>{a._modalKeyMov=sep_registerModalData(`Movimentos · ${a.name}`,a._movRows,`${a.days} dia(s) · ${a.dates.join(', ')}`); a._modalKeyCrit=sep_registerModalData(`Críticos · ${a.name}`,a._critRows,`${a.days} dia(s) · ${a.dates.join(', ')}`);});
-    const wdChartMov=sep_barSvg(wdList.map(a=>({label:a.short,count:r1(a.avgMov),_modalKey:a._modalKeyMov})),{w:640,h:240,labelKey:'label',valueKey:'count',color:'#0b5cad',titleY:'Méd mov/dia',tipFn:a=>[`${WD_LONG[wdList.find(x=>x.short===a.label).wd]}`,`Dias: ${wdList.find(x=>x.short===a.label).days}`,`Média mov/dia: ${a.count}`]});
-    const wdChartCrit=sep_barSvg(wdList.map(a=>({label:a.short,count:r1(a.avgCrit),_modalKey:a._modalKeyCrit})),{w:640,h:240,labelKey:'label',valueKey:'count',criticalFn:a=>a.count>0,titleY:'Méd crít/dia',tipFn:a=>[`${WD_LONG[wdList.find(x=>x.short===a.label).wd]}`,`Dias: ${wdList.find(x=>x.short===a.label).days}`,`Média críticos/dia: ${a.count}`]});
+    wdChartMov=sep_barSvg(wdList.map(a=>({label:a.short,count:r1(a.avgMov),_modalKey:a._modalKeyMov})),{w:640,h:240,labelKey:'label',valueKey:'count',color:'#0b5cad',titleY:'Méd mov/dia',tipFn:a=>[`${WD_LONG[wdList.find(x=>x.short===a.label).wd]}`,`Dias: ${wdList.find(x=>x.short===a.label).days}`,`Média mov/dia: ${a.count}`]});
+    wdChartCrit=sep_barSvg(wdList.map(a=>({label:a.short,count:r1(a.avgCrit),_modalKey:a._modalKeyCrit})),{w:640,h:240,labelKey:'label',valueKey:'count',criticalFn:a=>a.count>0,titleY:'Méd crít/dia',tipFn:a=>[`${WD_LONG[wdList.find(x=>x.short===a.label).wd]}`,`Dias: ${wdList.find(x=>x.short===a.label).days}`,`Média críticos/dia: ${a.count}`]});
     const wdHighlights=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
       <div style="flex:1;min-width:160px;background:#eef6ff;border:1px solid #bfdcff;border-radius:10px;padding:9px 11px;"><span style="font-size:10.5px;color:#6b7280;">Mais movimentos (média/dia)</span><b style="display:block;font-size:16px;color:#0b5cad;">${maxMov.name} · ${r1(maxMov.avgMov)}</b></div>
       <div style="flex:1;min-width:160px;background:#fdeeee;border:1px solid #f3c6c6;border-radius:10px;padding:9px 11px;"><span style="font-size:10.5px;color:#6b7280;">Mais críticos (média/dia)</span><b style="display:block;font-size:16px;color:#b91c1c;">${maxCrit.name} · ${r1(maxCrit.avgCrit)}</b></div>
@@ -7565,6 +7692,19 @@ function sep_renderDailyContentGlobal(selectedDates, selectedBlocks){
 
   el.innerHTML=kpiHtml+chartsHtml+wdSection+commonTable+hourTable;
   sep_bindModalClicks();
+  sep_dailyExportCtx={
+    limit,dateList,
+    blocksLabel:selectedBlocks.size?[...selectedBlocks].sort().join(', '):'Todos',
+    kpiRows:kpis.map(([l,v])=>[l,v]),
+    stats:stats.map(s=>({date:s.date,label:s.label,wdName:s.wdName,arr:s.arr,dep:s.dep,total:s.total,pairs:s.pairs,crit:s.crit})),
+    wdList:wdList.map(a=>({name:a.name,days:a.days,mov:a.mov,avgMov:r1(a.avgMov),crit:a.crit,avgCrit:r1(a.avgCrit),rate:r1(a.rate),dates:a.dates.map(dayLabel).join(', ')})),
+    common:common.map(c=>({csn:c.csn,count:c.count,days:c.days.map(dayLabel).join(', '),movs:c._rows.length,company:companyFromCallsign(c.csn)})),
+    hourOut:hourOut.map(o=>({date:dayLabel(o.d),wd:weekdayOf(o.d)>=0?WD_SHORT[weekdayOf(o.d)]:'',h:o.h,arr:o.arr,dep:o.dep,total:o.total,pairs:o.pairs,crit:o.crit})),
+    comp:comp.map(c=>({company:c.company,movements:c.movements,arr:c.arr,dep:c.dep,critical:c.critical,rate:(c.rate*100).toFixed(1)+'%'})),
+    totals:{movs:movs.length,arr:arr.length,dep:dep.length,pairs:rows.length,crit:crit.length,critDep:critDep.length},
+    peakByDay:peakByDay.map(p=>({label:p.label,hour:p.hour,count:p.count})),
+    charts:{mov:chartMov,crit:chartCrit,peak:chartPeak,comp:chartComp,wdMov:wdChartMov,wdCrit:wdChartCrit}
+  };
 }
 
 
@@ -7643,18 +7783,394 @@ function sep_exportAnalysisExcel(){
   html+='</table></body></html>';
   const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='analise_separacao_thr_lppt.xls'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
+function sep_buildAnalysisNarrative(ctx){
+  const t=ctx.totals||{};
+  const critRate=t.pairs?Math.round(t.crit/t.pairs*1000)/10:0;
+  const paragraphs=[],insights=[];
+  const filterDesc=ctx.filters.filter(f=>f[1]&&f[1]!=='Todas'&&f[1]!=='Tudo'&&f[1]!=='Todos os pares precedente/seguidor'&&f[1]!=='Qualquer distância').map(f=>`${f[0]}: ${f[1]}`).join('; ');
+  paragraphs.push(`Este relatório analisa a separação entre chegadas consecutivas na LPPT, com limite crítico de ${ctx.limit} segundos.${filterDesc?` Filtros activos: ${filterDesc}.`:''} A amostra inclui ${t.pairs.toLocaleString('pt-PT')} par(es) precedente/seguidor${t.movs?` e ${t.movs.toLocaleString('pt-PT')} movimentos ARR+DEP`:''}.`);
+  if(ctx.meta){
+    paragraphs.push(`Os dados provêm de ${ctx.meta.files} ficheiro(s) CSV (${ctx.meta.radarRows.toLocaleString('pt-PT')} registos radar, ${ctx.meta.landings.toLocaleString('pt-PT')} passagens THR, ${ctx.meta.allPairs.toLocaleString('pt-PT')} pares na janela global).`);
+  }
+  if(t.pairs){
+    paragraphs.push(`Foram identificados ${t.crit.toLocaleString('pt-PT')} pares abaixo do limite (${critRate}%)${t.critDep?`, dos quais ${t.critDep} com descolagem intercalada (DEP) e ${t.critNoDep} sem DEP`:''}.`);
+    if(critRate>=15) paragraphs.push(`A taxa de críticos (${critRate}%) é elevada e sugere pressão operacional significativa na sequência de chegadas analisada.`);
+    else if(critRate>0) paragraphs.push(`A taxa global de críticos (${critRate}%) é moderada; convém cruzar com hora, pista e tipo de sequência para localizar concentrações.`);
+    else paragraphs.push(`Não foram registados pares abaixo de ${ctx.limit}s nos filtros seleccionados.`);
+    insights.push(`${critRate}% dos pares abaixo de ${ctx.limit}s`);
+  }
+  if(Number.isFinite(t.minSep)){
+    paragraphs.push(`A menor separação observada foi ${t.minSep.toFixed(1)} s${Number.isFinite(t.avgSep)?`, com média de ${t.avgSep.toFixed(1)} s e mediana de ${(t.medSep||0).toFixed(1)} s`:''} — indicadores úteis para avaliar o aperto típico vs casos extremos.`);
+    insights.push(`Menor separação: ${t.minSep.toFixed(1)} s`);
+  }
+  const critHour=ctx.kpiRows.find(x=>x[0]==='hora mais crítica');
+  const busyHour=ctx.kpiRows.find(x=>x[0]==='hora mais movimentada');
+  if(critHour&&critHour[1]&&critHour[1]!=='—'){paragraphs.push(`A hora com mais pares críticos foi ${critHour[1]}, o que aponta para o período do dia com maior risco de sequências apertadas.`);insights.push(`Hora mais crítica: ${critHour[1]}`);}
+  if(busyHour&&busyHour[1]&&busyHour[1]!=='—') paragraphs.push(`A hora mais movimentada em pares precedente/seguidor foi ${busyHour[1]} — nem sempre coincide com a hora mais crítica, o que pode indicar densidade vs aperto real.`);
+  const peakArr=ctx.kpiRows.find(x=>x[0]==='pico de aterragens');
+  const peakDep=ctx.kpiRows.find(x=>x[0]==='pico de descolagens');
+  if(peakArr&&peakArr[1]&&peakArr[1]!=='—') paragraphs.push(`O pico de aterragens ocorreu à hora ${peakArr[1]}.`);
+  if(peakDep&&peakDep[1]&&peakDep[1]!=='—') paragraphs.push(`O pico de descolagens ocorreu à hora ${peakDep[1]}, relevante para sequências ADA/ADDA com DEP intercalado.`);
+  if(ctx.rwyStats&&ctx.rwyStats.some(r=>r.total)){
+    const byCrit=[...ctx.rwyStats].filter(r=>r.total).sort((a,b)=>b.rate-a.rate);
+    const byVol=[...ctx.rwyStats].filter(r=>r.total).sort((a,b)=>b.total-a.total);
+    paragraphs.push(`${byVol[0].label} concentra ${byVol[0].total} pares (${byVol[0].crit} críticos, ${byVol[0].rate}%)${byCrit[0]&&byCrit[0].label!==byVol[0].label?`; ${byCrit[0].label} regista taxa de ${byCrit[0].rate}%`:''}.`);
+    insights.push(`Pista principal: ${byVol[0].label}`);
+  }
+  if(ctx.seqStats&&ctx.seqStats.some(s=>s.total)){
+    const mainSeq=[...ctx.seqStats].filter(s=>s.total).sort((a,b)=>b.total-a.total)[0];
+    const critSeq=[...ctx.seqStats].filter(s=>s.crit).sort((a,b)=>b.crit-a.crit)[0];
+    paragraphs.push(`A sequência dominante é ${mainSeq.label} (${mainSeq.total} pares, ${mainSeq.crit} críticos)${critSeq&&critSeq.label!==mainSeq.label?`; ${critSeq.label} destaca-se com ${critSeq.crit} ocorrências críticas`:''}.`);
+    if(mainSeq.label==='AA') paragraphs.push(`Predominância de sequências AA (chegada seguida de chegada, sem DEP) indica fluxo principalmente de aterragens consecutivas.`);
+    else if(mainSeq.label==='ADA') paragraphs.push(`Sequências ADA frequentes indicam descolagens intercaladas entre chegadas — factor relevante na gestão de separação.`);
+  }
+  if(ctx.comps&&ctx.comps.length){
+    const top=ctx.comps[0];
+    paragraphs.push(`${top.company} lidera em movimentos (${top.movements} ARR+DEP${top.critical?`, ${top.critical} ocorrências críticas (${top.rate})`:''}).`);
+    const worst=ctx.comps.filter(c=>parseFloat(c.rate)>0).sort((a,b)=>parseFloat(b.rate)-parseFloat(a.rate))[0];
+    if(worst&&worst.company!==top.company) paragraphs.push(`${worst.company} apresenta a maior taxa de críticos por movimento (${worst.rate}).`);
+  }
+  if(ctx.topCrit&&ctx.topCrit.length){
+    const w=ctx.topCrit[0];
+    paragraphs.push(`O par mais apertado foi ${w.csnA} → ${w.csnB} (${w.sepSec} s, ${w.sepNm} NM) em ${w.data} às ${w.horaA}${w.depCsn?`, com DEP ${w.depCsn}`:''}.`);
+  }
+  return {paragraphs,insights};
+}
+function sep_buildAnalysisReportHtml(ctx){
+  const nar=sep_buildAnalysisNarrative(ctx);
+  const genAt=new Date().toLocaleString('pt-PT');
+  let html='';
+  html+=`<h1>Relatório de Análise de Dados</h1>`;
+  html+=`<p class="sub">Flight Track Viewer · Separação entre chegadas · LPPT · ${sep_escHtml(genAt)}</p>`;
+  html+=`<table class="filterTable"><tbody>`;
+  ctx.filters.forEach((f,i)=>{if(i%2===0)html+='<tr>';html+=`<th>${sep_escHtml(f[0])}</th><td>${sep_escHtml(String(f[1]))}</td>`;if(i%2===1)html+='</tr>';});
+  if(ctx.filters.length%2) html+='<td colspan="2"></td></tr>';
+  html+=`</tbody></table>`;
+  html+=`<section class="exec"><h2>Síntese executiva</h2>`;
+  nar.paragraphs.forEach(p=>{html+=`<p>${sep_escHtml(p)}</p>`;});
+  html+=`</section>`;
+  if(nar.insights.length){
+    html+=`<section><h2>Destaques</h2><div class="insights">`;
+    nar.insights.forEach(t=>{html+=`<div class="insight">${sep_escHtml(t)}</div>`;});
+    html+=`</div></section>`;
+  }
+  html+=`<section><h2>Indicadores principais</h2><div class="kpiGrid">`;
+  ctx.kpiRows.forEach(([l,v])=>{html+=`<div class="kpi"><b>${sep_escHtml(String(v))}</b><span>${sep_escHtml(l)}</span></div>`;});
+  html+=`</div></section>`;
+  const ch=ctx.charts||{};
+  if(ch.hist){
+    html+=`<section class="chartSection"><h2>Distribuição de separações</h2>`;
+    html+=`<p class="chartInterp">Histograma de pares por intervalo de separação (segundos). Barras a vermelho intersectam o limite de ${ctx.limit}s — concentração à esquerda indica sequências mais apertadas.</p>`;
+    html+=`<div class="chartBox">${ch.hist}</div></section>`;
+  }
+  if(ch.hour){
+    html+=`<section class="chartSection"><h2>Pares por hora</h2>`;
+    html+=`<p class="chartInterp">Total de pares precedente/seguidor vs críticos por hora UTC.${critHourNote(ctx)?' '+critHourNote(ctx):''}</p>`;
+    html+=`<div class="chartBox">${ch.hour}</div></section>`;
+  }
+  if(ch.rwy){
+    html+=`<section class="chartSection"><h2>Comparação por pista</h2>`;
+    html+=`<p class="chartInterp">Volume, críticos e DEP intercalado por RWY 02 e RWY 20 — permite comparar pressão operacional entre cabeceiras.</p>`;
+    html+=`<div class="chartBox">${ch.rwy}</div></section>`;
+  }
+  if(ch.seq){
+    html+=`<section class="chartSection"><h2>Sequências ARR/DEP</h2>`;
+    html+=`<p class="chartInterp">Tipos de sequência (AA, ADA, ADDA, AD...A): AA sem DEP intercalado; ADA/ADDA com uma ou mais descolagens entre chegadas.</p>`;
+    html+=`<div class="chartBox">${ch.seq}</div></section>`;
+  }
+  if(ch.movHour){
+    html+=`<section class="chartSection"><h2>Movimentos por hora</h2>`;
+    html+=`<p class="chartInterp">Perfil horário de movimentos ARR+DEP nos filtros activos — complementa a análise de pares com a carga operacional global.</p>`;
+    html+=`<div class="chartBox">${ch.movHour}</div></section>`;
+  }
+  if(ch.compMov||ch.compInf){
+    html+=`<div class="pageBreak"></div><h2>Companhias aéreas</h2>`;
+    if(ch.compMov){
+      html+=`<section class="chartSection"><h3>Volume por companhia</h3>`;
+      html+=`<p class="chartInterp">Top 15 operadores por movimentos no período filtrado${ctx.comps[0]?`; ${ctx.comps[0].company} lidera com ${ctx.comps[0].movements} movimentos`:''}.</p>`;
+      html+=`<div class="chartBox">${ch.compMov}</div></section>`;
+    }
+    if(ch.compInf){
+      html+=`<section class="chartSection"><h3>Taxa de ocorrências críticas</h3>`;
+      html+=`<p class="chartInterp">Companhias com maior taxa de críticos por movimento (mínimo de ocorrências relevantes) — útil para identificar operadores com sequências mais apertadas.</p>`;
+      html+=`<div class="chartBox">${ch.compInf}</div></section>`;
+    }
+  }
+  if(ch.depDist||ch.sepDist||ch.ias){
+    html+=`<div class="pageBreak"></div><h2>Factores operacionais</h2>`;
+    if(ch.depDist){
+      html+=`<section class="chartSection"><h3>Posição do seguidor no DEP</h3>`;
+      html+=`<p class="chartInterp">Distância do seguidor à THR no momento da descolagem intercalada. Valores baixos (&lt;3–4 NM) indicam DEP mais apertado e maior risco de sequência crítica.</p>`;
+      html+=`<div class="chartBox">${ch.depDist}</div></section>`;
+    }
+    if(ch.sepDist){
+      const fl=ctx.sepDistFilter==='lt'?` (< ${ctx.limit}s)`:ctx.sepDistFilter==='ge'?` (≥ ${ctx.limit}s)`:'';
+      html+=`<section class="chartSection"><h3>Separação vs distância do seguidor${fl}</h3>`;
+      html+=`<p class="chartInterp">Cada ponto representa um par: eixo X = separação (s), eixo Y = distância NM do seguidor. Linha vertical = limite ${ctx.limit}s. Pontos abaixo da linha são críticos.</p>`;
+      html+=`<div class="chartBox">${ch.sepDist}</div></section>`;
+    }
+    if(ch.ias){
+      html+=`<section class="chartSection"><h3>IAS do seguidor</h3>`;
+      html+=`<p class="chartInterp">Distribuição de pares por classe de IAS do seguidor na THR — velocidades mais altas podem reduzir margem de recuperação em sequências apertadas.</p>`;
+      html+=`<div class="chartBox">${ch.ias}</div></section>`;
+    }
+  }
+  html+=`<div class="pageBreak"></div><h2>Anexos tabulares</h2>`;
+  if(ctx.topCrit.length){
+    html+=sep_compactRowsTable('Top 10 pares mais apertados',['Pista','Data','Hora','Precedente','Seguidor','Seq.','Sep. s','Sep. NM','DEP'],
+      ctx.topCrit.map(r=>[r.pista,r.data,r.horaA,r.csnA,r.csnB,r.seq,r.sepSec,r.sepNm,r.depCsn||'—']),10);
+  }
+  if(ctx.hourTable.length){
+    html+=sep_compactRowsTable('Resumo por hora',['Hora','Chegadas','Pares','Críticos','DEP','Menor sep.','Média sep.'],
+      ctx.hourTable.map(h=>[h.hora,h.chegadas,h.pares,h.crit,h.dep,h.min,h.avg]),24);
+  }
+  if(ctx.comps.length){
+    html+=sep_compactRowsTable('Companhias',['Companhia','Movimentos','ARR','DEP','Críticos','Taxa'],
+      ctx.comps.map(c=>[c.company,c.movements,c.arr,c.dep,c.critical,c.rate]),15);
+  }
+  html+=`<p class="small" style="margin-top:14px;">Relatório gerado automaticamente a partir dos dados carregados no Flight Track Viewer. A timeline interactiva e o detalhe completo de pares estão disponíveis na aplicação e na exportação Excel.</p>`;
+  return html;
+}
+function critHourNote(ctx){
+  const h=ctx.kpiRows.find(x=>x[0]==='hora mais crítica');
+  return h&&h[1]&&h[1]!=='—'?`A hora ${h[1]} concentra o maior número de críticos.`:'';}
 function sep_exportAnalysisPdf(){
-  var el=document.getElementById("anaSubAnaData");
-  if(!el){alert("Abre a aba Análise de Dados.");return;}
-  var w=window.open("","_blank","width=1100,height=800");
-  if(!w){alert("Permite popups.");return;}
-  w.document.write('<html><head><title>Análise v2.5</title></head><body>');
-  w.document.write(el.innerHTML);
-  w.document.write("</body></html>");
-  w.document.close();w.focus();setTimeout(function(){w.print();},600);
+  if(!sep_analysisExportCtx){
+    alert('Actualiza a análise primeiro (clica Atualizar análise).');
+    return;
+  }
+  const w=window.open('','_blank','width=1100,height=800');
+  if(!w){alert('Permite popups.');return;}
+  w.document.write('<html><head><title>Relatório Análise de Dados v2.5</title><style>'+sep_reportCss()+'</style></head><body>');
+  w.document.write(sep_buildAnalysisReportHtml(sep_analysisExportCtx));
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(),700);
+}
+function sep_exportDailyExcel(){
+  const ctx=sep_dailyExportCtx;
+  if(!ctx||!ctx.dateList||!ctx.dateList.length){
+    alert('Actualiza a análise diária primeiro (selecciona dias no painel esquerdo e clica Actualizar).');
+    return;
+  }
+  const daysLabel=ctx.dateList.map(d=>fmtDate(d)).join(', ');
+  let html='<html><head><meta charset="UTF-8"></head><body>';
+  html+=`<h2>Análise Diária LPPT — limite ${ctx.limit}s</h2>`;
+  html+=`<p><b>Dias seleccionados:</b> ${sep_escHtml(daysLabel)}</p>`;
+  html+=`<p><b>Blocos horários:</b> ${sep_escHtml(ctx.blocksLabel)}</p>`;
+  html+='<h3>Indicadores</h3><table border="1"><tr><th>Indicador</th><th>Valor</th></tr>';
+  for(const [l,v] of ctx.kpiRows) html+=`<tr><td>${sep_escHtml(l)}</td><td>${sep_escHtml(String(v))}</td></tr>`;
+  html+='</table>';
+  html+='<h3>Resumo por dia</h3><table border="1"><tr><th>Data</th><th>Dia sem.</th><th>ARR</th><th>DEP</th><th>Movimentos</th><th>Pares</th><th>Críticos</th></tr>';
+  for(const s of ctx.stats){
+    html+=`<tr><td>${sep_escHtml(fmtDate(s.date))}</td><td>${sep_escHtml(s.wdName||'')}</td><td>${s.arr}</td><td>${s.dep}</td><td>${s.total}</td><td>${s.pairs}</td><td>${s.crit}</td></tr>`;
+  }
+  html+='</table>';
+  if(ctx.wdList.length){
+    html+='<h3>Padrões por dia da semana</h3><table border="1"><tr><th>Dia da semana</th><th>Nº dias</th><th>Mov. totais</th><th>Méd mov/dia</th><th>Críticos totais</th><th>Méd crít/dia</th><th>Taxa crít.</th><th>Datas</th></tr>';
+    for(const w of ctx.wdList){
+      html+=`<tr><td>${sep_escHtml(w.name)}</td><td>${w.days}</td><td>${w.mov}</td><td>${w.avgMov}</td><td>${w.crit}</td><td>${w.avgCrit}</td><td>${w.rate}%</td><td>${sep_escHtml(w.dates)}</td></tr>`;
+    }
+    html+='</table>';
+  }
+  html+='<h3>Top companhias</h3><table border="1"><tr><th>Companhia</th><th>Movimentos</th><th>ARR</th><th>DEP</th><th>Críticos</th><th>Taxa</th></tr>';
+  for(const c of ctx.comp){
+    html+=`<tr><td>${sep_escHtml(c.company)}</td><td>${c.movements}</td><td>${c.arr}</td><td>${c.dep}</td><td>${c.critical}</td><td>${c.rate}</td></tr>`;
+  }
+  html+='</table>';
+  html+='<h3>Callsigns comuns entre dias</h3><table border="1"><tr><th>Callsign</th><th>Nº dias</th><th>Dias</th><th>Movimentos</th><th>Companhia</th></tr>';
+  for(const c of ctx.common){
+    html+=`<tr><td>${sep_escHtml(c.csn)}</td><td>${c.count}</td><td>${sep_escHtml(c.days)}</td><td>${c.movs}</td><td>${sep_escHtml(c.company)}</td></tr>`;
+  }
+  html+='</table>';
+  html+='<h3>Resumo por dia e hora</h3><table border="1"><tr><th>Data</th><th>Dia sem.</th><th>Hora</th><th>ARR</th><th>DEP</th><th>Movimentos</th><th>Pares</th><th>Críticos</th></tr>';
+  for(const o of ctx.hourOut){
+    html+=`<tr><td>${sep_escHtml(o.date)}</td><td>${sep_escHtml(o.wd)}</td><td>${o.h}h</td><td>${o.arr}</td><td>${o.dep}</td><td>${o.total}</td><td>${o.pairs}</td><td>${o.crit}</td></tr>`;
+  }
+  html+='</table></body></html>';
+  const blob=new Blob(['\ufeff'+html],{type:'application/vnd.ms-excel'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='analise_diaria_lppt.xls';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function sep_buildDailyNarrative(ctx){
+  const n=ctx.dateList.length;
+  const daysLabel=ctx.dateList.map(d=>fmtDate(d)).join(', ');
+  const t=ctx.totals||{};
+  const totalPairs=t.pairs||ctx.stats.reduce((s,x)=>s+x.pairs,0);
+  const totalCrit=t.crit||ctx.stats.reduce((s,x)=>s+x.crit,0);
+  const critRate=totalPairs?Math.round(totalCrit/totalPairs*1000)/10:0;
+  const avgMov=n?Math.round((t.movs||0)/n):0;
+  const paragraphs=[];
+  const insights=[];
+
+  paragraphs.push(`Este relatório analisa ${n} dia(s) seleccionado(s) (${daysLabel}), considerando os blocos horários ${ctx.blocksLabel}. O limite de separação crítica aplicado é ${ctx.limit} segundos entre chegadas consecutivas.`);
+
+  if(t.movs){
+    paragraphs.push(`No período foram registados ${t.movs.toLocaleString('pt-PT')} movimentos (${t.arr||0} aterragens e ${t.dep||0} descolagens), o que corresponde a uma média de ${avgMov} movimentos por dia analisado.`);
+    insights.push(`${t.movs.toLocaleString('pt-PT')} movimentos ARR+DEP no período`);
+  }
+
+  if(totalPairs){
+    paragraphs.push(`Foram identificados ${totalPairs.toLocaleString('pt-PT')} pares precedente/seguidor. Destes, ${totalCrit.toLocaleString('pt-PT')} (${critRate}%) ficaram abaixo do limite de ${ctx.limit}s${t.critDep?`, incluindo ${t.critDep} com descolagem intercalada (DEP)`:' sem DEP intercalado relevante'}.`);
+    if(critRate>=15) paragraphs.push(`A taxa de críticos (${critRate}%) é elevada face ao volume analisado e merece atenção operacional, sobretudo nas horas e dias com maior concentração de ocorrências.`);
+    else if(critRate>0) paragraphs.push(`A taxa global de críticos (${critRate}%) situa-se num patamar moderado; convém cruzar com os dias e horas de pico para identificar padrões localizados.`);
+    else paragraphs.push(`Não foram registados pares abaixo do limite de ${ctx.limit}s no período e filtros seleccionados.`);
+    insights.push(`${critRate}% dos pares abaixo de ${ctx.limit}s`);
+  }
+
+  const busiest=[...ctx.stats].sort((a,b)=>b.total-a.total)[0];
+  const calmest=[...ctx.stats].sort((a,b)=>a.total-b.total)[0];
+  if(busiest&&busiest.total){
+    paragraphs.push(`O dia de maior volume operacional foi ${fmtDate(busiest.date)}${busiest.wdName?` (${busiest.wdName})`:''}, com ${busiest.total} movimentos (${busiest.arr} ARR / ${busiest.dep} DEP) e ${busiest.crit} pares críticos.`);
+    insights.push(`Pico diário: ${fmtDate(busiest.date)} · ${busiest.total} mov.`);
+  }
+  if(calmest&&calmest.date!==busiest?.date&&calmest.total>0){
+    paragraphs.push(`O dia de menor volume foi ${fmtDate(calmest.date)} (${calmest.total} movimentos), útil como referência de carga operacional mínima no conjunto analisado.`);
+  }
+
+  const worstCrit=[...ctx.stats].filter(s=>s.crit>0).sort((a,b)=>b.crit-a.crit)[0];
+  if(worstCrit){
+    const dayRate=worstCrit.pairs?Math.round(worstCrit.crit/worstCrit.pairs*1000)/10:0;
+    paragraphs.push(`O dia com mais ocorrências críticas foi ${fmtDate(worstCrit.date)} (${worstCrit.crit} pares abaixo do limite, ${dayRate}% dos ${worstCrit.pairs} pares desse dia).`);
+    insights.push(`Mais críticos: ${fmtDate(worstCrit.date)} · ${worstCrit.crit} pares`);
+  }
+
+  const peakArr=ctx.kpiRows.find(x=>x[0]==='pico de aterragens');
+  const peakDep=ctx.kpiRows.find(x=>x[0]==='pico de descolagens');
+  if(peakArr&&peakArr[1]&&peakArr[1]!=='—') paragraphs.push(`As aterragens concentram-se tipicamente na hora ${peakArr[1]}, indicando o período do dia com maior pressão na sequência de chegadas.`);
+  if(peakDep&&peakDep[1]&&peakDep[1]!=='—') paragraphs.push(`As descolagens atingem o máximo à hora ${peakDep[1]}, o que pode influenciar a intercalação ARR/DEP e a formação de sequências ADA/ADDA.`);
+
+  if(ctx.comp&&ctx.comp.length){
+    const top=ctx.comp[0];
+    paragraphs.push(`A companhia com mais movimentos no período foi ${top.company} (${top.movements} movimentos${top.critical?`, ${top.critical} ocorrências críticas associadas`:''}).`);
+    if(ctx.comp.length>1) paragraphs.push(`Seguem-se ${ctx.comp.slice(1,4).map(c=>`${c.company} (${c.movements})`).join(', ')} entre as operadoras mais activas.`);
+  }
+
+  if(ctx.wdList&&ctx.wdList.length>=2){
+    const byMov=[...ctx.wdList].sort((a,b)=>b.avgMov-a.avgMov);
+    const byCrit=[...ctx.wdList].sort((a,b)=>b.avgCrit-a.avgCrit);
+    const byRate=[...ctx.wdList].sort((a,b)=>b.rate-a.rate);
+    paragraphs.push(`Comparando dias da semana (médias por dia para comparar de forma justa), ${byMov[0].name} regista a maior média de movimentos (${byMov[0].avgMov}/dia em ${byMov[0].days} dia(s) analisado(s)).`);
+    if(byCrit[0].avgCrit>0){
+      paragraphs.push(`${byCrit[0].name} apresenta a maior média de pares críticos (${byCrit[0].avgCrit}/dia)${byRate[0].rate>0?`, com taxa de ${byRate[0].rate}% em ${byRate[0].name}`:''} — útil para comparar, por exemplo, terças vs quartas ao longo do mês.`);
+      insights.push(`Dia da semana mais crítico (média): ${byCrit[0].name}`);
+    }
+  }
+
+  if(ctx.common&&ctx.common.length){
+    paragraphs.push(`Foram encontrados ${ctx.common.length} callsign(s) comuns a mais do que um dos dias seleccionados, o que facilita a comparação de padrões horários ou de sequência entre datas equivalentes.`);
+  }else if(n>1){
+    paragraphs.push(`Não há callsigns repetidos entre os dias seleccionados, pelo que a comparação deve focar-se em indicadores agregados (volume, críticos, hora) e não em voos individuais recorrentes.`);
+  }
+
+  const hourCrit=[...ctx.hourOut].filter(h=>h.crit>0).sort((a,b)=>b.crit-a.crit)[0];
+  if(hourCrit){
+    paragraphs.push(`A hora com mais pares críticos no conjunto analisado foi ${hourCrit.h}h do dia ${hourCrit.date}${hourCrit.wd?` (${hourCrit.wd})`:''} (${hourCrit.crit} críticos em ${hourCrit.pairs} pares).`);
+  }
+
+  return {paragraphs,insights};
+}
+function sep_buildDailyReportHtml(ctx){
+  const nar=sep_buildDailyNarrative(ctx);
+  const daysLabel=ctx.dateList.map(d=>fmtDate(d)).join(', ');
+  const genAt=new Date().toLocaleString('pt-PT');
+  let html='';
+
+  html+=`<h1>Relatório de Análise Diária</h1>`;
+  html+=`<p class="sub">Flight Track Viewer · LPPT · ${sep_escHtml(genAt)}</p>`;
+  html+=`<table class="filterTable"><tbody>`;
+  html+=`<tr><th>Período</th><td>${sep_escHtml(daysLabel)}</td><th>Limite crítico</th><td>${ctx.limit}s</td></tr>`;
+  html+=`<tr><th>Blocos horários</th><td>${sep_escHtml(ctx.blocksLabel)}</td><th>Dias analisados</th><td>${ctx.dateList.length}</td></tr>`;
+  html+=`</tbody></table>`;
+
+  html+=`<section class="exec"><h2>Síntese executiva</h2>`;
+  nar.paragraphs.forEach(p=>{html+=`<p>${sep_escHtml(p)}</p>`;});
+  html+=`</section>`;
+
+  if(nar.insights.length){
+    html+=`<section><h2>Destaques</h2><div class="insights">`;
+    nar.insights.forEach(t=>{html+=`<div class="insight">${sep_escHtml(t)}</div>`;});
+    html+=`</div></section>`;
+  }
+
+  html+=`<section><h2>Indicadores principais</h2><div class="kpiGrid">`;
+  ctx.kpiRows.forEach(([l,v])=>{html+=`<div class="kpi"><b>${sep_escHtml(String(v))}</b><span>${sep_escHtml(l)}</span></div>`;});
+  html+=`</div></section>`;
+
+  const ch=ctx.charts||{};
+  const busiest=[...ctx.stats].sort((a,b)=>b.total-a.total)[0];
+  const avgMov=ctx.dateList.length?Math.round((ctx.totals.movs||0)/ctx.dateList.length):0;
+  if(ch.mov){
+    html+=`<section class="chartSection"><h2>Movimentos por dia</h2>`;
+    html+=`<p class="chartInterp">Comparação de aterragens (ARR) e descolagens (DEP) por dia seleccionado.${busiest?` O dia ${fmtDate(busiest.date)} destaca-se com ${busiest.total} movimentos (média global: ${avgMov}/dia).`:''}</p>`;
+    html+=`<div class="chartBox">${ch.mov}</div></section>`;
+  }
+  if(ch.crit){
+    const worst=[...ctx.stats].filter(s=>s.crit>0).sort((a,b)=>b.crit-a.crit)[0];
+    html+=`<section class="chartSection"><h2>Ocorrências críticas por dia</h2>`;
+    html+=`<p class="chartInterp">Pares precedente/seguidor abaixo de ${ctx.limit}s.${worst?` O pico ocorreu em ${fmtDate(worst.date)} (${worst.crit} pares críticos).`:''}</p>`;
+    html+=`<div class="chartBox">${ch.crit}</div></section>`;
+  }
+  if(ch.peak){
+    html+=`<section class="chartSection"><h2>Pico horário por dia</h2>`;
+    html+=`<p class="chartInterp">Hora com maior volume de movimentos (ARR+DEP) em cada dia — indica o período de maior densidade operacional diária.</p>`;
+    html+=`<div class="chartBox">${ch.peak}</div></section>`;
+  }
+  if(ch.comp){
+    html+=`<section class="chartSection"><h2>Companhias por dia</h2>`;
+    html+=`<p class="chartInterp">Top operadores por volume de movimentos no período${ctx.comp[0]?`; ${ctx.comp[0].company} lidera com ${ctx.comp[0].movements} movimentos`:''}.</p>`;
+    html+=`<div class="chartBox">${ch.comp}</div></section>`;
+  }
+
+  if(ch.wdMov||ch.wdCrit){
+    html+=`<div class="pageBreak"></div><h2>Padrões por dia da semana</h2>`;
+    if(ctx.wdList.length>=2){
+      const byCrit=[...ctx.wdList].sort((a,b)=>b.avgCrit-a.avgCrit)[0];
+      html+=`<p class="chartInterp">Agrupamento por dia da semana com médias por dia (comparação justa quando há diferente número de segundas, terças, etc.).${byCrit&&byCrit.avgCrit>0?` ${byCrit.name} regista a maior média de críticos (${byCrit.avgCrit}/dia).`:''}</p>`;
+    }
+    if(ch.wdMov) html+=`<section class="chartSection"><h3>Média de movimentos por dia da semana</h3><div class="chartBox">${ch.wdMov}</div></section>`;
+    if(ch.wdCrit) html+=`<section class="chartSection"><h3>Média de pares críticos por dia da semana</h3><div class="chartBox">${ch.wdCrit}</div></section>`;
+    html+=sep_compactRowsTable('Tabela — dia da semana',['Dia','Nº dias','Mov. totais','Méd mov/dia','Críticos','Méd crít/dia','Taxa %','Datas'],
+      ctx.wdList.map(w=>[w.name,w.days,w.mov,w.avgMov,w.crit,w.avgCrit,w.rate,w.dates]),12);
+  }
+
+  html+=`<div class="pageBreak"></div><h2>Anexos tabulares</h2>`;
+  html+=sep_compactRowsTable('Resumo por dia',['Data','Dia sem.','ARR','DEP','Mov.','Pares','Críticos'],
+    ctx.stats.map(s=>[fmtDate(s.date),s.wdName,s.arr,s.dep,s.total,s.pairs,s.crit]),30);
+  if(ctx.comp.length){
+    html+=sep_compactRowsTable('Companhias',['Companhia','Movimentos','ARR','DEP','Críticos','Taxa'],
+      ctx.comp.map(c=>[c.company,c.movements,c.arr,c.dep,c.critical,c.rate]),10);
+  }
+  if(ctx.common.length){
+    html+=sep_compactRowsTable('Callsigns comuns entre dias',['Callsign','Nº dias','Dias','Movimentos','Companhia'],
+      ctx.common.map(c=>[c.csn,c.count,c.days,c.movs,c.company]),20);
+  }
+  html+=sep_compactRowsTable('Resumo por dia e hora (amostra)',['Data','Dia sem.','Hora','ARR','DEP','Mov.','Pares','Críticos'],
+    ctx.hourOut.map(o=>[o.date,o.wd,o.h+'h',o.arr,o.dep,o.total,o.pairs,o.crit]),40);
+
+  html+=`<p class="small" style="margin-top:14px;">Relatório gerado automaticamente a partir dos dados carregados no Flight Track Viewer. Os gráficos reflectem os filtros activos (dias, blocos horários e limite crítico). Para detalhe completo, use a exportação Excel.</p>`;
+  return html;
+}
+function sep_exportDailyPdf(){
+  if(!sep_dailyExportCtx||!sep_dailyExportCtx.dateList.length){
+    alert('Actualiza a análise diária primeiro (selecciona dias no painel esquerdo e clica Actualizar).');
+    return;
+  }
+  const w=window.open('','_blank','width=1100,height=800');
+  if(!w){alert('Permite popups.');return;}
+  w.document.write('<html><head><title>Relatório Análise Diária v2.5</title><style>'+sep_reportCss()+'</style></head><body>');
+  w.document.write(sep_buildDailyReportHtml(sep_dailyExportCtx));
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(),700);
 }
 function sep_reportCss(){
-  return '@page{size:A4 landscape;margin:11mm}body{font-family:Segoe UI,Arial,sans-serif;color:#172033;margin:0;font-size:10.5px;line-height:1.35}h1{font-size:21px;margin:0 0 4px;color:#3f332d}h2{font-size:15px;margin:16px 0 8px;color:#3f332d;break-after:avoid}h3{font-size:12px;margin:10px 0 5px;color:#334155}.sub{color:#64748b;margin-bottom:10px}.exec{border-left:5px solid #6b564d;background:#f8fafc;border-radius:10px;padding:10px 12px;margin:10px 0 12px}.insights{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.insight{border:1px solid #d7dce3;border-radius:10px;padding:8px;background:#fff}.kpiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 10px}.kpi{border:1px solid #d7dce3;border-radius:8px;padding:7px;background:#fafafa}.kpi b{font-size:17px;display:block}.filterTable,.reportTable,table{border-collapse:collapse;width:100%;font-size:9.5px}th,td{border:1px solid #d7dce3;padding:4px 5px;text-align:left;vertical-align:top}th{background:#e9e6e3;color:#2b2521}.num{text-align:right}.chartSection{break-inside:avoid;page-break-inside:avoid;margin:0 0 14px}.chartBox{border:1px solid #d7dce3;border-radius:8px;padding:6px;background:#fbfcfd;margin-bottom:6px;overflow:hidden}.chartBox svg{max-width:100%;height:auto}.chartSvg{width:100%;height:auto}.timelineSvg{max-width:100%;height:auto}.timelineScroller{overflow:visible!important}.pageBreak{break-before:page}.small{font-size:9px;color:#64748b}.muted{color:#64748b}.dataModalBackdrop,.dataModal{display:none!important}button{display:none!important}';
+  return '@page{size:A4 landscape;margin:11mm}body{font-family:Segoe UI,Arial,sans-serif;color:#172033;margin:0;font-size:10.5px;line-height:1.35}h1{font-size:21px;margin:0 0 4px;color:#3f332d}h2{font-size:15px;margin:16px 0 8px;color:#3f332d;break-after:avoid}h3{font-size:12px;margin:10px 0 5px;color:#334155}.sub{color:#64748b;margin-bottom:10px}.exec{border-left:5px solid #6b564d;background:#f8fafc;border-radius:10px;padding:10px 12px;margin:10px 0 12px}.exec p{margin:0 0 8px;text-align:justify}.exec p:last-child{margin-bottom:0}.chartInterp{color:#475569;margin:0 0 8px;text-align:justify;line-height:1.45}.insights{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.insight{border:1px solid #d7dce3;border-radius:10px;padding:8px;background:#fff;font-weight:600;color:#334155}.kpiGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:8px 0 10px}.kpi{border:1px solid #d7dce3;border-radius:8px;padding:7px;background:#fafafa}.kpi b{font-size:17px;display:block;color:#0b5cad}.kpi span{font-size:9px;color:#64748b}.filterTable,.reportTable,table{border-collapse:collapse;width:100%;font-size:9.5px}th,td{border:1px solid #d7dce3;padding:4px 5px;text-align:left;vertical-align:top}th{background:#e9e6e3;color:#2b2521}.num{text-align:right}.chartSection{break-inside:avoid;page-break-inside:avoid;margin:0 0 14px}.chartBox{border:1px solid #d7dce3;border-radius:8px;padding:6px;background:#fbfcfd;margin-bottom:6px;overflow:hidden}.chartBox svg{max-width:100%;height:auto}.chartSvg{width:100%;height:auto}.timelineSvg{max-width:100%;height:auto}.timelineScroller{overflow:visible!important}.pageBreak{break-before:page}.small{font-size:9px;color:#64748b}.muted{color:#64748b}.dataModalBackdrop,.dataModal{display:none!important}button{display:none!important}[data-modal-key],.modalSource{cursor:default!important}';
 }
 function sep_narrativeList(items){return '<ul>'+items.filter(Boolean).map(x=>`<li>${sep_escHtml(x)}</li>`).join('')+'</ul>';}
 function sep_reportChartOnly(id,title,desc){
@@ -7692,11 +8208,11 @@ function sep_reportActiveFilters(){
   return [
     ['Limite crítico', getSel('sep_anaLimit')+' s'],
     ['Data', getSel('anaData')],
-    ['Hora', getSel('anaHour')],
-    ['Pista', getSel('anaPista')],
-    ['Tipo', getSel('anaTipo')],
-    ['Sequência', getSel('anaSeq')],
-    ['Seguidor no DEP até', getSel('anaDepNm')],
+    ['Hora', getSel('sep_anaHour')],
+    ['Pista', getSel('sep_anaPista')],
+    ['Tipo', getSel('sep_anaTipo')],
+    ['Sequência', getSel('sep_anaSeq')],
+    ['Seguidor no DEP até', getSel('sep_anaDepNm')],
     ['Mostrar', getSel('sep_anaCrit')]
   ];
 }
