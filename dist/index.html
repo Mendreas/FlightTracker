@@ -7311,7 +7311,7 @@ function renderSepDaily(){
 }
 function sep_renderDailyContentGlobal(selectedDates, selectedBlocks){
   const el=$('sep_dailyContent');if(!el)return;
-  const limit=parseInt($('fastThreshold')&&$('fastThreshold').value)||160;
+  const limit=Number($('sep_anaLimit')?.value||165);
   const dateList=[...selectedDates].sort();
   if(!dateList.length){
     el.innerHTML='<div style="padding:30px;text-align:center;color:#6b7280;font-weight:700;">Nenhum dia seleccionado no painel esquerdo.</div>';
@@ -7320,64 +7320,184 @@ function sep_renderDailyContentGlobal(selectedDates, selectedBlocks){
   // Filter movements and pairs to selected dates+blocks
   const blockHours=(bl)=>{const [s,e]=bl.split('-').map(Number);const hs=[];for(let h=s;h<e;h++)hs.push(String(h).padStart(2,'0'));return hs;};
   const activeHours=new Set([...selectedBlocks].flatMap(blockHours));
-  const movs=sep_movementRows.filter(m=>{
-    if(!selectedDates.has(m.data))return false;
-    if(selectedBlocks.size){const h=(m.hora||'').slice(0,2);if(!activeHours.has(h))return false;}
-    return true;
+  const inBlock=(h)=>!selectedBlocks.size||activeHours.has(h);
+  const movs=sep_movementRows.filter(m=>selectedDates.has(m.data)&&inBlock((m.hora||'').slice(0,2)));
+  const rows=sep_results.filter(r=>r._hasB!==false&&selectedDates.has(r.data)&&inBlock((r.horaA||'').slice(0,2)));
+  const arr=movs.filter(m=>m.type==='ARR');
+  const dep=movs.filter(m=>m.type==='DEP');
+  const crit=rows.filter(r=>r._sepSecNum<limit);
+  const critDep=crit.filter(r=>r._hasDep);
+
+  // Weekday helpers (0=Dom … 6=Sáb). As datas internas estão em AAMMDD (ex.: 260405).
+  const WD_SHORT=['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const WD_LONG=['Domingo','Segunda-feira','Terça-feira','Quarta-feira','Quinta-feira','Sexta-feira','Sábado'];
+  const parseYMD=(d)=>{const s=String(d||'');let y,mo,da;
+    if(/^\d{6}$/.test(s)){y=2000+(+s.slice(0,2));mo=+s.slice(2,4);da=+s.slice(4,6);}
+    else if(/^\d{8}$/.test(s)){y=+s.slice(0,4);mo=+s.slice(4,6);da=+s.slice(6,8);}
+    else{const m=s.match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/);if(m){y=+m[1];mo=+m[2];da=+m[3];}else return null;}
+    const dt=new Date(y,mo-1,da);return isNaN(dt.getTime())?null:dt;};
+  const weekdayOf=(d)=>{const dt=parseYMD(d);return dt?dt.getDay():-1;};
+  const dayLabel=(d)=>{const dt=parseYMD(d);return dt?String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'):String(d);};
+
+  // Per-day stats
+  const stats=dateList.map(d=>{
+    const dm=movs.filter(m=>m.data===d), dr=rows.filter(r=>r.data===d), cr=dr.filter(r=>r._sepSecNum<limit);
+    const wd=weekdayOf(d);
+    return {label:`${dayLabel(d)}${wd>=0?' '+WD_SHORT[wd]:''}`,date:d,wd,wdName:WD_LONG[wd]||'',arr:dm.filter(m=>m.type==='ARR').length,dep:dm.filter(m=>m.type==='DEP').length,total:dm.length,pairs:dr.length,crit:cr.length,_movRows:dm,_rows:dr,_critRows:cr};
   });
-  const rows=sep_results.filter(r=>{
-    if(!selectedDates.has(r.data))return false;
-    if(selectedBlocks.size){const h=(r.horaA||'').slice(0,2);if(!activeHours.has(h))return false;}
-    return true;
-  });
-  const arr=movs.filter(m=>m.type==='ARR').length;
-  const dep=movs.filter(m=>m.type==='DEP').length;
-  const crit=rows.filter(r=>r._sepSecNum<limit).length;
-  const critDep=rows.filter(r=>r._sepSecNum<limit&&r._hasDep).length;
-  // KPIs
-  const kpiHtml=`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
-    ${[['Dias sel.',dateList.length,'var(--accent)'],['Movimentos',movs.length,'#0f172a'],['Chegadas',arr,'#0b5cad'],
-       ['Descolagens',dep,'#f59e0b'],['Pares sep.',rows.length,'#374151'],
-       ['Críticos',crit,'#b91c1c'],['Críticos c/DEP',critDep,'#7c3aed']
-    ].map(([l,v,c])=>`<div style="background:#fafafa;border:1px solid #d7dce3;border-radius:12px;padding:10px;">
-      <b style="font-size:20px;color:${c};display:block;">${v}</b>
-      <span style="font-size:11px;color:#6b7280;">${l}</span></div>`).join('')}
+
+  // Peak hours (across all selected)
+  const hours=sep_movementHourSummary(movs);
+  const peakArr=[...hours].sort((a,b)=>b.arr-a.arr||a.hour.localeCompare(b.hour))[0];
+  const peakDep=[...hours].sort((a,b)=>b.dep-a.dep||a.hour.localeCompare(b.hour))[0];
+
+  // Common callsigns across days
+  const callsByDay=new Map();
+  for(const m of movs){if(!m.callsign)continue; if(!callsByDay.has(m.callsign))callsByDay.set(m.callsign,new Set()); callsByDay.get(m.callsign).add(m.data);}
+  const common=[...callsByDay.entries()].map(([csn,set])=>({csn,days:[...set].sort(),count:set.size,_rows:movs.filter(m=>m.callsign===csn)})).filter(x=>x.count>1).sort((a,b)=>b.count-a.count||a.csn.localeCompare(b.csn));
+
+  // ── KPI cards ────────────────────────────────────────────────────────────
+  const fmt=n=>Number(n).toLocaleString('pt-PT');
+  const kpis=[
+    ['dias selecionados',fmt(dateList.length),'var(--accent)',null],
+    ['movimentos ARR+DEP',fmt(movs.length),'#0f172a',sep_registerModalData('Movimentos nos dias/blocos selecionados',movs,'ARR+DEP filtrados')],
+    ['aterragens',fmt(arr.length),'#0b5cad',sep_registerModalData('Aterragens nos dias/blocos selecionados',arr,'Movimentos ARR')],
+    ['descolagens',fmt(dep.length),'#f59e0b',sep_registerModalData('Descolagens nos dias/blocos selecionados',dep,'Movimentos DEP')],
+    ['pares precedente/seguidor',fmt(rows.length),'#374151',sep_registerModalData('Pares precedente/seguidor',rows,'Pares filtrados')],
+    ['pares abaixo do limite',fmt(crit.length),'#b91c1c',sep_registerModalData('Pares abaixo do limite',crit,`Limite ${limit}s`)],
+    ['críticos com DEP',fmt(critDep.length),'#7c3aed',sep_registerModalData('Críticos com DEP',critDep,`Limite ${limit}s e com DEP`)],
+    ['pico de aterragens',peakArr?`${peakArr.hour}h (${peakArr.arr})`:'—','#0b5cad',peakArr?sep_registerModalData('Pico de aterragens',peakArr._rows.filter(m=>m.type==='ARR'),`Hora ${peakArr.hour}h`):null],
+    ['pico de descolagens',peakDep?`${peakDep.hour}h (${peakDep.dep})`:'—','#f59e0b',peakDep?sep_registerModalData('Pico de descolagens',peakDep._rows.filter(m=>m.type==='DEP'),`Hora ${peakDep.hour}h`):null],
+    ['callsigns comuns aos dias',fmt(common.length),'#0f172a',common.length?sep_registerModalData('Callsigns comuns entre dias',common.flatMap(c=>c._rows),'Voos que aparecem em mais de um dia selecionado'):null]
+  ];
+  const kpiHtml=`<div class="card" style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:14px;margin-bottom:12px;">
+    <div style="font-weight:900;font-size:15px;color:#1f2937;">Análise diária e comparação entre dias</div>
+    <div style="font-size:12px;color:#6b7280;margin:2px 0 12px;">Os KPIs, gráficos e tabelas abaixo são recalculados para os dias e blocos horários escolhidos no painel esquerdo.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;">
+    ${kpis.map(([l,v,c,k])=>`<div class="miniKpi" ${k?`data-modal-key="${k}" title="Clicar para ver dados de origem" style="cursor:pointer;`:'style="'}background:#fafafa;border:1px solid #e5e7eb;border-radius:10px;padding:9px 11px;">
+      <b style="font-size:19px;color:${c};display:block;line-height:1.1;">${v}</b>
+      <span style="font-size:10.5px;color:#6b7280;">${l}</span></div>`).join('')}
+    </div></div>`;
+
+  // ── Charts ───────────────────────────────────────────────────────────────
+  stats.forEach(d=>{d._modalKeyTotal=sep_registerModalData(`Movimentos ${d.date}`,d._movRows,'ARR+DEP do dia'); d._modalKeyCrit=sep_registerModalData(`Críticos ${d.date}`,d._critRows,`Pares abaixo de ${limit}s`);});
+  const chartMov=sep_groupedBarSvg(stats,{w:640,h:240,labelKey:'label',aKey:'arr',bKey:'dep',aLab:'ARR',bLab:'DEP',tipFn:d=>[`Data: ${d.date} (${d.wdName})`,`ARR: ${d.arr}`,`DEP: ${d.dep}`,`Movimentos: ${d.total}`,`Pares: ${d.pairs}`,`Críticos: ${d.crit}`]});
+  const chartCrit=sep_barSvg(stats.map(d=>({label:d.label,count:d.crit,_modalKey:d._modalKeyCrit})),{w:640,h:240,labelKey:'label',valueKey:'count',criticalFn:d=>d.count>0,titleY:'Críticos',tipFn:d=>[`Data: ${d.label}`,`Críticos: ${d.count}`]});
+  const peakByDay=stats.map(d=>{const hs=sep_movementHourSummary(d._movRows); const p=[...hs].sort((a,b)=>b.total-a.total||a.hour.localeCompare(b.hour))[0]; return {label:d.label,count:p?p.total:0,hour:p?p.hour:'—',_modalKey:sep_registerModalData(`Pico horário ${d.date}`,p?p._rows:[],p?`Hora ${p.hour}h`:'')};});
+  const chartPeak=sep_barSvg(peakByDay,{w:640,h:240,labelKey:'label',valueKey:'count',color:'#0b5cad',titleY:'Mov/hora',tipFn:d=>[`Data: ${d.label}`,`Hora pico: ${d.hour}h`,`Movimentos: ${d.count}`]});
+  const comp=sep_companySummary(movs,rows,limit).sort((a,b)=>b.movements-a.movements).slice(0,10);
+  comp.forEach(c=>c._modalKey=sep_registerModalData(`Companhia ${c.company}`,c._movRows,`${c.movements} movimentos`));
+  const chartComp=sep_barSvg(comp.map(c=>({label:c.company,count:c.movements,_modalKey:c._modalKey})),{w:640,h:240,labelKey:'label',valueKey:'count',color:'#0b5cad',titleY:'Mov.',tipFn:d=>[`Companhia: ${d.label}`,`Movimentos: ${d.count}`]});
+  const chartCard=(title,sub,svg,note)=>`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">
+    <div style="font-weight:900;font-size:14px;color:#374151;">${title}</div>
+    <div style="font-size:11px;color:#6b7280;margin:1px 0 6px;">${sub}</div>${svg}
+    <div style="font-size:10.5px;color:#9ca3af;margin-top:4px;">${note}</div></div>`;
+  const chartsHtml=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    ${chartCard('Movimentos por dia','Aterragens e descolagens por dia selecionado.',chartMov,'Azul = ARR · Vermelho = DEP. Clica numa barra para ver os movimentos.')}
+    ${chartCard('Ocorrências críticas por dia',`Pares abaixo do limite (${limit}s) escolhido na aba Análise de Dados.`,chartCrit,'Clica numa barra para ver os pares críticos.')}
+    ${chartCard('Pico horário por dia','Hora com mais movimentos em cada dia selecionado.',chartPeak,'Considera ARR+DEP dentro dos blocos horários ativos.')}
+    ${chartCard('Companhias por dia','Top companhias nos dias selecionados.',chartComp,'Companhia inferida pelo prefixo do callsign.')}
   </div>`;
-  // By-day chart
-  const byDayMovs={},byDayCrit={};
-  dateList.forEach(d=>{byDayMovs[d]=0;byDayCrit[d]=0;});
-  for(const m of movs){if(byDayMovs[m.data]!=null)byDayMovs[m.data]++;}
-  for(const r of rows){if(r._sepSecNum<limit&&byDayCrit[r.data]!=null)byDayCrit[r.data]++;}
-  const chartMovs=sep_barSvg(dateList.map(d=>({label:d.slice(5),value:byDayMovs[d]})),{title:'Movimentos por dia',h:200,w:580,color:'#0b5cad',valueKey:'value'});
-  const chartCrit=sep_barSvg(dateList.map(d=>({label:d.slice(5),value:byDayCrit[d]})),{title:'Pares críticos por dia',h:200,w:580,color:'#b91c1c',valueKey:'value'});
-  // Common callsigns
-  const callsByDay={};
-  for(const m of movs){if(!callsByDay[m.data])callsByDay[m.data]=new Set();callsByDay[m.data].add(m.callsign);}
-  const common=dateList.length>1?[...(callsByDay[dateList[0]]||[])].filter(c=>dateList.every(d=>callsByDay[d]&&callsByDay[d].has(c))).sort():[];
-  const commonHtml=common.length?`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;">
-    <div style="font-weight:900;font-size:14px;color:#374151;margin-bottom:8px;">Callsigns comuns entre todos os dias (${common.length})</div>
-    <div style="font-size:12px;color:#374151;line-height:1.9;">${common.join(', ')}</div></div>`:'';
-  // Hourly summary
-  const hourMap={};
-  for(const m of movs){const h=(m.hora||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={h,arr:0,dep:0,pairs:0,crit:0};if(m.type==='ARR')hourMap[h].arr++;else hourMap[h].dep++;}
-  for(const r of rows){const h=(r.horaA||'').slice(0,2)||'??';if(!hourMap[h])hourMap[h]={h,arr:0,dep:0,pairs:0,crit:0};hourMap[h].pairs++;if(r._sepSecNum<limit)hourMap[h].crit++;}
-  const hourTable=`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;overflow:auto;max-height:320px;">
-    <div style="font-weight:900;font-size:14px;color:#374151;margin-bottom:8px;">Resumo por hora</div>
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr>${['Hora','ARR','DEP','Total','Pares','Críticos'].map(h=>`<th style="background:#e9e6e3;padding:6px 10px;text-align:left;font-size:11px;font-weight:800;position:sticky;top:0;">${h}</th>`).join('')}</tr></thead>
-      <tbody>${Object.values(hourMap).sort((a,b)=>a.h.localeCompare(b.h)).map(r=>`<tr>
-        <td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;">${r.h}h</td>
-        <td style="padding:5px 10px;border-bottom:1px solid #eee;color:#0b5cad;">${r.arr}</td>
-        <td style="padding:5px 10px;border-bottom:1px solid #eee;color:#f59e0b;">${r.dep}</td>
-        <td style="padding:5px 10px;border-bottom:1px solid #eee;">${r.arr+r.dep}</td>
-        <td style="padding:5px 10px;border-bottom:1px solid #eee;">${r.pairs}</td>
-        <td style="padding:5px 10px;border-bottom:1px solid #eee;color:#b91c1c;font-weight:700;">${r.crit||0}</td>
-      </tr>`).join('')}</tbody>
-    </table></div>`;
-  el.innerHTML=kpiHtml+`<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-    <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chartMovs}</div>
-    <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chartCrit}</div>
-  </div>`+commonHtml+hourTable;
+
+  // ── Weekday patterns ──────────────────────────────────────────────────────
+  // Agrupa os dias selecionados pelo dia da semana para detetar padrões
+  // (ex.: todas as terças vs. todas as quartas de um mês).
+  const wdAgg=new Map();
+  for(const s of stats){
+    if(s.wd<0)continue;
+    if(!wdAgg.has(s.wd))wdAgg.set(s.wd,{wd:s.wd,name:s.wdName,short:WD_SHORT[s.wd],days:0,mov:0,arr:0,dep:0,pairs:0,crit:0,critDep:0,_movRows:[],_critRows:[],dates:[]});
+    const a=wdAgg.get(s.wd);
+    a.days++; a.mov+=s.total; a.arr+=s.arr; a.dep+=s.dep; a.pairs+=s.pairs; a.crit+=s.crit;
+    a.critDep+=s._critRows.filter(r=>r._hasDep).length;
+    a._movRows.push(...s._movRows); a._critRows.push(...s._critRows); a.dates.push(s.date);
+  }
+  // Ordena Seg→Dom
+  const wdOrder=[1,2,3,4,5,6,0];
+  const wdList=wdOrder.filter(w=>wdAgg.has(w)).map(w=>{
+    const a=wdAgg.get(w);
+    a.avgMov=a.days?a.mov/a.days:0;
+    a.avgCrit=a.days?a.crit/a.days:0;
+    a.rate=a.pairs?(a.crit/a.pairs*100):0;
+    return a;
+  });
+  const r1=x=>Math.round(x*10)/10;
+  let wdSection='';
+  if(wdList.length){
+    const maxMov=[...wdList].sort((p,q)=>q.avgMov-p.avgMov)[0];
+    const maxCrit=[...wdList].sort((p,q)=>q.avgCrit-p.avgCrit)[0];
+    const maxRate=[...wdList].sort((p,q)=>q.rate-p.rate)[0];
+    wdList.forEach(a=>{a._modalKeyMov=sep_registerModalData(`Movimentos · ${a.name}`,a._movRows,`${a.days} dia(s) · ${a.dates.join(', ')}`); a._modalKeyCrit=sep_registerModalData(`Críticos · ${a.name}`,a._critRows,`${a.days} dia(s) · ${a.dates.join(', ')}`);});
+    const wdChartMov=sep_barSvg(wdList.map(a=>({label:a.short,count:r1(a.avgMov),_modalKey:a._modalKeyMov})),{w:640,h:240,labelKey:'label',valueKey:'count',color:'#0b5cad',titleY:'Méd mov/dia',tipFn:a=>[`${WD_LONG[wdList.find(x=>x.short===a.label).wd]}`,`Dias: ${wdList.find(x=>x.short===a.label).days}`,`Média mov/dia: ${a.count}`]});
+    const wdChartCrit=sep_barSvg(wdList.map(a=>({label:a.short,count:r1(a.avgCrit),_modalKey:a._modalKeyCrit})),{w:640,h:240,labelKey:'label',valueKey:'count',criticalFn:a=>a.count>0,titleY:'Méd crít/dia',tipFn:a=>[`${WD_LONG[wdList.find(x=>x.short===a.label).wd]}`,`Dias: ${wdList.find(x=>x.short===a.label).days}`,`Média críticos/dia: ${a.count}`]});
+    const wdHighlights=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="flex:1;min-width:160px;background:#eef6ff;border:1px solid #bfdcff;border-radius:10px;padding:9px 11px;"><span style="font-size:10.5px;color:#6b7280;">Mais movimentos (média/dia)</span><b style="display:block;font-size:16px;color:#0b5cad;">${maxMov.name} · ${r1(maxMov.avgMov)}</b></div>
+      <div style="flex:1;min-width:160px;background:#fdeeee;border:1px solid #f3c6c6;border-radius:10px;padding:9px 11px;"><span style="font-size:10.5px;color:#6b7280;">Mais críticos (média/dia)</span><b style="display:block;font-size:16px;color:#b91c1c;">${maxCrit.name} · ${r1(maxCrit.avgCrit)}</b></div>
+      <div style="flex:1;min-width:160px;background:#f6eefd;border:1px solid #ddc6f3;border-radius:10px;padding:9px 11px;"><span style="font-size:10.5px;color:#6b7280;">Maior taxa de críticos</span><b style="display:block;font-size:16px;color:#7c3aed;">${maxRate.name} · ${r1(maxRate.rate)}%</b></div>
+    </div>`;
+    const wdRows=wdList.map(a=>`<tr class="modalSource" data-modal-key="${a._modalKeyMov}" style="cursor:pointer;">
+      <td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;">${a.name}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #eee;" class="num">${a.days}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #eee;" class="num">${a.mov}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;color:#0b5cad;" class="num">${r1(a.avgMov)}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #eee;" class="num">${a.crit}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;color:${a.crit?'#b91c1c':'#374151'};" class="num">${r1(a.avgCrit)}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #eee;" class="num">${r1(a.rate)}%</td>
+      <td style="padding:5px 10px;border-bottom:1px solid #eee;font-size:11px;color:#6b7280;">${sep_escHtml(a.dates.map(dayLabel).join(', '))}</td></tr>`).join('');
+    wdSection=`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:14px;margin-top:12px;">
+      <div style="font-weight:900;font-size:15px;color:#1f2937;">Padrões por dia da semana</div>
+      <div style="font-size:12px;color:#6b7280;margin:2px 0 12px;">Compara os dias selecionados agrupados por dia da semana (ex.: todas as terças vs. todas as quartas). Os valores são <b>médias por dia</b> para comparar de forma justa quando há números diferentes de cada dia.</div>
+      ${wdHighlights}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        ${chartCard('Média de movimentos por dia da semana','Total de movimentos ÷ nº de dias desse dia da semana.',wdChartMov,'Clica numa barra para ver os movimentos desse dia da semana.')}
+        ${chartCard('Média de pares críticos por dia da semana',`Pares abaixo do limite (${limit}s) ÷ nº de dias.`,wdChartCrit,'Clica numa barra para ver os pares críticos.')}
+      </div>
+      <div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr>${['Dia da semana','Nº dias','Mov. totais','Méd mov/dia','Críticos totais','Méd crít/dia','Taxa crít.','Datas'].map(h=>`<th style="background:#e9e6e3;padding:6px 10px;text-align:left;font-size:11px;font-weight:800;position:sticky;top:0;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${wdRows}</tbody></table></div></div>`;
+  }
+
+  // ── Common callsigns table ────────────────────────────────────────────────
+  const commonRows=common.slice(0,80).map(c=>`<tr class="modalSource" data-modal-key="${sep_registerModalData('Callsign comum · '+c.csn,c._rows,c.days.join(', '))}" style="cursor:pointer;">
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;"><b>${sep_escHtml(c.csn)}</b></td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;" class="num">${c.count}</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;font-size:11px;">${sep_escHtml(c.days.map(dayLabel).join(', '))}</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;" class="num">${c._rows.length}</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;">${sep_escHtml(companyFromCallsign(c.csn))}</td></tr>`).join('')
+    || '<tr><td colspan="5" style="padding:10px;color:#6b7280;">Sem callsigns comuns nos dias selecionados.</td></tr>';
+  const commonTable=`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;">
+    <div style="font-weight:900;font-size:14px;color:#374151;">Voos/callsigns comuns entre dias selecionados</div>
+    <div style="font-size:11px;color:#6b7280;margin:1px 0 8px;">Callsigns que aparecem em mais do que um dos dias escolhidos — útil para comparar padrões semanais.</div>
+    <div style="overflow:auto;max-height:300px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr>${['Callsign','Nº dias','Dias','Movimentos','Companhia'].map(h=>`<th style="background:#e9e6e3;padding:6px 10px;text-align:left;font-size:11px;font-weight:800;position:sticky;top:0;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${commonRows}</tbody></table></div></div>`;
+
+  // ── Hour summary table (per day + hour) ───────────────────────────────────
+  const hourOut=[];
+  for(const d of dateList){
+    for(let i=0;i<24;i++){const h=String(i).padStart(2,'0'); if(!inBlock(h))continue;
+      const dm=movs.filter(m=>m.data===d&&(m.hora||'').slice(0,2)===h);
+      const dr=rows.filter(r=>r.data===d&&(r.horaA||'').slice(0,2)===h);
+      if(!dm.length&&!dr.length)continue;
+      hourOut.push({d,h,arr:dm.filter(m=>m.type==='ARR').length,dep:dm.filter(m=>m.type==='DEP').length,total:dm.length,pairs:dr.length,crit:dr.filter(r=>r._sepSecNum<limit).length,_rows:dm.concat(dr)});}
+  }
+  const hourRows=hourOut.map(o=>`<tr class="modalSource" data-modal-key="${sep_registerModalData(`Resumo ${o.d} ${o.h}h`,o._rows,`${o.total} movimentos · ${o.pairs} pares`)}" style="cursor:pointer;">
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;">${sep_escHtml(dayLabel(o.d))}${weekdayOf(o.d)>=0?` <span style="color:#9ca3af;">${WD_SHORT[weekdayOf(o.d)]}</span>`:''}</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;">${o.h}h</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;color:#0b5cad;" class="num">${o.arr}</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;color:#f59e0b;" class="num">${o.dep}</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;" class="num">${o.total}</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;" class="num">${o.pairs}</td>
+    <td style="padding:5px 10px;border-bottom:1px solid #eee;font-weight:700;color:${o.crit?'#b91c1c':'#374151'};" class="num">${o.crit}</td></tr>`).join('')
+    || '<tr><td colspan="7" style="padding:10px;color:#6b7280;">Sem dados para os filtros escolhidos.</td></tr>';
+  const hourTable=`<div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;margin-top:12px;">
+    <div style="font-weight:900;font-size:14px;color:#374151;">Resumo por dia e hora</div>
+    <div style="font-size:11px;color:#6b7280;margin:1px 0 8px;">Base para comparar períodos do dia entre datas diferentes.</div>
+    <div style="overflow:auto;max-height:360px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead><tr>${['Data','Hora','ARR','DEP','Movimentos','Pares','Críticos'].map(h=>`<th style="background:#e9e6e3;padding:6px 10px;text-align:left;font-size:11px;font-weight:800;position:sticky;top:0;">${h}</th>`).join('')}</tr></thead>
+      <tbody>${hourRows}</tbody></table></div></div>`;
+
+  el.innerHTML=kpiHtml+chartsHtml+wdSection+commonTable+hourTable;
+  sep_bindModalClicks();
 }
 
 
