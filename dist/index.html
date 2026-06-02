@@ -992,19 +992,6 @@ tr:hover td{background:rgba(0,200,255,.03);}
     </div>
   </div>
 
-<!-- Data Modal (light) -->
-<div class="sep_dataModalBackdrop" id="sep_dataModalBackdrop" style="display:none;">
-  <div class="sep_dataModal">
-    <div class="sep_dataModalHeader">
-      <div><div class="sep_dataModalTitle" id="sep_dataModalTitle"></div><div class="sep_dataModalSub" id="sep_dataModalSub"></div></div>
-      <button class="sep_dataModalClose" onclick="sep_closeDataModal()">&#x2715; Fechar</button>
-    </div>
-    <div class="sep_dataModalBody" id="sep_dataModalBody">
-      <div class="modalActions" id="sep_dataModalActions"></div>
-      <div id="sep_dataModalContent"></div>
-    </div>
-  </div>
-</div>
 </div></div>
         <!-- Análise Diária sub-tab -->
         <div id="anaSubAnaDaily" style="display:none;flex:1;overflow:auto;"><div class="sep-ad-wrap" style="font-family:Segoe UI,Roboto,Arial,sans-serif;color:#1f2937;background:#f5f6f8;min-height:100%;padding:12px;">
@@ -3817,6 +3804,7 @@ function renderKpis(){
         }).join('')}
       </div>
     </div>`;
+  sep_bindModalClicks();
 }
 
 function exportKpisCsv(){
@@ -5118,6 +5106,10 @@ async function switchAnaTab(tab){
   if(sdl)sdl.style.display=tab==='anaDaily'?'block':'none';
   refreshAnaSubSummary();
   ensureAnaTabData(tab);
+  // Re-bind modal clicks after tab switch (elements may have been recreated)
+  // Set a brief ignore window to prevent tab-switch clicks from opening modals
+  document.body.dataset.modalIgnoreUntil=String(Date.now()+300);
+  setTimeout(function(){ if(typeof sep_bindModalClicks==='function') sep_bindModalClicks(); }, 350);
 }
 async function ensureAnaTabData(tab){
   if(_anaBusy||!Object.keys(flights).length)return;
@@ -7200,7 +7192,7 @@ function sep_barSvg(data,opt){
   const w=opt.w||600,h=opt.h||200,padL=42,padB=38,padT=18,padR=14, plotW=w-padL-padR, plotH=h-padT-padB;
   const _vk=opt.valueKey||'value'; const max=Math.max(1,...data.map(d=>d[_vk]));
   const bw=plotW/Math.max(1,data.length)*0.72, gap=plotW/Math.max(1,data.length);
-  const bars=data.map((d,i)=>{const val=d[_vk], bh=val/max*plotH, x=padL+i*gap+(gap-bw)/2, y=padT+plotH-bh, col=opt.criticalFn&&opt.criticalFn(d)?'#b91c1c':(opt.color||d.color||'#0b5cad'); const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(d)):''; const _lk=opt.labelKey||'label'; return `<g data-tip="1">${tip}<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${col}"/><text x="${x+bw/2}" y="${Math.max(11,y-5)}" text-anchor="middle" font-size="10" fill="#334155">${val}</text><text x="${x+bw/2}" y="${h-15}" text-anchor="middle" font-size="10" fill="#475569">${sep_escSvg(String(d[_lk]||''))}</text></g>`}).join('');
+  const bars=data.map((d,i)=>{const val=d[_vk], bh=val/max*plotH, x=padL+i*gap+(gap-bw)/2, y=padT+plotH-bh, col=opt.criticalFn&&opt.criticalFn(d)?'#b91c1c':(opt.color||d.color||'#0b5cad'); const tip=opt.tipFn?sep_tooltipLines(opt.tipFn(d)):''; const _lk=opt.labelKey||'label'; const _mk=d._modalKey||d._modalKeyTotal||''; return `<g class="modalSource" data-modal-key="${_mk}" data-tip="1" style="cursor:${_mk?'pointer':'default'}">${tip}<rect x="${x}" y="${y}" width="${bw}" height="${bh}" rx="4" fill="${col}"/><text x="${x+bw/2}" y="${Math.max(11,y-5)}" text-anchor="middle" font-size="10" fill="#334155">${val}</text><text x="${x+bw/2}" y="${h-15}" text-anchor="middle" font-size="10" fill="#475569">${sep_escSvg(String(d[_lk]||''))}</text></g>`}).join('');
   return `<svg class="chartSvg" viewBox="0 0 ${w} ${h}"><line x1="${padL}" y1="${padT+plotH}" x2="${w-padR}" y2="${padT+plotH}" stroke="#cbd5e1"/><line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+plotH}" stroke="#cbd5e1"/><text x="8" y="14" font-size="10" fill="#64748b">${sep_escSvg(opt.titleY||'')}</text>${bars}</svg>`;
 }
 function sep_groupedBarSvg(data,opt){
@@ -7294,11 +7286,20 @@ function sep_wireModalUi(){
   if(!document.body.dataset.modalDelegationInstalled){
     document.body.dataset.modalDelegationInstalled='1';
     document.addEventListener('click',ev=>{
+      // Ignore clicks during tab-switch window
+      const ignoreUntil=Number(document.body.dataset.modalIgnoreUntil||0);
+      if(Date.now()<ignoreUntil) return;
       if(ev.__modalHandled) return;
-      const el=ev.target && ev.target.closest ? ev.target.closest('[data-modal-key]') : null;
-      if(!el || !document.body.contains(el)) return;
-      const key=el.dataset.modalKey;
-      if(!key || !sep_modalDatas.has(key)) return;
+      // Walk up the DOM tree manually (handles SVG elements that may not support closest())
+      let node=ev.target;
+      let found=null;
+      while(node && node!==document.body){
+        if(node.dataset && node.dataset.modalKey && node.dataset.modalKey.length>0){found=node;break;}
+        try{node=node.parentNode||node.parentElement;}catch(e){break;}
+      }
+      if(!found || !document.body.contains(found)) return;
+      const key=found.dataset.modalKey;
+      if(!key || key.length===0 || !sep_modalDatas.has(key)) return;
       ev.preventDefault();
       ev.stopPropagation();
       sep_openDataModal(key);
@@ -7765,6 +7766,7 @@ function sep_renderDailyContent(ctx){
     <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chartHtml}</div>
     <div style="background:#fff;border:1px solid #d7dce3;border-radius:14px;padding:12px;">${chart2Html}</div>
   </div>`+commonHtml+hourTable;
+  setTimeout(function(){try{sep_bindModalClicks();}catch(e){}},50);
 }
 
 
@@ -9096,6 +9098,20 @@ function _iaDownload(blob,filename){
       <div style="margin-top:28px;">
         <button onclick="document.getElementById('aboutModal').style.display='none'" style="background:#1e3a5f;border:1px solid #2a3a4a;color:#94a3b8;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:1px;padding:8px 24px;border-radius:6px;cursor:pointer;" onmouseover="this.style.background='#2a4a6f'" onmouseout="this.style.background='#1e3a5f'">FECHAR</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Modal (light) -->
+<div class="sep_dataModalBackdrop" id="sep_dataModalBackdrop" style="display:none;">
+  <div class="sep_dataModal">
+    <div class="sep_dataModalHeader">
+      <div><div class="sep_dataModalTitle" id="sep_dataModalTitle"></div><div class="sep_dataModalSub" id="sep_dataModalSub"></div></div>
+      <button class="sep_dataModalClose" onclick="sep_closeDataModal()">&#x2715; Fechar</button>
+    </div>
+    <div class="sep_dataModalBody" id="sep_dataModalBody">
+      <div class="modalActions" id="sep_dataModalActions"></div>
+      <div id="sep_dataModalContent"></div>
     </div>
   </div>
 </div>
