@@ -387,7 +387,10 @@ tr:hover td{background:rgba(0,200,255,.03);}
 </div>
 
 <header>
-  <div class="logo">NAV <span>Portugal</span> / Flight Track Viewer</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="logo">NAV <span>Portugal</span> / Flight Track Viewer</div>
+    <button onclick="document.getElementById('aboutModal').style.display='flex'" style="background:transparent;border:1px solid rgba(99,102,241,0.4);color:#a78bfa;font-size:10px;font-family:inherit;font-weight:700;letter-spacing:1.5px;padding:3px 10px;border-radius:12px;cursor:pointer;" onmouseover="this.style.background='rgba(99,102,241,0.15)';this.style.borderColor='#a78bfa'" onmouseout="this.style.background='transparent';this.style.borderColor='rgba(99,102,241,0.4)'">ABOUT</button>
+  </div>
   <div class="hdr-right">
     <label style="font-size:10px;color:var(--muted);margin-right:2px;">Aeroporto:</label>
     <select id="airportSel" class="inp inp-sm" style="width:130px;font-size:11px;" onchange="switchAirport(this.value)">
@@ -9076,6 +9079,23 @@ function _iaDownload(blob,filename){
       </div>
       <p style="font-size:10px;color:#64748b;margin:0 0 12px;line-height:1.5;">Abre a mensagem já formatada no teu cliente de email — os <strong>destinatários (Para/CC)</strong> são preenchidos lá, no momento do envio. A pré-visualização abaixo é <strong>editável</strong>: clica no texto para alterar antes de abrir/guardar.</p>
       <div id="emailPreview" style="border:1px solid #2a3a4a;border-radius:6px;overflow:hidden;"></div>
+    </div>
+  </div>
+</div>
+
+<div id="aboutModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);z-index:99999;align-items:center;justify-content:center;" onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:12px;width:min(480px,90vw);padding:0;box-shadow:0 24px 60px rgba(0,0,0,0.9);overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#1a2d45,#0f2744);padding:28px 32px 20px;text-align:center;border-bottom:1px solid #2a3a4a;">
+      <div style="font-size:36px;margin-bottom:12px;">&#9992;</div>
+      <div style="font-family:'Syne','Segoe UI',sans-serif;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:2px;">NERD</div>
+      <div style="font-size:11px;color:#7ee8fa;letter-spacing:3px;text-transform:uppercase;margin-top:6px;">NAV Portugal</div>
+    </div>
+    <div style="padding:28px 32px 32px;text-align:center;">
+      <div style="font-size:15px;font-weight:700;color:#e2e8f0;line-height:1.6;">NAV Exceptional, Remarkable Developers</div>
+      <div style="font-size:13px;color:#94a3b8;font-style:italic;line-height:1.7;margin-top:10px;">Because every great department needs a few NERDs.</div>
+      <div style="margin-top:28px;">
+        <button onclick="document.getElementById('aboutModal').style.display='none'" style="background:#1e3a5f;border:1px solid #2a3a4a;color:#94a3b8;font-family:inherit;font-size:11px;font-weight:700;letter-spacing:1px;padding:8px 24px;border-radius:6px;cursor:pointer;" onmouseover="this.style.background='#2a4a6f'" onmouseout="this.style.background='#1e3a5f'">FECHAR</button>
+      </div>
     </div>
   </div>
 </div>
