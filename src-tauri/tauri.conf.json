@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "Flight Track Viewer",
-    "version": "2.5.0"
+    "version": "3.0.0"
   },
   "tauri": {
     "allowlist": {
