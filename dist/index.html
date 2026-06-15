@@ -1012,8 +1012,8 @@ tr:hover td{background:rgba(0,200,255,.03);}
 </div>
 </div></div>
         <!-- RRMS sub-tab -->
-        <div id="anaSubRRMS" style="display:none;flex:1;overflow:auto;padding:12px;font-family:Segoe UI,Arial,sans-serif;">
-          <div id="rrmsContent"></div>
+        <div id="anaSubRRMS" style="display:none;flex:1;overflow:hidden;flex-direction:column;font-family:Segoe UI,Arial,sans-serif;">
+          <div id="rrmsContent" style="flex:1;overflow:auto;padding:12px;box-sizing:border-box;"></div>
         </div>
         <!-- kept hidden for compat (ROT, Holdings, GA still computed for alerts) -->
         <div id="anaSubHold" style="display:none;"></div>
@@ -5109,7 +5109,7 @@ async function switchAnaTab(tab){
   if(sf){sf.style.display=tab==='fast'?'flex':'none';sf.style.flexDirection='column';}
   if(sd)sd.style.display=tab==='anaData'?'block':'none';
   if(sdl)sdl.style.display=tab==='anaDaily'?'block':'none';
-  if(srm)srm.style.display=tab==='rrms'?'flex':'none';
+  if(srm){srm.style.display=tab==='rrms'?'flex':'none';srm.style.flexDirection='column';}
   refreshAnaSubSummary();
   ensureAnaTabData(tab);
   // Re-bind modal clicks after tab switch (elements may have been recreated)
@@ -7632,7 +7632,7 @@ function renderRRMS(){
   };
 
   el.innerHTML = `
-  <div style="max-width:1100px;">
+  <div style="width:100%;box-sizing:border-box;">
     <div style="background:#0f2744;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
       <div>
         <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.5px;">&#x1F6EC; RRMS — Reduced Runway Separation Minima</div>
