@@ -320,7 +320,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="upload-layout">
       <div>
         <span class="upload-plane">&#x2708;&#xFE0F;</span>
-        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v2.5</span></h2>
+        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v3.0</span></h2>
         <p style="margin-bottom:18px;color:#64748b;">Escolhe o <b>modo de carregamento</b> (painel direito) e depois carrega os CSV ou restaura a sessão anterior.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
           <div class="upload-card">
@@ -741,6 +741,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <button class="btn" id="anaTabFast" onclick="switchAnaTab('fast')" style="font-size:10px;padding:4px 14px;">&#x2708; Separa&#xe7;&#xe3;o entre chegadas</button>
         <button class="btn" id="anaTabAnaData" onclick="switchAnaTab('anaData')" style="font-size:10px;padding:4px 14px;">&#x1F4CA; An&#xe1;lise de Dados</button>
         <button class="btn" id="anaTabAnaDaily" onclick="switchAnaTab('anaDaily')" style="font-size:10px;padding:4px 14px;">&#x1F4C5; An&#xe1;lise Di&#xe1;ria</button>
+        <button class="btn" id="anaTabRRMS" onclick="switchAnaTab('rrms')" style="font-size:10px;padding:4px 14px;">&#x1F6EC; RRMS</button>
         <button class="btn" style="font-size:10px;padding:4px 12px;margin-left:auto;" onclick="exportAnaActiveCsv()">&#x2193; CSV</button>
         <span id="anaSubSummary" style="font-size:11px;color:var(--muted);margin-left:12px;"></span>
       </div>
@@ -965,7 +966,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <span class="tlChip"><span class="tlSymbol" style="background:#7c3aed"></span>Seguidor na THR</span>
         <span class="tlChip"><span class="tlSymbol" style="background:#b91c1c"></span>Par abaixo do limite</span>
       </div>
-      <div class="chartNote">Passa o rato sobre os marcadores para ver detalhes. Clica num marcador ou linha para abrir a ocorrência na aba Tabela.</div>
+      <div class="chartNote">Passa o rato sobre os marcadores para ver detalhes. Clica num marcador ou linha para abrir na aba Separação entre chegadas.</div>
     </div>
     <div class="chartCard">
       <div class="chartTitle">IAS da aeronave seguidora</div>
@@ -1010,6 +1011,10 @@ tr:hover td{background:rgba(0,200,255,.03);}
   </div>
 </div>
 </div></div>
+        <!-- RRMS sub-tab -->
+        <div id="anaSubRRMS" style="display:none;flex:1;overflow:auto;padding:12px;font-family:Segoe UI,Arial,sans-serif;">
+          <div id="rrmsContent"></div>
+        </div>
         <!-- kept hidden for compat (ROT, Holdings, GA still computed for alerts) -->
         <div id="anaSubHold" style="display:none;"></div>
         <div id="anaSubGA" style="display:none;"></div>
@@ -1062,7 +1067,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <button class="btn" id="prefPastaBtn" onclick="document.getElementById('addDir').click()">&#x2191; Pasta</button>
           <button class="btn" id="prefFicheirosBtn" onclick="document.getElementById('addFiles').click()">&#x2191; Ficheiros</button>
           <button class="btn" style="color:#f87171;" onclick="_clearSession()">&#x1F5D1; Limpar sessão guardada</button>
-          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v2.5</button>
+          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v3.0</button>
         </div>
         <div class="kpi-h" style="margin-top:16px;margin-bottom:8px;">&#x1F916; Análise IA — Configuração</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
@@ -5096,14 +5101,15 @@ async function switchAnaTab(tab){
   _anaTab=tab;
   const ae=$('anaEmpty');if(ae)ae.style.display='none';
   const ac=$('anaContent');if(ac)ac.style.display='none';
-  const tabIds={fast:'anaTabFast',anaData:'anaTabAnaData',anaDaily:'anaTabAnaDaily'};
-  ['fast','anaData','anaDaily'].forEach(t=>{
+  const tabIds={fast:'anaTabFast',anaData:'anaTabAnaData',anaDaily:'anaTabAnaDaily',rrms:'anaTabRRMS'};
+  ['fast','anaData','anaDaily','rrms'].forEach(t=>{
     const el=$(tabIds[t]);if(el)el.classList.toggle('toggled',t===tab);
   });
-  const sf=$('anaSubFast'),sd=$('anaSubAnaData'),sdl=$('anaSubAnaDaily');
+  const sf=$('anaSubFast'),sd=$('anaSubAnaData'),sdl=$('anaSubAnaDaily'),srm=$('anaSubRRMS');
   if(sf){sf.style.display=tab==='fast'?'flex':'none';sf.style.flexDirection='column';}
   if(sd)sd.style.display=tab==='anaData'?'block':'none';
   if(sdl)sdl.style.display=tab==='anaDaily'?'block':'none';
+  if(srm)srm.style.display=tab==='rrms'?'flex':'none';
   refreshAnaSubSummary();
   ensureAnaTabData(tab);
   // Re-bind modal clicks after tab switch (elements may have been recreated)
@@ -5131,6 +5137,10 @@ async function ensureAnaTabData(tab){
       if(!finalResults.length)await runFinalAnalysis();
       buildFastPairs();
       renderSepDaily();
+      return;
+    }
+    if(tab==='rrms'){
+      renderRRMS();
       return;
     }
   }finally{
@@ -6570,11 +6580,11 @@ function _renderAlerts(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// v2.5 — EMAIL DE NOVIDADES (editável)
+// v3.0 — EMAIL DE NOVIDADES (editável)
 // ═══════════════════════════════════════════════════════════════════════════
 function _emailHtml(){
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Flight Track Viewer v2.5</title></head>
+<title>Flight Track Viewer v3.0</title></head>
 <body style="margin:0;padding:0;background-color:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f0f4f8" style="background-color:#f0f4f8;padding:30px 0;">
 <tr><td align="center">
@@ -6745,7 +6755,7 @@ function _emailBodyHtml(){
 }
 function _emailVal(id,fallback){const el=$(id);const v=el&&el.value!=null?el.value.trim():'';return v||fallback;}
 async function _sendEmailOutlook(){
-  const subject=_emailVal('emailSubject','Flight Track Viewer v2.5 — Novas funcionalidades');
+  const subject=_emailVal('emailSubject','Flight Track Viewer v3.0 — Novas funcionalidades');
   const htmlBody=_emailBodyHtml();
   // Build RFC 2822 .eml with HTML body so Outlook renders it properly.
   // X-Unsent: 1 -> faz o Outlook abrir como RASCUNHO por enviar (botao "Enviar"),
@@ -6757,7 +6767,7 @@ async function _sendEmailOutlook(){
     try{
       const tmpDir=await window.__TAURI__.path.tempDir();
       const sep=(tmpDir.endsWith('/')||tmpDir.endsWith('\\')?'':'/');
-      const emlPath=tmpDir+sep+'FlightTracker_v2.5_novidades.eml';
+      const emlPath=tmpDir+sep+'FlightTracker_v3.0_novidades.eml';
       await window.__TAURI__.fs.writeTextFile(emlPath,eml);
       await window.__TAURI__.shell.open(emlPath);
       return;
@@ -6767,7 +6777,7 @@ async function _sendEmailOutlook(){
   const blob=new Blob([eml],{type:'message/rfc822'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v2.5_novidades.eml';
+  a.href=url;a.download='FlightTracker_v3.0_novidades.eml';
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
@@ -6776,7 +6786,7 @@ function _downloadEmailHtml(){
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v2.5_novidades.html';
+  a.href=url;a.download='FlightTracker_v3.0_novidades.html';
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
@@ -7178,15 +7188,59 @@ function sep_renderTimeline(rows,limit){
     <text x="${padL}" y="${h-10}" font-size="10" fill="#64748b">${fmtTime(minT)}</text>
     <text x="${w-padR}" y="${h-10}" text-anchor="end" font-size="10" fill="#64748b">${fmtTime(maxT)}</text>
   </svg>`;
-  host.querySelectorAll('.timelineEvent').forEach(el=>el.addEventListener('click',()=>{selectedRowId=Number(el.dataset.rowid);activateTab('tabela');renderTable();renderViz(sep_results.find(r=>r._id===selectedRowId));}));
+  host.querySelectorAll('.timelineEvent').forEach(el=>el.addEventListener('click',()=>{
+    const rid=Number(el.dataset.rowid);
+    try{
+      const anaBtn=Array.from(document.querySelectorAll('.tab')).find(t=>t.onclick&&t.onclick.toString().indexOf('ana')>=0);
+            // Navigate directly to Separação entre chegadas
+      const anaTabEl=Array.from(document.querySelectorAll('.tab')).find(function(t){return t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'ana'");});
+      if(anaTabEl){ switchTab('ana',anaTabEl); }
+      setTimeout(function(){
+        switchAnaTab('fast');
+        setTimeout(function(){
+          const target=document.querySelector('.timelineEvent[data-rowid="'+rid+'"]')||document.querySelector('[data-rowid="'+rid+'"]');
+          if(target){
+            target.scrollIntoView({behavior:'smooth',block:'center'});
+            if(target.style){target.style.outline='3px solid #f59e0b';target.style.background='rgba(245,158,11,0.15)';setTimeout(function(){target.style.outline='';target.style.background='';},3000);}
+            try{target.querySelectorAll('circle,rect,line').forEach(function(s){s.setAttribute('stroke','#f59e0b');s.setAttribute('stroke-width','3');setTimeout(function(){s.removeAttribute('stroke-width');},3000);});}catch(e){}
+          }
+        },600);
+      },300);
+    }catch(e){}
+  }));
 }
-function activateTab(tabId){try{if(typeof switchAnaTab==="function"){var at=Array.from(document.querySelectorAll(".tab")).find(function(t){return t.onclick&&t.onclick.toString().indexOf("ana")>=0;});if(at)at.click();setTimeout(function(){switchAnaTab("fast");},150);}}catch(e){}}
+function activateTab(tabId){
+  try{
+    const anaTabEl=document.querySelector('.tab[onclick*=\'ana\']');
+    if(anaTabEl) switchTab('ana',anaTabEl);
+    setTimeout(function(){ switchAnaTab('fast'); },300);
+  }catch(e){}
+}
 function sep_renderCriticalTable(rows,limit){
   const top=[...rows].sort((a,b)=>a._sepSecNum-b._sepSecNum).slice(0,10);
   const heads=['Pista','Data','Hora A','Callsign A','Callsign B','Seq.','Sep. s','Sep. NM','DEP','Hora DEP','Seguidor no DEP'];
   $('sep_critTbl').tHead.innerHTML='<tr>'+heads.map(h=>`<th>${h}</th>`).join('')+'</tr>';
   $('sep_critTbl').tBodies[0].innerHTML=top.map(r=>`<tr data-rowid="${r._id}"><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td><b>${sep_escHtml(r.csnA)}</b></td><td><b>${sep_escHtml(r.csnB)}</b></td><td>${sep_escHtml(r._seq||'')}</td><td class="num ${r._sepSecNum<limit?'red':'blue'}">${sep_escHtml(String(r.sepSec))}</td><td class="num">${sep_escHtml(String(r.sepNm))}</td><td>${r.depCsn?`<span class="pill dep">${sep_escHtml(r.depCsn)}</span>`:'<span class="pill nodep">Sem DEP</span>'}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}</td></tr>`).join('');
-  document.querySelectorAll('#critTbl tbody tr').forEach(tr=>tr.onclick=()=>{selectedRowId=Number(tr.dataset.rowid); activateTab('tabela'); renderTable(); renderViz(sep_results.find(r=>r._id===selectedRowId));});
+  document.querySelectorAll('#critTbl tbody tr').forEach(tr=>tr.onclick=()=>{
+    const rid=Number(tr.dataset.rowid);
+    try{
+      const anaBtn=Array.from(document.querySelectorAll('.tab')).find(t=>t.onclick&&t.onclick.toString().indexOf('ana')>=0);
+            // Navigate directly to Separação entre chegadas
+      const anaTabEl=Array.from(document.querySelectorAll('.tab')).find(function(t){return t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'ana'");});
+      if(anaTabEl){ switchTab('ana',anaTabEl); }
+      setTimeout(function(){
+        switchAnaTab('fast');
+        setTimeout(function(){
+          const target=document.querySelector('.timelineEvent[data-rowid="'+rid+'"]')||document.querySelector('[data-rowid="'+rid+'"]');
+          if(target){
+            target.scrollIntoView({behavior:'smooth',block:'center'});
+            if(target.style){target.style.outline='3px solid #f59e0b';target.style.background='rgba(245,158,11,0.15)';setTimeout(function(){target.style.outline='';target.style.background='';},3000);}
+            try{target.querySelectorAll('circle,rect,line').forEach(function(s){s.setAttribute('stroke','#f59e0b');s.setAttribute('stroke-width','3');setTimeout(function(){s.removeAttribute('stroke-width');},3000);});}catch(e){}
+          }
+        },600);
+      },300);
+    }catch(e){}
+  });
 }
 function sep_barSvg(data,opt){
   const w=opt.w||600,h=opt.h||200,padL=42,padB=38,padT=18,padR=14, plotW=w-padL-padR, plotH=h-padT-padB;
@@ -7245,6 +7299,497 @@ function sep_bindModalClicks(){
     el.addEventListener('click',ev=>{ev.stopPropagation(); ev.__modalHandled=true; const key=el.dataset.modalKey; if(key) sep_openDataModal(key);});
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RRMS — Reduced Runway Separation Minima
+// Pontos de referência: 2400m das THR deslocadas de LPPT RWY02 e RWY20
+// ═══════════════════════════════════════════════════════════════════════════
+const RRMS_POINTS = {
+  '02': { lat: 38 + 47/60 + 10.93/3600, lon: -(9 + 7/60 + 59.65/3600), label: 'RWY 02 · TWY U6 · 2400m' },
+  '20': { lat: 38 + 46/60 + 20.54/3600, lon: -(9 + 8/60 + 26.60/3600), label: 'RWY 20 · TWY P · 2400m'  }
+};
+const RRMS_RADIUS_NM = 0.40; // ~740m, radar position tolerance // ~550m — tolerância de detecção
+const RRMS_MIN_ALT_FT = 0; // qualquer altitude positiva = no ar // altitude mínima para confirmar aeronave no ar
+
+// Tipo de aeronave por prefixo de callsign (frota típica em LPPT)
+const RRMS_AC_TYPE = (function(){
+  const tbl = {
+    TAP:'A320/A321/A330/A350', RYR:'B737', EJU:'A320', EZY:'A320', VLG:'A320',
+    IBE:'A320/A330', IBS:'A320', BAW:'B777/A320', DLH:'A320/A321', AFR:'A320/B777',
+    KLM:'B737/B777', SWR:'A220/A320', TUI:'B737', TVF:'B737', WZZ:'A320',
+    BEL:'A320', EIN:'A320/B737', SAS:'A320', NAX:'A320/B787', BTI:'A220',
+    ROT:'B737/A320', AUI:'B737', RAM:'B737', LOT:'B737/B787', CSA:'A319/B737',
+    MSR:'A320/B777', HYS:'A320', TVS:'B737', ONT:'A320', ONS:'A320',
+    RZO:'A320', AMC:'B737', PGA:'ATR', NJE:'C525', BCS:'E190',
+    UAE:'B777/A380', QTR:'B777/A350', THY:'B737/A320', ANA:'B787',
+    DAL:'A330/B767', AAL:'B777/A321', UAL:'B787', FIN:'A350/A330',
+    TAM:'A330/B777', LAN:'B767/A320', GOL:'B737', AMX:'B787/A320',
+  };
+  return function(csn){
+    const pre=(csn||'').replace(/\d.*/,'').toUpperCase();
+    return tbl[pre]||'Desconhecido';
+  };
+})();
+
+// Categorias de rasto por prefixo de callsign (M=Medium, H=Heavy) — LPPT context
+const RRMS_WAKE = (function(){
+  const H = ['BAW','IBE','TAP','DLH','AFR','KLM','UAE','QTR','THY','ANA','JAL','AAL','UAL','DAL','SWR','FIN','LOT','CSA','ROT','ELAL','ELY','TUI','TOM','GTE','AZA','AMX','LAN','GOL','RYR7','WZZ7'];
+  // H quando são widebodies - heurística por prefixo e série de voo
+  // Para LPPT: TAP com nr > 200 tendem a ser widebody, etc.
+  return {
+    isH: function(csn) {
+      if(!csn) return false;
+      const pre = csn.replace(/\d.*/,'').toUpperCase();
+      // BAW - B777/A380; IBE - A340/A330; TAP - A330/A350 em longa distância
+      const knownH = ['BAW','UAE','QTR','THY','ANA','JAL','AAL','UAL','DAL','FIN','ELY','TAM','LAN','GOL'];
+      if(knownH.indexOf(pre)>=0) return true;
+      // TAP A330/A350: nr de voo >= 200 tipicamente
+      if(pre==='TAP'){const nr=parseInt(csn.replace(/\D/g,''));if(nr>=200&&nr<=499)return true;}
+      return false;
+    },
+    isM: function(csn) {
+      if(!csn) return false;
+      const pre = csn.replace(/\d.*/,'').toUpperCase();
+      const knownM = ['RYR','EJU','EZY','VLG','TAP','IBE','IBS','AFR','KLM','DLH','SWR','TUI','TOM','WZZ','WUK','LOT','CSA','ROU','BEL','ETF','NAX','SAS','AEE','VKG','ASL','TVF','TVS','THY','BTI','AUI','HYS','RAM','MSR','RZO','SXS','ONT','ONS'];
+      if(knownM.indexOf(pre)>=0) return true;
+      return false;
+    },
+    cat: function(csn) {
+      if(this.isH(csn)) return 'H';
+      if(this.isM(csn)) return 'M';
+      return '?';
+    }
+  };
+})();
+
+
+function rrmsSort(col){
+  if(window._rrmsSort===col) window._rrmsSortDir=(window._rrmsSortDir||1)*-1;
+  else{window._rrmsSort=col; window._rrmsSortDir=1;}
+  renderRRMS();
+}
+function rrmsExportCsv(){
+  if(!window._rrmsLastShown||!window._rrmsLastShown.length){alert('Sem dados.');return;}
+  const hdr=['Callsign','Tipo_AC','Cat.','RWY','Data','Hora','Alt_ft','IAS_kt','Dist_NM'];
+  const rows=window._rrmsLastShown.map(h=>[h.csn,h.acType||RRMS_AC_TYPE(h.csn),h.cat,'RWY '+h.rwy,h.date,h.tod,h.altFt,h.ias||'',h.distNM]);
+  const csv='\uFEFF'+[hdr,...rows].map(r=>r.join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='RRMS_passagens.csv';a.click();
+}
+function rrmsExportPdf(){
+  const w=window.open('','_blank');if(!w)return;
+  const d=window._rrmsLastShown||[];
+  const catF=($('rrmsWakeSel')&&$('rrmsWakeSel').value)||'MH';
+  const rwyF=($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)||'all';
+  const shown=rwyF==='all'?d:d.filter(h=>h.rwy===rwyF);
+  function sf(arr){
+    const alts=arr.map(r=>r.altFt).filter(v=>v>0),ias=arr.map(r=>r.ias).filter(v=>v>0);
+    if(!alts.length)return{n:arr.length,ok:false};
+    return{n:arr.length,ok:true,
+      minA:Math.min(...alts),avgA:Math.round(alts.reduce((a,b)=>a+b,0)/alts.length),maxA:Math.max(...alts),
+      minI:ias.length?Math.min(...ias):'—',avgI:ias.length?Math.round(ias.reduce((a,b)=>a+b,0)/ias.length):'—',maxI:ias.length?Math.max(...ias):'—'};
+  }
+  function statRow(lbl,s){return s.ok?'<tr><td>'+lbl+'</td><td>'+s.n+'</td><td>'+s.minA+'</td><td>'+s.avgA+'</td><td>'+s.maxA+'</td><td>'+s.minI+'</td><td>'+s.avgI+'</td><td>'+s.maxI+'</td></tr>':'';}
+  function statTbl(rows){
+    const sAll=sf(rows),sM=sf(rows.filter(r=>r.cat==='M')),sH=sf(rows.filter(r=>r.cat==='H'));
+    return '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:12px;width:100%;margin-bottom:12px;"><thead style="background:#0f2744;color:#fff;"><tr><th>Categoria</th><th>N</th><th>Alt. mín</th><th>Alt. méd</th><th>Alt. máx</th><th>IAS mín</th><th>IAS méd</th><th>IAS máx</th></tr></thead><tbody>'+statRow('Total',sAll)+statRow('M (Medium)',sM)+statRow('H (Heavy)',sH)+'</tbody></table>';
+  }
+  function detailTbl(rows){
+    if(!rows.length) return '<p style="color:#94a3b8;">Sem registos.</p>';
+    return '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;font-size:10px;width:100%;margin-bottom:20px;"><thead style="background:#e2e8f0;"><tr><th>Callsign</th><th>Tipo A/C</th><th>Cat.</th><th>RWY</th><th>Data</th><th>Hora</th><th>Alt.(ft)</th><th>IAS(kt)</th><th>Dist.(NM)</th></tr></thead><tbody>'+rows.map(function(h,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'"><td><b>'+h.csn+'</b></td><td>'+h.cat+'</td><td>RWY'+h.rwy+'</td><td>'+h.date+'</td><td>'+h.tod+'</td><td>'+h.altFt+'</td><td>'+(h.ias||'—')+'</td><td>'+h.distNM+'</td></tr>';}).join('')+'</tbody></table>';
+  }
+  function hourDist(rows,rwy){
+    const bh={};rows.forEach(function(h){const hr=(h.tod||'').substring(0,2)+'h';bh[hr]=(bh[hr]||0)+1;});
+    const sorted=Object.entries(bh).sort(function(a,b){return a[0].localeCompare(b[0]);});
+    if(!sorted.length) return '';
+    const mx=Math.max(...sorted.map(function(e){return e[1];}));
+    return '<table cellpadding="3" cellspacing="0" style="font-size:11px;margin-bottom:8px;"><tbody>'+sorted.map(function(e){const w=Math.round(e[1]/mx*200);return '<tr><td style="width:30px;color:#64748b;">'+e[0]+'</td><td><div style="width:'+w+'px;height:12px;background:#0b5cad;border-radius:2px;display:inline-block;"></div></td><td style="padding-left:6px;">'+e[1]+'</td></tr>';}).join('')+'</tbody></table>';
+  }
+  function narrative(rows,rwy){
+    const s=sf(rows);if(!s.ok)return'<p>Sem dados suficientes.</p>';
+    const mRows=rows.filter(r=>r.cat==='M'),hRows=rows.filter(r=>r.cat==='H');
+    const sM=sf(mRows),sH=sf(hRows);
+    const pct=function(n){return rows.length?Math.round(n/rows.length*100):'—';};
+    const bh={};rows.forEach(function(h){const hr=(h.tod||'').substring(0,2);bh[hr]=(bh[hr]||0)+1;});
+    const pk=Object.entries(bh).sort(function(a,b){return b[1]-a[1];})[0]||['—','—'];
+    return '<p>Na <strong>RWY '+rwy+'</strong>, foram registadas <strong>'+rows.length+' passagens</strong> no ponto de referência 2400m da THR deslocada (valores obtidos por interpolação linear entre amostras radar consecutivas).</p>'
+      +'<p>A <strong>altitude interpolada</strong> variou entre <b>'+s.minA+' ft</b> e <b>'+s.maxA+' ft</b>, com média de <b>'+s.avgA+' ft</b>. '
+      +(s.avgA<500?'A maioria das aeronaves ainda se encontrava a baixa altitude no ponto de referência.':'A maioria das aeronaves já se encontrava a altitude positiva, confirmando que estavam no ar ao passar o ponto.')+'</p>'
+      +'<p>A <strong>IAS interpolada</strong> variou entre <b>'+(s.minI||'—')+' kt</b> e <b>'+(s.maxI||'—')+' kt</b>, com média de <b>'+(s.avgI||'—')+' kt</b>.</p>'
+      +'<p>Distribuição por categoria: <b>M (Medium)</b> — '+mRows.length+' ('+pct(mRows.length)+'%) · <b>H (Heavy)</b> — '+hRows.length+' ('+pct(hRows.length)+'%) · <b>?</b> — '+(rows.length-mRows.length-hRows.length)+' ('+pct(rows.length-mRows.length-hRows.length)+'%).</p>'
+      +'<p>Hora de pico: <b>'+pk[0]+'h</b> com <b>'+pk[1]+' passagens</b>.</p>'
+      +(sM.ok?'<p>Aeronaves M: alt méd='+sM.avgA+'ft, IAS méd='+(sM.avgI||'—')+'kt.</p>':'')
+      +(sH.ok?'<p>Aeronaves H: alt méd='+sH.avgA+'ft, IAS méd='+(sH.avgI||'—')+'kt.</p>':'');
+  }
+  const d02=shown.filter(function(h){return h.rwy==='02';}),d20=shown.filter(function(h){return h.rwy==='20';});
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>RRMS — Relatório</title>'
+    +'<style>*{box-sizing:border-box;}body{font-family:Arial,sans-serif;padding:24px;color:#1e293b;font-size:13px;}h1{color:#0f2744;font-size:20px;border-bottom:3px solid #0f2744;padding-bottom:8px;}h2{color:#0f2744;font-size:15px;margin-top:24px;border-left:4px solid #0b5cad;padding-left:10px;}h3{color:#1e3a5f;font-size:13px;margin-top:14px;}p{line-height:1.6;margin:6px 0;}@media print{@page{margin:1.5cm;}}</style></head><body>'
+    +'<h1>&#128748; RRMS — Relatório de Estatísticas</h1>'
+    +'<p><strong>Data:</strong> '+new Date().toLocaleString('pt-PT')+'</p>'
+    +'<p><strong>Filtros activos:</strong> Categoria = '+catF+' · Pista = '+(rwyF==='all'?'Ambas':'RWY '+rwyF)+' · Total passagens mostradas: '+shown.length+'</p>'
+    +'<p><strong>Pontos de referência:</strong></p><ul><li>RWY 02 → TWY U6: 38°47′10.93″N 009°07′59.65″W (2400m da THR deslocada)</li><li>RWY 20 → TWY P: 38°46′20.54″N 009°08′26.60″W (2400m da THR deslocada)</li></ul>'
+    +'<p><strong>Metodologia:</strong> Para cada aeronave DEP, o algoritmo determina a pista pela direcção de movimento (latitude crescente→RWY02, decrescente→RWY20), encontra o par de amostras radar consecutivas com menor distância perpendicular ao ponto de referência (raio máx: 0.40 NM) e interpola linearmente a altitude e IAS no instante exacto de passagem.</p>'
+    +(d02.length?('<h2>RWY 02 ('+d02.length+' passagens) · Ponto TWY U6</h2>'+narrative(d02,'02')+'<h3>Estatísticas por categoria</h3>'+statTbl(d02)+'<h3>Distribuição horária</h3>'+hourDist(d02,'02')+'<h3>Detalhe completo</h3>'+detailTbl(d02)):'')
+    +(d20.length?('<h2>RWY 20 ('+d20.length+' passagens) · Ponto TWY P</h2>'+narrative(d20,'20')+'<h3>Estatísticas por categoria</h3>'+statTbl(d20)+'<h3>Distribuição horária</h3>'+hourDist(d20,'20')+'<h3>Detalhe completo</h3>'+detailTbl(d20)):'')
+    +'<scr'+'ipt>window.onload=function(){window.print();}<\/scr'+'ipt></body></html>';
+  w.document.write(html);w.document.close();
+}
+function renderRRMS(){
+  const el = $('rrmsContent'); if(!el) return;
+  if(!Object.keys(flights).length){
+    el.innerHTML = '<div style="padding:40px;text-align:center;color:#6b7280;font-weight:700;font-size:15px;">Sem dados carregados. Carrega ficheiros CSV e aplica o filtro.</div>';
+    return;
+  }
+
+  // Recolher passagens pelos pontos RRMS
+  // Detecção: qualquer voo (ARR/DEP/LVL) que passe no raio E esteja a subir/positivo
+  const hits = {all:[], '02':[], '20':[]};
+  const catFilter = ($('rrmsWakeSel')&&$('rrmsWakeSel').value) || 'MH';
+  let _dbgTotal=0, _dbgFiltered=0, _dbgNoClose=0, _dbgLowAlt=0;
+
+  Object.entries(flights).forEach(function(kv){
+    const csn = kv[0], fl = kv[1];
+    if(!fl||!fl.rows||fl.rows.length<3) return;
+    _dbgTotal++;
+
+    // Aceitar DEP e lvl (voos que saem do alcance a subir) — não filtrar por cls
+    // para não perder aeronaves com poucas amostras
+    const cls = classifyFlight(fl.rows);
+    if(cls === 'arr') return; // excluir chegadas claras
+
+    const cat = RRMS_WAKE.cat(csn);
+    const rows = fl.rows.filter(function(r){
+      return !isNaN(+r.latitude) && !isNaN(+r.longitude);
+    }).sort((a,b)=>rowEpoch(a)-rowEpoch(b));
+    if(rows.length<2) return;
+    _dbgFiltered++;
+
+    // Determinar pista pelo sentido de movimento (RWY02=norte, RWY20=sul)
+    const fR=rows.slice(0,Math.min(5,rows.length)), lR=rows.slice(-Math.min(5,rows.length));
+    const latF=fR.reduce((s,r)=>s+(+r.latitude),0)/fR.length;
+    const latL=lR.reduce((s,r)=>s+(+r.latitude),0)/lR.length;
+    const depRwys=latL>latF+0.001?['02']:(latF>latL+0.001?['20']:[]);
+    if(!depRwys.length){_dbgNoClose++;return;}
+    depRwys.forEach(function(rwy){
+      const pt = RRMS_POINTS[rwy];
+      // Interpolacao exacta: encontra par de rows com menor distancia perpendicular ao ponto
+      let bestDist=Infinity, bestK=0, bestI=-1;
+      for(var ri=0;ri<rows.length-1;ri++){
+        const rA=rows[ri],rB=rows[ri+1];
+        const laA=+rA.latitude,loA=+rA.longitude,laB=+rB.latitude,loB=+rB.longitude;
+        if(isNaN(laA)||isNaN(loA)||isNaN(laB)||isNaN(loB)) continue;
+        const dlat=laB-laA,dlon=loB-loA;
+        const dot=dlat*(pt.lat-laA)+dlon*(pt.lon-loA);
+        const len2=dlat*dlat+dlon*dlon;
+        if(len2<1e-12) continue;
+        const k=Math.max(0,Math.min(1,dot/len2));
+        const d=distNM(laA+k*dlat,loA+k*dlon,pt.lat,pt.lon);
+        if(d<bestDist){bestDist=d;bestK=k;bestI=ri;}
+      }
+      if(bestI<0||bestDist>RRMS_RADIUS_NM){_dbgNoClose++;return;}
+      const rA=rows[bestI],rB=rows[bestI+1];
+      const altA=getAlt(rA),altB=getAlt(rB);
+      const aA=(altA!==null&&altA!=='—'&&!isNaN(+altA))?+altA:null;
+      const aB=(altB!==null&&altB!=='—'&&!isNaN(+altB))?+altB:null;
+      const altFt=aA!==null&&aB!==null?Math.round(aA+bestK*(aB-aA)):(aA!=null?aA:aB);
+      if(altFt===null||altFt<RRMS_MIN_ALT_FT){_dbgLowAlt++;return;}
+      const iasA=+(rA.iar||rA.iara||0),iasB=+(rB.iar||rB.iara||0);
+      const ias=iasA&&iasB?Math.round(iasA+bestK*(iasB-iasA)):(iasA||iasB)||null;
+      const tI=rowEpoch(rA)+bestK*(rowEpoch(rB)-rowEpoch(rA));
+      const ts=Math.round(tI%86400);
+      const todStr=String(Math.floor(ts/3600)).padStart(2,'0')+':'+String(Math.floor((ts%3600)/60)).padStart(2,'0')+':'+String(ts%60).padStart(2,'0');
+      const acType=RRMS_AC_TYPE(csn);
+      const hit={_isRRMS:true,csn,rwy,cat,cls,acType,distNM:bestDist.toFixed(3),altFt,ias,
+                 tod:todStr,t:tI,date:rA._date||'',epoch:tI,
+                 comp:(csn.match(/^[A-Z]{2,3}/)||['?'])[0]};
+      hits.all.push(hit);
+      hits[rwy].push(hit);
+    });
+  });
+  setTimeout(function(){try{sep_bindModalClicks();}catch(e){}},100);
+  const _dbgMsg=`Debug: ${_dbgTotal} voos, ${_dbgFiltered} não-ARR, ${_dbgNoClose} sem proximidade, ${_dbgLowAlt} altitude baixa`;
+
+  // Ordenar por hora
+  hits.all.sort((a,b)=>a.epoch-b.epoch);
+  hits['02'].sort((a,b)=>a.epoch-b.epoch);
+  hits['20'].sort((a,b)=>a.epoch-b.epoch);
+
+  // Filtrar por categoria
+  const filterFn = function(h){
+    if(catFilter==='M') return h.cat==='M';
+    if(catFilter==='H') return h.cat==='H';
+    if(catFilter==='MH') return h.cat==='M'||h.cat==='H';
+    return true;
+  };
+  const shown = hits.all.filter(filterFn);
+  window._rrmsLastShown = shown; // for export
+  const shown02 = hits['02'].filter(filterFn);
+  const shown20 = hits['20'].filter(filterFn);
+
+  // Estatísticas
+  const stats02 = rrmsStats(shown02);
+  const stats20 = rrmsStats(shown20);
+
+  const colH = '#0f2744'; const colM='#1e3a5f'; const colLight='#f0f4f8';
+  const pill = function(cat){
+    const col = cat==='H'?'#b91c1c':cat==='M'?'#0b5cad':'#64748b';
+    return '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;font-weight:700;">'+cat+'</span>';
+  };
+
+  el.innerHTML = `
+  <div style="max-width:1100px;">
+    <div style="background:#0f2744;border-radius:12px;padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+      <div>
+        <div style="font-size:18px;font-weight:800;color:#fff;letter-spacing:-0.5px;">&#x1F6EC; RRMS — Reduced Runway Separation Minima</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:3px;">Pontos 2400m das THR deslocadas · RWY 02 TWY U6 · RWY 20 TWY P · apenas aeronaves DEP no ar</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <button onclick="rrmsExportCsv()" style="background:#1e3a5f;border:1px solid #3a5a8f;color:#7ee8fa;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;cursor:pointer;">⬇ CSV</button>
+        <button onclick="rrmsExportPdf()" style="background:#16a34a;border:0;color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:6px;cursor:pointer;">📄 PDF</button>
+        <label style="font-size:11px;color:#94a3b8;font-weight:700;">Categoria rasto:</label>
+        <select id="rrmsWakeSel" onchange="renderRRMS()" style="background:#1e3a5f;border:1px solid #2a4a6f;border-radius:6px;color:#e2e8f0;font-size:12px;padding:4px 10px;cursor:pointer;">
+          <option value="MH" ${catFilter==='MH'?'selected':''}>M + H</option>
+          <option value="M" ${catFilter==='M'?'selected':''}>M (Medium)</option>
+          <option value="H" ${catFilter==='H'?'selected':''}>H (Heavy)</option>
+          <option value="all" ${catFilter==='all'?'selected':''}>Todas</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- KPI cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px;">
+      ${[
+        {l:'RWY 02 — passagens',v:shown02.length,sub:'aeronaves M+H no ar',rows:shown02},
+        {l:'RWY 20 — passagens',v:shown20.length,sub:'aeronaves M+H no ar',rows:shown20},
+        {l:'Alt. mín/méd/máx RWY 02',v:stats02.avgAlt?stats02.minAlt+' / '+stats02.avgAlt+' / '+stats02.maxAlt+' ft':'—',sub:'mínima / média / máxima',rows:shown02},
+        {l:'Alt. mín/méd/máx RWY 20',v:stats20.avgAlt?stats20.minAlt+' / '+stats20.avgAlt+' / '+stats20.maxAlt+' ft':'—',sub:'mínima / média / máxima',rows:shown20},
+        {l:'IAS mín/méd/máx RWY 02',v:stats02.avgIas?stats02.minIas+' / '+stats02.avgIas+' / '+stats02.maxIas+' kt':'—',sub:'mínima / média / máxima',rows:shown02},
+        {l:'IAS mín/méd/máx RWY 20',v:stats20.avgIas?stats20.minIas+' / '+stats20.avgIas+' / '+stats20.maxIas+' kt':'—',sub:'mínima / média / máxima',rows:shown20},
+      ].map(function(k){const mk=sep_registerModalData(k.l,k.rows,k.sub); return `<div class="modalSource" data-modal-key="${mk}" style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:12px;text-align:center;cursor:pointer;" title="Clica para ver dados">
+        <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px;">${k.l}</div>
+        <div style="font-size:18px;font-weight:800;color:#0f2744;">${k.v}</div>
+        <div style="font-size:10px;color:#94a3b8;margin-top:2px;">${k.sub}</div>
+      </div>`;}).join('')}
+    </div>
+
+    <!-- Estatísticas exactas no ponto (interpoladas) -->
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+        <div style="font-weight:700;font-size:13px;color:#0f2744;">&#9883; Estatísticas no ponto de referência (valores interpolados)</div>
+        <select id="rrmsStatGrp" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
+          <option value="rwy">Por pista</option>
+          <option value="hour">Por hora</option>
+          <option value="cat">Por categoria</option>
+          <option value="actype">Por tipo de aeronave</option>
+          <option value="comp">Por companhia (top 12)</option>
+          <option value="top10csn">Top 10 aeronaves (callsign)</option>
+        </select>
+      </div>
+      ${(function(){
+        const grp=($('rrmsStatGrp')&&$('rrmsStatGrp').value)||'rwy';
+        const rwyF=($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)||'all';
+        const filtered=shown.filter(h=>rwyF==='all'||h.rwy===rwyF);
+        function statsFor(arr){
+          const alts=arr.map(r=>r.altFt).filter(v=>v!=null&&v>0);
+          const ias=arr.map(r=>r.ias).filter(v=>v&&v>0);
+          if(!alts.length) return null;
+          return {n:arr.length,
+            minA:Math.min(...alts),avgA:Math.round(alts.reduce((a,b)=>a+b,0)/alts.length),maxA:Math.max(...alts),
+            minI:ias.length?Math.min(...ias):null,avgI:ias.length?Math.round(ias.reduce((a,b)=>a+b,0)/ias.length):null,maxI:ias.length?Math.max(...ias):null};
+        }
+        let groups={};
+        if(grp==='rwy'){groups={'RWY 02':filtered.filter(h=>h.rwy==='02'),'RWY 20':filtered.filter(h=>h.rwy==='20')};}
+        else if(grp==='hour'){filtered.forEach(h=>{const hr=(h.tod||'').substring(0,2)+'h';if(!groups[hr])groups[hr]=[];groups[hr].push(h);});}
+        else if(grp==='cat'){groups={'M (Medium)':filtered.filter(h=>h.cat==='M'),'H (Heavy)':filtered.filter(h=>h.cat==='H'),'? (Desconhecido)':filtered.filter(h=>h.cat==='?')};}
+        else if(grp==='actype'){const tops={};filtered.forEach(h=>{const t=h.acType||'Desconhecido';if(!tops[t])tops[t]=[];tops[t].push(h);});Object.entries(tops).sort((a,b)=>b[1].length-a[1].length).forEach(e=>groups[e[0]]=e[1]);}
+        else if(grp==='top10csn'){const tops={};filtered.forEach(h=>{if(!tops[h.csn])tops[h.csn]=[];tops[h.csn].push(h);});Object.entries(tops).sort((a,b)=>b[1].length-a[1].length).slice(0,10).forEach(e=>groups[e[0]+'  ('+RRMS_AC_TYPE(e[0])+')  '+(e[1][0]&&e[1][0].cat?'['+e[1][0].cat+']':'')]=e[1]);}
+        else{const tops={};filtered.forEach(h=>{if(!tops[h.comp])tops[h.comp]=[];tops[h.comp].push(h);});Object.entries(tops).sort((a,b)=>b[1].length-a[1].length).slice(0,12).forEach(e=>groups[e[0]]=e[1]);}
+        const entries=Object.entries(groups).filter(e=>e[1].length>0);
+        if(!entries.length) return '<div style="color:#94a3b8;font-size:12px;padding:8px;">Sem dados</div>';
+        return '<div style="overflow-x:auto;"><table style="border-collapse:collapse;font-size:12px;width:100%;">'
+          +'<thead><tr style="background:#0f2744;color:#fff;">'
+          +'<th style="padding:7px 10px;text-align:left;">Grupo</th>'
+          +'<th style="padding:7px 10px;text-align:right;">N</th>'
+          +'<th style="padding:7px 10px;text-align:right;background:#1a3a5f;">Alt. mín (ft)</th>'
+          +'<th style="padding:7px 10px;text-align:right;background:#1a3a5f;">Alt. méd (ft)</th>'
+          +'<th style="padding:7px 10px;text-align:right;background:#1a3a5f;">Alt. máx (ft)</th>'
+          +'<th style="padding:7px 10px;text-align:right;background:#0b3a5f;">IAS mín (kt)</th>'
+          +'<th style="padding:7px 10px;text-align:right;background:#0b3a5f;">IAS méd (kt)</th>'
+          +'<th style="padding:7px 10px;text-align:right;background:#0b3a5f;">IAS máx (kt)</th>'
+          +'</tr></thead><tbody>'
+          +entries.map(function(e,i){
+            const s=statsFor(e[1]);
+            if(!s) return '';
+            const bg=i%2===0?'#fff':'#f8fafc';
+            const mk=sep_registerModalData('RRMS · '+e[0],e[1].map(h=>Object.assign({},h,{_isRRMS:true})),s.n+' passagens');
+            return '<tr class="modalSource" data-modal-key="'+mk+'" style="background:'+bg+';cursor:pointer;">'
+              +'<td style="padding:6px 10px;font-weight:700;">'+sep_escHtml(e[0])+'</td>'
+              +'<td style="padding:6px 10px;text-align:right;">'+s.n+'</td>'
+              +'<td style="padding:6px 10px;text-align:right;color:#b91c1c;">'+s.minA+'</td>'
+              +'<td style="padding:6px 10px;text-align:right;font-weight:700;">'+s.avgA+'</td>'
+              +'<td style="padding:6px 10px;text-align:right;color:#16a34a;">'+s.maxA+'</td>'
+              +'<td style="padding:6px 10px;text-align:right;color:#b91c1c;">'+(s.minI||'—')+'</td>'
+              +'<td style="padding:6px 10px;text-align:right;font-weight:700;">'+(s.avgI||'—')+'</td>'
+              +'<td style="padding:6px 10px;text-align:right;color:#16a34a;">'+(s.maxI||'—')+'</td>'
+              +'</tr>';
+          }).join('')+'</tbody></table></div>';
+      })()}
+    </div>
+
+    <!-- Timeline line chart: min/avg/max over time -->
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="font-weight:700;font-size:13px;color:#0f2744;">&#128200; Evolução temporal no ponto (por hora)</div>
+        <select id="rrmsChartMetric" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
+          <option value="alt">Altitude (ft)</option>
+          <option value="ias">IAS (kt)</option>
+        </select>
+        <select id="rrmsChartRwy" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
+          <option value="all">Ambas as pistas</option>
+          <option value="02">RWY 02</option>
+          <option value="20">RWY 20</option>
+        </select>
+      </div>
+      ${(function(){
+        const metric=($('rrmsChartMetric')&&$('rrmsChartMetric').value)||'alt';
+        const chartRwy=($('rrmsChartRwy')&&$('rrmsChartRwy').value)||'all';
+        const src=chartRwy==='all'?shown:(chartRwy==='02'?shown02:shown20);
+        if(!src.length) return '<div style="color:#94a3b8;font-size:12px;padding:8px;">Sem dados para o gráfico.</div>';
+        // Aggregate by hour
+        const byHour={};
+        src.forEach(function(h){
+          const hr=(h.tod||'').substring(0,2);
+          if(!byHour[hr]) byHour[hr]={vals:[],min:Infinity,max:-Infinity,sum:0,n:0};
+          const v=metric==='alt'?(h.altFt||0):(h.ias||0);
+          if(v>0){byHour[hr].vals.push(v);byHour[hr].min=Math.min(byHour[hr].min,v);byHour[hr].max=Math.max(byHour[hr].max,v);byHour[hr].sum+=v;byHour[hr].n++;}
+        });
+        const hrs=Object.keys(byHour).filter(h=>byHour[h].n>0).sort();
+        if(!hrs.length) return '<div style="color:#94a3b8;font-size:12px;padding:8px;">Sem dados.</div>';
+        const pts=hrs.map(h=>({hr:h,min:byHour[h].min,avg:Math.round(byHour[h].sum/byHour[h].n),max:byHour[h].max,n:byHour[h].n}));
+        const allVals=pts.flatMap(p=>[p.min,p.avg,p.max]).filter(v=>isFinite(v));
+        const vMin=Math.min(...allVals), vMax=Math.max(...allVals);
+        const pad={l:52,r:16,t:20,b:36}; const W=700,H=200;
+        const plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
+        const xStep=plotW/Math.max(1,pts.length-1);
+        const toY=function(v){return pad.t+plotH*(1-(v-vMin)/Math.max(1,vMax-vMin));};
+        const toX=function(i){return pad.l+i*xStep;};
+        // Build polyline points
+        const ptsMax=pts.map(function(p,i){return toX(i)+','+toY(p.max);}).join(' ');
+        const ptsAvg=pts.map(function(p,i){return toX(i)+','+toY(p.avg);}).join(' ');
+        const ptsMin=pts.map(function(p,i){return toX(i)+','+toY(p.min);}).join(' ');
+        const areaTop=ptsMax+' '+[...pts].reverse().map(function(p,i){return toX(pts.length-1-i)+','+toY(p.min);}).join(' ');
+        // Y gridlines
+        const yTicks=4;
+        const grids=Array.from({length:yTicks+1},function(_,i){const v=vMin+i*(vMax-vMin)/yTicks;return {v:Math.round(v),y:toY(v)};});
+        const unit=metric==='alt'?'ft':'kt';
+        return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;font-family:Segoe UI,Arial,sans-serif;">'
+          +'<defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0b5cad" stop-opacity="0.15"/><stop offset="100%" stop-color="#0b5cad" stop-opacity="0.02"/></linearGradient></defs>'
+          +grids.map(function(g){return '<line x1="'+pad.l+'" y1="'+g.y+'" x2="'+(W-pad.r)+'" y2="'+g.y+'" stroke="#e2e8f0" stroke-width="1"/><text x="'+(pad.l-6)+'" y="'+(g.y+4)+'" text-anchor="end" font-size="9" fill="#94a3b8">'+g.v+'</text>';}).join('')
+          +'<polygon points="'+areaTop+'" fill="url(#areaGrad)"/>'
+          +'<polyline points="'+ptsMax+'" fill="none" stroke="#b91c1c" stroke-width="1.5" stroke-dasharray="4,2"/>'
+          +'<polyline points="'+ptsMin+'" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4,2"/>'
+          +'<polyline points="'+ptsAvg+'" fill="none" stroke="#0b5cad" stroke-width="2.5"/>'
+          +pts.map(function(p,i){const x=toX(i),y=toY(p.avg);return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="#0b5cad"/><title>'+p.hr+'h · n='+p.n+' · min='+p.min+unit+' avg='+p.avg+unit+' max='+p.max+unit+'</title>';}).join('')
+          +pts.map(function(p,i){return '<text x="'+toX(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="9" fill="#64748b">'+p.hr+'h</text>';}).join('')
+          +'<text x="'+(pad.l-6)+'" y="'+(pad.t-6)+'" text-anchor="end" font-size="9" fill="#64748b">'+unit+'</text>'
+          +'<line x1="'+pad.l+'" y1="'+pad.t+'" x2="'+pad.l+'" y2="'+(H-pad.b)+'" stroke="#e2e8f0" stroke-width="1"/>'
+          +'<text x="'+(W-pad.r)+'" y="'+(pad.t+8)+'" text-anchor="end" font-size="9" fill="#b91c1c">— máx</text>'
+          +'<text x="'+(W-pad.r)+'" y="'+(pad.t+18)+'" text-anchor="end" font-size="9" fill="#0b5cad">— méd</text>'
+          +'<text x="'+(W-pad.r)+'" y="'+(pad.t+28)+'" text-anchor="end" font-size="9" fill="#16a34a">— mín</text>'
+          +'</svg>';
+      })()}
+    </div>
+
+    <!-- Distribution by hour -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      ${['02','20'].map(function(rwy){
+        const sh = rwy==='02'?shown02:shown20;
+        const byHour={};
+        sh.forEach(function(h){const hr=(h.tod||'').substring(0,2)||'??';byHour[hr]=(byHour[hr]||0)+1;});
+        const maxV=Math.max(1,...Object.values(byHour));
+        const sorted=Object.entries(byHour).sort((a,b)=>a[0].localeCompare(b[0]));
+        return `<div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:14px;">
+          <div style="font-weight:700;font-size:13px;color:#0f2744;margin-bottom:10px;">RWY ${rwy} — distribuição horária (${sh.length} passagens)</div>
+          ${sorted.length===0?'<div style="color:#94a3b8;font-size:12px;">Sem dados</div>':
+          sorted.map(function(e){
+            const pct=(e[1]/maxV*100).toFixed(0);
+            const hRows=sh.filter(function(h){return (h.tod||'').substring(0,2)===e[0];});
+            const hmk=sep_registerModalData('RRMS RWY'+rwy+' · hora '+e[0]+'h',hRows,e[1]+' passagens');
+            return `<div class="modalSource" data-modal-key="${hmk}" style="display:flex;align-items:center;gap:8px;margin-bottom:4px;cursor:pointer;border-radius:4px;padding:1px 2px;" title="Clica para ver dados">
+              <span style="width:28px;font-size:11px;color:#64748b;font-weight:700;">${e[0]}h</span>
+              <div style="flex:1;height:14px;background:#f0f4f8;border-radius:4px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:#0b5cad;border-radius:4px;"></div>
+              </div>
+              <span style="width:22px;font-size:11px;color:#334155;text-align:right;">${e[1]}</span>
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+
+    <!-- Detail table with filter + sort + export -->
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="font-weight:700;font-size:13px;color:#0f2744;">Detalhe das passagens (${shown.length} registos)</div>
+        <select id="rrmsRwyFilter" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
+          <option value="all" ${($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)==='02'?'':'selected'}>Ambas as pistas</option>
+          <option value="02" ${($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)==='02'?'selected':''}>RWY 02</option>
+          <option value="20" ${($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)==='20'?'selected':''}>RWY 20</option>
+        </select>
+        <button onclick="rrmsExportCsv()" style="margin-left:auto;background:#0f2744;color:#fff;border:0;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">⬇ CSV</button>
+      </div>
+      <div style="overflow-x:auto;max-height:420px;overflow-y:auto;">
+        <table id="rrmsDetailTbl" style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead>
+            <tr style="background:#0f2744;color:#fff;position:sticky;top:0;z-index:1;cursor:pointer;">
+              ${['Callsign','Tipo A/C','Cat.','RWY','Data','Hora','Alt. (ft)','IAS (kt)','Dist. (NM)'].map((h,i)=>`<th data-col="${i}" onclick="rrmsSort(${i})" style="padding:8px 10px;text-align:${i>=5?'right':'left'};white-space:nowrap;" title="Ordenar">${h} <span id="rrmsSort${i}" style="font-size:9px;opacity:.7;"></span></th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${(function(){
+              const rwyF=($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)||'all';
+              const sortCol=window._rrmsSort||0, sortDir=window._rrmsSortDir||1;
+              let rows=shown.filter(h=>rwyF==='all'||h.rwy===rwyF);
+              rows=rows.slice().sort(function(a,b){
+                const vals=[a.csn,a.cat,a.rwy,a.date,a.tod,a.altFt||0,a.ias||0,+a.distNM];
+                const valb=[b.csn,b.cat,b.rwy,b.date,b.tod,b.altFt||0,b.ias||0,+b.distNM];
+                const va=vals[sortCol],vb=valb[sortCol];
+                return typeof va==='number'?(va-vb)*sortDir:(String(va).localeCompare(String(vb)))*sortDir;
+              });
+              if(!rows.length) return '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">Sem passagens</td></tr>';
+              return rows.map(function(h,i){
+                const bg=i%2===0?'#fff':'#f8fafc';
+                const ac=h.altFt<500?'#b91c1c':h.altFt<1000?'#d97706':'#16a34a';
+                const mk=sep_registerModalData('RRMS · '+h.csn+' · RWY'+h.rwy,[h],'Alt='+h.altFt+'ft · IAS='+(h.ias||'—')+'kt · '+h.tod);
+                return '<tr class="modalSource" data-modal-key="'+mk+'" style="background:'+bg+';cursor:pointer;"><td style="padding:6px 10px;font-weight:700;">'+sep_escHtml(h.csn)+'</td><td style="padding:6px 10px;text-align:center;">'+pill(h.cat)+'</td><td style="padding:6px 10px;text-align:center;font-weight:700;">RWY '+h.rwy+'</td><td style="padding:6px 10px;">'+sep_escHtml(String(h.date||''))+'</td><td style="padding:6px 10px;font-family:monospace;">'+sep_escHtml(h.tod)+'</td><td style="padding:6px 10px;text-align:right;font-weight:700;color:'+ac+';">'+h.altFt+'</td><td style="padding:6px 10px;text-align:right;">'+(h.ias||'—')+'</td><td style="padding:6px 10px;text-align:right;color:#64748b;">'+h.distNM+'</td></tr>';
+              }).join('');
+            })()}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="background:#e0f2fe;border:1px solid #bae6fd;border-radius:8px;padding:8px 14px;font-size:11px;color:#0369a1;margin-bottom:8px;">${_dbgMsg}</div>
+    <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;font-size:11px;color:#92400e;">
+      <strong>Nota:</strong> Categorias M/H calculadas por prefixo de callsign com base na frota típica de LPPT. Aeronaves desconhecidas aparecem como "?".
+      Altitude confirmada > ${RRMS_MIN_ALT_FT}ft para garantir que a aeronave está no ar. Raio de detecção dos pontos: ${RRMS_RADIUS_NM} NM (~${Math.round(RRMS_RADIUS_NM*1852)}m).
+    </div>
+  </div>`;
+}
+
+function rrmsStats(rows){
+  const alts = rows.map(r=>r.altFt).filter(v=>v!=null&&v>0);
+  const iases = rows.map(r=>r.ias).filter(v=>v&&v>0);
+  return {
+    avgAlt: alts.length?Math.round(alts.reduce((a,b)=>a+b,0)/alts.length):null,
+    minAlt: alts.length?Math.min(...alts):null,
+    maxAlt: alts.length?Math.max(...alts):null,
+    avgIas: iases.length?Math.round(iases.reduce((a,b)=>a+b,0)/iases.length):null,
+    minIas: iases.length?Math.min(...iases):null,
+    maxIas: iases.length?Math.max(...iases):null,
+  };
+}
+
 function sep_openDataModal(key){
   const data=sep_modalDatas.get(key); if(!data) return;
   const rows=data.rows||[];
@@ -7252,17 +7797,58 @@ function sep_openDataModal(key){
   if(_mt)_mt.textContent=data.title||'Dados de origem';
   const _ms=$('sep_dataModalSub');if(_ms)_ms.textContent=(data.subtitle?data.subtitle+' · ':'')+`${rows.length.toLocaleString('pt-PT')} linha(s) de origem`;
   const isMov=rows.some(r=>r && r._isMovement);
+  const isRRMS=rows.some(r=>r && r._isRRMS);
   let heads, bodyRows, hint;
-  if(isMov){
+  if(isRRMS){
+    heads=['Callsign','Tipo A/C','Cat.','RWY','Data','Hora','Alt. (ft)','IAS (kt)','Dist. (NM)']; hint='Dados RRMS — passagens no ponto 2400m da THR (valores interpolados).';
+    const pill=function(cat){const col=cat==='H'?'#b91c1c':cat==='M'?'#0b5cad':'#64748b';return '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;font-weight:700;">'+cat+'</span>';};
+    const altCol=function(a){return a<500?'#b91c1c':a<1000?'#d97706':'#16a34a';};
+    bodyRows=rows.map(r=>`<tr><td><b>${sep_escHtml(r.csn||'')}</b></td><td style="font-size:10px;color:#475569;">${sep_escHtml(r.acType||RRMS_AC_TYPE(r.csn||''))}</td><td>${pill(r.cat||'?')}</td><td style="font-weight:700;">RWY ${sep_escHtml(r.rwy||'')}</td><td>${sep_escHtml(String(r.date||''))}</td><td style="font-family:monospace;">${sep_escHtml(r.tod||'')}</td><td class="num" style="font-weight:700;color:${altCol(r.altFt||0)};">${r.altFt||'—'}</td><td class="num">${r.ias||'—'}</td><td class="num">${r.distNM||'—'}</td></tr>`).join('');
+  } else if(isMov){
     heads=['Tipo','Pista','Data','Hora','Callsign','Companhia','IAS','Ficheiro']; hint='Dados de movimentos detetados. ARR = aterragem; DEP = descolagem estimada.';
     bodyRows=rows.map(r=>`<tr><td><b>${sep_escHtml(r.type||'')}</b></td><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.hora)}</td><td><b>${sep_escHtml(r.callsign||'')}</b></td><td>${sep_escHtml(r.company||'')}</td><td class="num">${sep_escHtml(r.ias||'')}</td><td>${sep_escHtml(r.fileName||'')}</td></tr>`).join('');
   } else {
-    heads=['Pista','Data','Hora THR precedente','Precedente','IAS prec.','Seguidor','IAS seg.','Sep. s','Sep. NM','Seq.','DEP','Hora DEP','Seguidor no DEP']; hint='Clica numa linha para abrir a ocorrência na aba Tabela.';
-    bodyRows=rows.map(r=>`<tr data-rowid="${r._id}"><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td><b>${sep_escHtml(r.csnA)}</b></td><td class="num">${sep_escHtml(r.iasA)}</td><td><b>${sep_escHtml(r.csnB||'')}</b></td><td class="num">${sep_escHtml(r.iasB||'')}</td><td class="num ${r._sepSecNum<Number($('sep_anaLimit')?.value||165)?'red':'blue'}">${sep_escHtml(r.sepSec||'')}</td><td class="num">${sep_escHtml(r.sepNm||'')}</td><td>${sep_escHtml(r._seq||'')}</td><td>${r.depCsn?`<span class="pill dep">${sep_escHtml(r.depCsn)}</span>`:'<span class="pill nodep">Sem DEP</span>'}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}${r.bNmAtDep?` s / ${sep_escHtml(r.bNmAtDep)} NM`:''}</td></tr>`).join('');
+    heads=['Callsign','Pista','Data','Hora THR','IAS prec.','Seguidor','IAS seg.','Sep. s','Sep. NM','Seq.','DEP','Hora DEP','Seguidor no DEP']; hint='Clica numa linha para abrir na aba Separação entre chegadas.';
+    bodyRows=rows.map(r=>`<tr data-rowid="${r._id}"><td><b>${sep_escHtml(r.csnA)}</b></td><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td class="num">${sep_escHtml(r.iasA)}</td><td><b>${sep_escHtml(r.csnB||'')}</b></td><td class="num">${sep_escHtml(r.iasB||'')}</td><td class="num ${r._sepSecNum<Number($('sep_anaLimit')?.value||165)?'red':'blue'}">${sep_escHtml(r.sepSec||'')}</td><td class="num">${sep_escHtml(r.sepNm||'')}</td><td>${sep_escHtml(r._seq||'')}</td><td>${r.depCsn?`<span class="pill dep">${sep_escHtml(r.depCsn)}</span>`:'<span class="pill nodep">Sem DEP</span>'}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}${r.bNmAtDep?` s / ${sep_escHtml(r.bNmAtDep)} NM`:''}</td></tr>`).join('');
   }
-  $('sep_dataModalBody').innerHTML=`<div class="modalActions"><button type="button" class="secondary" id="modalExportBtn">Exportar estes dados</button><span class="small">${hint}</span></div><div class="analysisTableWrap" style="max-height:62vh"><table><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${bodyRows||`<tr><td colspan="${heads.length}" class="mutedCell">Sem linhas de origem para este indicador.</td></tr>`}</tbody></table></div>`;
+  $('sep_dataModalBody').innerHTML=`<div class="modalActions"><button type="button" class="secondary" id="modalExportBtn">Exportar estes dados</button><button type="button" class="secondary" id="modalPdfBtn" style="margin-left:6px;">&#128196; PDF</button><span class="small">${hint}</span></div><div class="analysisTableWrap" style="max-height:62vh"><table><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${bodyRows||`<tr><td colspan="${heads.length}" class="mutedCell">Sem linhas de origem para este indicador.</td></tr>`}</tbody></table></div>`;
   $('sep_dataModalBackdrop').classList.add('open');
-  document.querySelectorAll('#dataModalBody tbody tr[data-rowid]').forEach(tr=>tr.onclick=()=>{selectedRowId=Number(tr.dataset.rowid); sep_closeDataModal(); activateTab('tabela'); renderTable(); renderViz(sep_results.find(r=>r._id===selectedRowId));});
+  // Wire PDF export button (recreated each time modal opens)
+  const _pdfBtn=$('modalPdfBtn');
+  if(_pdfBtn){_pdfBtn.onclick=function(){
+    const w=window.open('','_blank');if(!w)return;
+    const _title=(data&&data.title)||'Exportação';
+    const tblH='<table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;font-size:11px;width:100%;"><thead style="background:#0f2744;color:#fff;"><tr>'+
+      Array.from(document.querySelectorAll('#sep_dataModalBody thead th')).map(function(th){return '<th>'+th.textContent+'</th>';}).join('')+'</tr></thead><tbody>'+
+      Array.from(document.querySelectorAll('#sep_dataModalBody tbody tr')).map(function(tr){return '<tr>'+Array.from(tr.querySelectorAll('td')).map(function(td){return '<td>'+td.innerText+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table>';
+    w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+_title+'</title>'
+      +'<style>body{font-family:Arial,sans-serif;padding:20px;font-size:12px;}h2{color:#0f2744;}table{border-collapse:collapse;width:100%;}@media print{@page{margin:1.5cm;}}</style>'
+      +'</head><body><h2>'+_title+'</h2><p>Exportado em: '+new Date().toLocaleString('pt-PT')+'&nbsp;&middot;&nbsp;'+rows.length+' linha(s)</p>'
+      +tblH+'<scr'+'ipt>window.onload=function(){window.print();}<\/scr'+'ipt></body></html>');
+    w.document.close();
+  };}
+  document.querySelectorAll('#sep_dataModalBody tbody tr[data-rowid]').forEach(tr=>tr.onclick=()=>{
+    const rid=Number(tr.dataset.rowid);
+    sep_closeDataModal();
+    // Navegar para aba Separação entre chegadas
+    try{
+      const anaBtn=Array.from(document.querySelectorAll('.tab')).find(t=>t.onclick&&t.onclick.toString().indexOf('ana')>=0);
+            // Navigate directly to Separação entre chegadas
+      const anaTabEl=Array.from(document.querySelectorAll('.tab')).find(function(t){return t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'ana'");});
+      if(anaTabEl){ switchTab('ana',anaTabEl); }
+      setTimeout(function(){
+        switchAnaTab('fast');
+        setTimeout(function(){
+          const target=document.querySelector('.timelineEvent[data-rowid="'+rid+'"]')||document.querySelector('[data-rowid="'+rid+'"]');
+          if(target){
+            target.scrollIntoView({behavior:'smooth',block:'center'});
+            if(target.style){target.style.outline='3px solid #f59e0b';target.style.background='rgba(245,158,11,0.15)';setTimeout(function(){target.style.outline='';target.style.background='';},3000);}
+            try{target.querySelectorAll('circle,rect,line').forEach(function(s){s.setAttribute('stroke','#f59e0b');s.setAttribute('stroke-width','3');setTimeout(function(){s.removeAttribute('stroke-width');},3000);});}catch(e){}
+          }
+        },600);
+      },300);
+    }catch(e){}
+  });
   const exp=$('modalExportBtn'); if(exp) exp.onclick=()=>sep_exportRowsAsExcel(rows,(data.title||'dados').replace(/[^\w\-]+/g,'_').toLowerCase()+'.xls');
 }
 function sep_closeDataModal(){const b=$('sep_dataModalBackdrop');if(b){b.style.display='none';}}
@@ -7273,6 +7859,7 @@ function sep_wireModalUi(){
   var bP=$('btnExportPdf');if(bP&&!bP._w){bP._w=1;bP.style.cssText='height:36px;padding:0 14px;background:var(--accent);color:#fff;border:0;border-radius:8px;font-weight:700;cursor:pointer;font-size:11px;';bP.onclick=function(){if(window.sep_exportAnalysisPdf)sep_exportAnalysisPdf();};}  }catch(e){}
   const btnR=$('sep_btnAnaRefresh');
   if(btnR&&!btnR._wired){btnR._wired=true;btnR.onclick=()=>renderSepAnalysis();}
+  // PDF button wired directly in sep_openDataModal after innerHTML is set
   const btnE=$('sep_btnExportAnalysis');
   if(btnE&&!btnE._wired){btnE._wired=true;btnE.onclick=()=>sep_exportAnalysisExcel&&sep_exportAnalysisExcel();}
   const btnPdf=$('btnExportPdf');
@@ -7946,7 +8533,7 @@ function sep_exportAnalysisPdf(){
   }
   const w=window.open('','_blank','width=1100,height=800');
   if(!w){alert('Permite popups.');return;}
-  w.document.write('<html><head><title>Relatório Análise de Dados v2.5</title><style>'+sep_reportCss()+'</style></head><body>');
+  w.document.write('<html><head><title>Relatório Análise de Dados v3.0</title><style>'+sep_reportCss()+'</style></head><body>');
   w.document.write(sep_buildAnalysisReportHtml(sep_analysisExportCtx));
   w.document.write('</body></html>');
   w.document.close();
@@ -8167,7 +8754,7 @@ function sep_exportDailyPdf(){
   }
   const w=window.open('','_blank','width=1100,height=800');
   if(!w){alert('Permite popups.');return;}
-  w.document.write('<html><head><title>Relatório Análise Diária v2.5</title><style>'+sep_reportCss()+'</style></head><body>');
+  w.document.write('<html><head><title>Relatório Análise Diária v3.0</title><style>'+sep_reportCss()+'</style></head><body>');
   w.document.write(sep_buildDailyReportHtml(sep_dailyExportCtx));
   w.document.write('</body></html>');
   w.document.close();
@@ -8188,7 +8775,7 @@ function sep_compactRowsTable(title, headers, rows, maxRows=20){
     `</tbody></table>${rows.length>maxRows?`<div class="small">Mostradas ${maxRows} de ${rows.length} linhas. A extração Excel contém o detalhe completo.</div>`:''}`;
 }
 function sep_rowsTableHtml(rows, title){
-  const heads=['Pista','Data','Hora THR precedente','Precedente','IAS precedente','Seguidor','IAS seguidor','Sep. s','Sep. NM','Sequência','DEP','Hora DEP','Seguidor à THR no DEP (s)','Seguidor à THR no DEP (NM)'];
+  const heads=['Callsign','Pista','Data','Hora THR','IAS precedente','Seguidor','IAS seguidor','Sep. s','Sep. NM','Sequência','DEP','Hora DEP','Seguidor à THR no DEP (s)','Seguidor à THR no DEP (NM)'];
   let html=`<h3>${sep_escHtml(title)}</h3><table><thead><tr>${heads.map(h=>`<th>${sep_escHtml(h)}</th>`).join('')}</tr></thead><tbody>`;
   if(!rows.length){ html+='<tr><td colspan="14">Sem dados para os filtros atuais.</td></tr>'; }
   for(const r of rows){
@@ -9071,7 +9658,7 @@ function _iaDownload(blob,filename){
 <div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
   <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:min(700px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.9);">
     <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;">
-      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v2.5</span>
+      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v3.0</span>
       <button onclick="document.getElementById('emailModal').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">✕</button>
     </div>
     <div style="flex:1;overflow:auto;padding:16px 18px;">
@@ -9090,7 +9677,8 @@ function _iaDownload(blob,filename){
     <div style="background:linear-gradient(135deg,#1a2d45,#0f2744);padding:28px 32px 20px;text-align:center;border-bottom:1px solid #2a3a4a;">
       <div style="font-size:36px;margin-bottom:12px;">&#9992;</div>
       <div style="font-family:'Syne','Segoe UI',sans-serif;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:2px;">NERD</div>
-      <div style="font-size:11px;color:#7ee8fa;letter-spacing:3px;text-transform:uppercase;margin-top:6px;">NAV Portugal</div>
+      <div style="display:inline-block;background:rgba(99,102,241,0.25);border:1px solid rgba(99,102,241,0.6);color:#a78bfa;padding:2px 14px;border-radius:20px;font-size:12px;letter-spacing:2px;margin:6px 0 4px;">V3.0</div>
+      <div style="font-size:11px;color:#7ee8fa;letter-spacing:3px;text-transform:uppercase;margin-top:4px;">NAV Portugal</div>
     </div>
     <div style="padding:28px 32px 32px;text-align:center;">
       <div style="font-size:15px;font-weight:700;color:#e2e8f0;line-height:1.6;">NAV Exceptional, Remarkable Developers</div>
