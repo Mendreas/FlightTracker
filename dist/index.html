@@ -7209,6 +7209,43 @@ function sep_renderTimeline(rows,limit){
     }catch(e){}
   }));
 }
+
+function _fastHighlightPair(csnA, csnB, hora){
+  // Find the pair in the currently rendered FAST list and highlight it
+  const pairs = window._fastFilteredPairs || [];
+  let foundIdx = -1;
+  for(var i=0; i<pairs.length; i++){
+    const p = pairs[i];
+    if(p.lead && p.trail &&
+       p.lead.csn === csnA && p.trail.csn === csnB){
+      // If hora provided, also match on time (within 60s tolerance)
+      if(hora){
+        const pHora = p.lead.tTHRstr||'';
+        if(pHora.substring(0,5) === hora.substring(0,5)){ foundIdx=i; break; }
+      } else { foundIdx=i; break; }
+    }
+  }
+  if(foundIdx < 0){
+    // Try partial match (csnA only)
+    for(var j=0; j<pairs.length; j++){
+      if(pairs[j].lead && pairs[j].lead.csn===csnA){ foundIdx=j; break; }
+    }
+  }
+  if(foundIdx < 0) return false;
+  // Scroll to and highlight
+  const row = document.getElementById('fastRow'+foundIdx);
+  if(row){
+    row.scrollIntoView({behavior:'smooth', block:'center'});
+    const orig = row.style.background;
+    row.style.background='rgba(245,158,11,0.25)';
+    row.style.outline='2px solid #f59e0b';
+    // Also trigger showFastDetail to show in detail panel
+    showFastDetail(foundIdx);
+    setTimeout(function(){row.style.background=orig;row.style.outline='';},3000);
+    return true;
+  }
+  return false;
+}
 function activateTab(tabId){
   try{
     const anaTabEl=document.querySelector('.tab[onclick*=\'ana\']');
@@ -7444,7 +7481,12 @@ function renderRRMS(){
   // Recolher passagens pelos pontos RRMS
   // Detecção: qualquer voo (ARR/DEP/LVL) que passe no raio E esteja a subir/positivo
   const hits = {all:[], '02':[], '20':[]};
+  // Read ALL selector values BEFORE rebuilding innerHTML (values lost after innerHTML reassign)
   const catFilter = ($('rrmsWakeSel')&&$('rrmsWakeSel').value) || 'MH';
+  const _chartMetric = ($('rrmsChartMetric')&&$('rrmsChartMetric').value) || 'alt';
+  const _chartRwy    = ($('rrmsChartRwy')&&$('rrmsChartRwy').value)    || 'all';
+  const _rwyFilter   = ($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)   || 'all';
+  const _statGrp     = ($('rrmsStatGrp')&&$('rrmsStatGrp').value)       || 'rwy';
   let _dbgTotal=0, _dbgFiltered=0, _dbgNoClose=0, _dbgLowAlt=0;
 
   Object.entries(flights).forEach(function(kv){
@@ -7507,6 +7549,51 @@ function renderRRMS(){
     });
   });
   setTimeout(function(){try{sep_bindModalClicks();}catch(e){}},100);
+  // Wire RRMS chart tooltip
+  setTimeout(function(){
+    const svgs=document.querySelectorAll('#rrmsContent svg');
+    svgs.forEach(function(svg){
+      if(svg._rrmsTip) return; svg._rrmsTip=true;
+      var tip=document.getElementById('rrmsSvgTip');
+      if(!tip){
+        tip=document.createElement('div');
+        tip.id='rrmsSvgTip';
+        tip.style.cssText='position:fixed;display:none;background:#0f2744;color:#e2e8f0;font-size:11px;font-family:Segoe UI,Arial,sans-serif;padding:7px 12px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.4);pointer-events:none;z-index:99998;white-space:nowrap;line-height:1.7;border:1px solid #2a3a4a;';
+        document.body.appendChild(tip);
+      }
+      svg.addEventListener('mousemove',function(ev){
+        const pt=ev.target.closest('.rrmsTipPoint');
+        if(pt){
+          const d=pt.dataset.tip||'';
+          if(!d){tip.style.display='none';return;}
+          // Format nicely
+          const parts=d.split(' | ');
+          tip.innerHTML=parts.map(function(p){
+            const kv=p.split('=');
+            return kv.length===2?'<b style="color:#7ee8fa;">'+kv[0]+'</b> '+kv[1]:p;
+          }).join('<br>');
+          const r=svg.getBoundingClientRect();
+          // Position: below mouse, inside viewport
+          const tx=Math.min(ev.clientX+12, window.innerWidth-180);
+          const ty=Math.min(ev.clientY+16, window.innerHeight-100);
+          tip.style.left=tx+'px'; tip.style.top=ty+'px'; tip.style.display='block';
+          // Show vertical line
+          pt.querySelectorAll('.tipVLine').forEach(function(l){l.style.opacity='0.4';});
+        } else {
+          tip.style.display='none';
+          svg.querySelectorAll('.tipVLine').forEach(function(l){l.style.opacity='0';});
+        }
+      });
+      svg.addEventListener('mouseleave',function(){
+        tip.style.display='none';
+        svg.querySelectorAll('.tipVLine').forEach(function(l){l.style.opacity='0';});
+      });
+      svg.addEventListener('click',function(){
+        // Hide tooltip when clicking (modal will open via delegation)
+        tip.style.display='none';
+      });
+    });
+  },200);
   const _dbgMsg=`Debug: ${_dbgTotal} voos, ${_dbgFiltered} não-ARR, ${_dbgNoClose} sem proximidade, ${_dbgLowAlt} altitude baixa`;
 
   // Ordenar por hora
@@ -7577,17 +7664,17 @@ function renderRRMS(){
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
         <div style="font-weight:700;font-size:13px;color:#0f2744;">&#9883; Estatísticas no ponto de referência (valores interpolados)</div>
         <select id="rrmsStatGrp" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
-          <option value="rwy">Por pista</option>
-          <option value="hour">Por hora</option>
-          <option value="cat">Por categoria</option>
-          <option value="actype">Por tipo de aeronave</option>
-          <option value="comp">Por companhia (top 12)</option>
-          <option value="top10csn">Top 10 aeronaves (callsign)</option>
+          <option value="rwy" ${_statGrp==='rwy'?'selected':''}>Por pista</option>
+          <option value="hour" ${_statGrp==='hour'?'selected':''}>Por hora</option>
+          <option value="cat" ${_statGrp==='cat'?'selected':''}>Por categoria</option>
+          <option value="actype" ${_statGrp==='actype'?'selected':''}>Por tipo de aeronave</option>
+          <option value="comp" ${_statGrp==='comp'?'selected':''}>Por companhia (top 12)</option>
+          <option value="top10csn" ${_statGrp==='top10csn'?'selected':''}>Top 10 aeronaves (callsign)</option>
         </select>
       </div>
       ${(function(){
-        const grp=($('rrmsStatGrp')&&$('rrmsStatGrp').value)||'rwy';
-        const rwyF=($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)||'all';
+        const grp=_statGrp;  // pre-read
+        const rwyF=_rwyFilter;  // pre-read
         const filtered=shown.filter(h=>rwyF==='all'||h.rwy===rwyF);
         function statsFor(arr){
           const alts=arr.map(r=>r.altFt).filter(v=>v!=null&&v>0);
@@ -7641,61 +7728,124 @@ function renderRRMS(){
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap;">
         <div style="font-weight:700;font-size:13px;color:#0f2744;">&#128200; Evolução temporal no ponto (por hora)</div>
         <select id="rrmsChartMetric" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
-          <option value="alt">Altitude (ft)</option>
-          <option value="ias">IAS (kt)</option>
+          <option value="alt" ${_chartMetric==='alt'?'selected':''}>Altitude (ft)</option>
+          <option value="ias" ${_chartMetric==='ias'?'selected':''}>IAS (kt)</option>
         </select>
         <select id="rrmsChartRwy" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
-          <option value="all">Ambas as pistas</option>
-          <option value="02">RWY 02</option>
-          <option value="20">RWY 20</option>
+          <option value="all" ${_chartRwy==='all'?'selected':''}>Ambas as pistas</option>
+          <option value="02" ${_chartRwy==='02'?'selected':''}>RWY 02</option>
+          <option value="20" ${_chartRwy==='20'?'selected':''}>RWY 20</option>
         </select>
       </div>
       ${(function(){
-        const metric=($('rrmsChartMetric')&&$('rrmsChartMetric').value)||'alt';
-        const chartRwy=($('rrmsChartRwy')&&$('rrmsChartRwy').value)||'all';
+                const metric=_chartMetric;   // read before innerHTML rebuild
+        const chartRwy=_chartRwy;     // read before innerHTML rebuild
         const src=chartRwy==='all'?shown:(chartRwy==='02'?shown02:shown20);
         if(!src.length) return '<div style="color:#94a3b8;font-size:12px;padding:8px;">Sem dados para o gráfico.</div>';
-        // Aggregate by hour
+
+        // Función percentil
+        function pct(arr,p){
+          const s=arr.slice().sort(function(a,b){return a-b;});
+          if(!s.length) return null;
+          const idx=(p/100)*(s.length-1), lo=Math.floor(idx), hi=Math.ceil(idx);
+          return s[lo]+(s[hi]-s[lo])*(idx-lo);
+        }
+
+        // Agregar por hora com percentis
         const byHour={};
         src.forEach(function(h){
           const hr=(h.tod||'').substring(0,2);
-          if(!byHour[hr]) byHour[hr]={vals:[],min:Infinity,max:-Infinity,sum:0,n:0};
+          if(!byHour[hr]) byHour[hr]=[];
           const v=metric==='alt'?(h.altFt||0):(h.ias||0);
-          if(v>0){byHour[hr].vals.push(v);byHour[hr].min=Math.min(byHour[hr].min,v);byHour[hr].max=Math.max(byHour[hr].max,v);byHour[hr].sum+=v;byHour[hr].n++;}
+          if(v>0) byHour[hr].push(v);
         });
-        const hrs=Object.keys(byHour).filter(h=>byHour[h].n>0).sort();
+        const hrs=Object.keys(byHour).filter(function(h){return byHour[h].length>0;}).sort();
         if(!hrs.length) return '<div style="color:#94a3b8;font-size:12px;padding:8px;">Sem dados.</div>';
-        const pts=hrs.map(h=>({hr:h,min:byHour[h].min,avg:Math.round(byHour[h].sum/byHour[h].n),max:byHour[h].max,n:byHour[h].n}));
-        const allVals=pts.flatMap(p=>[p.min,p.avg,p.max]).filter(v=>isFinite(v));
-        const vMin=Math.min(...allVals), vMax=Math.max(...allVals);
-        const pad={l:52,r:16,t:20,b:36}; const W=700,H=200;
-        const plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
-        const xStep=plotW/Math.max(1,pts.length-1);
-        const toY=function(v){return pad.t+plotH*(1-(v-vMin)/Math.max(1,vMax-vMin));};
-        const toX=function(i){return pad.l+i*xStep;};
-        // Build polyline points
-        const ptsMax=pts.map(function(p,i){return toX(i)+','+toY(p.max);}).join(' ');
-        const ptsAvg=pts.map(function(p,i){return toX(i)+','+toY(p.avg);}).join(' ');
-        const ptsMin=pts.map(function(p,i){return toX(i)+','+toY(p.min);}).join(' ');
-        const areaTop=ptsMax+' '+[...pts].reverse().map(function(p,i){return toX(pts.length-1-i)+','+toY(p.min);}).join(' ');
-        // Y gridlines
-        const yTicks=4;
-        const grids=Array.from({length:yTicks+1},function(_,i){const v=vMin+i*(vMax-vMin)/yTicks;return {v:Math.round(v),y:toY(v)};});
+
+        const pts=hrs.map(function(h){
+          const vals=byHour[h];
+          return {hr:h, n:vals.length,
+            p0:Math.round(pct(vals,0)),   // min
+            p25:Math.round(pct(vals,25)),  // Q1
+            p50:Math.round(pct(vals,50)),  // mediana
+            p75:Math.round(pct(vals,75)),  // Q3
+            p100:Math.round(pct(vals,100)) // max
+          };
+        });
+
         const unit=metric==='alt'?'ft':'kt';
+        const allV=pts.flatMap(function(p){return[p.p0,p.p100];}).filter(function(v){return v!=null&&isFinite(v);});
+        const vMin=Math.min(...allV), vMax=Math.max(...allV);
+        const pad={l:52,r:110,t:24,b:40};
+        const W=760, H=220;
+        const plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
+        const n=pts.length;
+        const xStep=n>1?plotW/(n-1):plotW/2;
+        const toY=function(v){return pad.t+plotH*(1-(v-vMin)/Math.max(1,vMax-vMin));};
+        const toX=function(i){return n>1?pad.l+i*xStep:pad.l+plotW/2;};
+
+        // Polyline strings
+        function poly(key){return pts.map(function(p,i){return toX(i)+','+toY(p[key]);}).join(' ');}
+
+        // Q1-Q3 filled band polygon
+        const bandTop=pts.map(function(p,i){return toX(i)+','+toY(p.p75);}).join(' ');
+        const bandBot=[...pts].reverse().map(function(p,i){return toX(n-1-i)+','+toY(p.p25);}).join(' ');
+
+        // Y axis ticks
+        const nY=5;
+        const yTicks=Array.from({length:nY+1},function(_,i){
+          const v=vMin+i*(vMax-vMin)/nY;
+          return {v:Math.round(v), y:toY(Math.round(v))};
+        });
+
+        // Registar modal para cada hora e gerar hit areas clicáveis
+        const hitAreas=pts.map(function(p,i){
+          const x=toX(i), hw=Math.max(12,xStep/2);
+          const tip=p.hr+'h | n='+p.n+' | mín='+p.p0+unit+' | Q1='+p.p25+unit+' | med='+p.p50+unit+' | Q3='+p.p75+unit+' | máx='+p.p100+unit;
+          // Registar os dados desta hora no sistema de modais
+          const hRows=src.filter(function(h){return (h.tod||'').substring(0,2)===p.hr;}).map(function(h){return Object.assign({},h,{_isRRMS:true});});
+          const mk=sep_registerModalData('RRMS · '+(chartRwy==='all'?'Ambas':'RWY'+chartRwy)+' · '+p.hr+'h ('+(metric==='alt'?'Altitude':'IAS')+')',hRows,p.n+' passagens · mín='+p.p0+unit+' · med='+p.p50+unit+' · máx='+p.p100+unit);
+          return '<g class="rrmsTipPoint modalSource" data-tip="'+tip+'" data-modal-key="'+mk+'" data-x="'+x+'" data-y="'+toY(p.p50)+'" style="cursor:pointer;">'
+            +'<rect x="'+(x-hw)+'" y="'+pad.t+'" width="'+(hw*2)+'" height="'+plotH+'" fill="transparent"/>'
+            +'<circle cx="'+x+'" cy="'+toY(p.p50)+'" r="4" fill="#1d4ed8" stroke="#fff" stroke-width="1.5"/>'
+            +'<line class="tipVLine" x1="'+x+'" y1="'+pad.t+'" x2="'+x+'" y2="'+(H-pad.b)+'" stroke="#1d4ed8" stroke-width="1" stroke-dasharray="3,2" opacity="0"/>'
+            +'</g>';
+        }).join('');
+
         return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;font-family:Segoe UI,Arial,sans-serif;">'
-          +'<defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0b5cad" stop-opacity="0.15"/><stop offset="100%" stop-color="#0b5cad" stop-opacity="0.02"/></linearGradient></defs>'
-          +grids.map(function(g){return '<line x1="'+pad.l+'" y1="'+g.y+'" x2="'+(W-pad.r)+'" y2="'+g.y+'" stroke="#e2e8f0" stroke-width="1"/><text x="'+(pad.l-6)+'" y="'+(g.y+4)+'" text-anchor="end" font-size="9" fill="#94a3b8">'+g.v+'</text>';}).join('')
-          +'<polygon points="'+areaTop+'" fill="url(#areaGrad)"/>'
-          +'<polyline points="'+ptsMax+'" fill="none" stroke="#b91c1c" stroke-width="1.5" stroke-dasharray="4,2"/>'
-          +'<polyline points="'+ptsMin+'" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-dasharray="4,2"/>'
-          +'<polyline points="'+ptsAvg+'" fill="none" stroke="#0b5cad" stroke-width="2.5"/>'
-          +pts.map(function(p,i){const x=toX(i),y=toY(p.avg);return '<circle cx="'+x+'" cy="'+y+'" r="3" fill="#0b5cad"/><title>'+p.hr+'h · n='+p.n+' · min='+p.min+unit+' avg='+p.avg+unit+' max='+p.max+unit+'</title>';}).join('')
-          +pts.map(function(p,i){return '<text x="'+toX(i)+'" y="'+(H-6)+'" text-anchor="middle" font-size="9" fill="#64748b">'+p.hr+'h</text>';}).join('')
-          +'<text x="'+(pad.l-6)+'" y="'+(pad.t-6)+'" text-anchor="end" font-size="9" fill="#64748b">'+unit+'</text>'
-          +'<line x1="'+pad.l+'" y1="'+pad.t+'" x2="'+pad.l+'" y2="'+(H-pad.b)+'" stroke="#e2e8f0" stroke-width="1"/>'
-          +'<text x="'+(W-pad.r)+'" y="'+(pad.t+8)+'" text-anchor="end" font-size="9" fill="#b91c1c">— máx</text>'
-          +'<text x="'+(W-pad.r)+'" y="'+(pad.t+18)+'" text-anchor="end" font-size="9" fill="#0b5cad">— méd</text>'
-          +'<text x="'+(W-pad.r)+'" y="'+(pad.t+28)+'" text-anchor="end" font-size="9" fill="#16a34a">— mín</text>'
+          +'<defs>'
+          +'<linearGradient id="bandGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#1d4ed8" stop-opacity="0.18"/><stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.06"/></linearGradient>'
+          +'</defs>'
+          // Grid
+          +yTicks.map(function(g){return '<line x1="'+pad.l+'" y1="'+g.y+'" x2="'+(W-pad.r)+'" y2="'+g.y+'" stroke="#e2e8f0" stroke-width="1"/>'
+            +'<text x="'+(pad.l-6)+'" y="'+(g.y+4)+'" text-anchor="end" font-size="9" fill="#94a3b8">'+g.v+'</text>';}).join('')
+          // X axis line
+          +'<line x1="'+pad.l+'" y1="'+(H-pad.b)+'" x2="'+(W-pad.r)+'" y2="'+(H-pad.b)+'" stroke="#e2e8f0" stroke-width="1"/>'
+          // Q1-Q3 band
+          +'<polygon points="'+bandTop+' '+bandBot+'" fill="url(#bandGrad)" stroke="none"/>'
+          // Min line (thin dashed red)
+          +'<polyline points="'+poly('p0')+'" fill="none" stroke="#dc2626" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.6"/>'
+          // Max line (thin dashed orange)
+          +'<polyline points="'+poly('p100')+'" fill="none" stroke="#ea580c" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.6"/>'
+          // Q1 border
+          +'<polyline points="'+poly('p25')+'" fill="none" stroke="#1d4ed8" stroke-width="1" opacity="0.4"/>'
+          // Q3 border
+          +'<polyline points="'+poly('p75')+'" fill="none" stroke="#1d4ed8" stroke-width="1" opacity="0.4"/>'
+          // Median solid line
+          +'<polyline points="'+poly('p50')+'" fill="none" stroke="#1d4ed8" stroke-width="2.5"/>'
+          // Hit areas + median dots (on top)
+          +hitAreas
+          // X labels
+          +pts.map(function(p,i){return '<text x="'+toX(i)+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="#64748b">'+p.hr+'h</text>';}).join('')
+          // Y unit
+          +'<text x="'+(pad.l-6)+'" y="'+(pad.t-8)+'" text-anchor="end" font-size="9" fill="#64748b">'+unit+'</text>'
+          // Legend
+          +'<g transform="translate('+(W-pad.r+8)+','+(pad.t+4)+')">'
+          +'<line x1="0" y1="6" x2="18" y2="6" stroke="#dc2626" stroke-width="1.2" stroke-dasharray="3,3"/><text x="22" y="10" font-size="9" fill="#64748b">mín</text>'
+          +'<rect x="0" y="18" width="18" height="8" fill="url(#bandGrad)" stroke="#1d4ed8" stroke-width="0.5" opacity="0.8"/><text x="22" y="27" font-size="9" fill="#64748b">Q1–Q3</text>'
+          +'<line x1="0" y1="40" x2="18" y2="40" stroke="#1d4ed8" stroke-width="2.5"/><circle cx="9" cy="40" r="3" fill="#1d4ed8" stroke="#fff" stroke-width="1.5"/><text x="22" y="44" font-size="9" fill="#64748b">mediana</text>'
+          +'<line x1="0" y1="56" x2="18" y2="56" stroke="#ea580c" stroke-width="1.2" stroke-dasharray="3,3"/><text x="22" y="60" font-size="9" fill="#64748b">máx</text>'
+          +'</g>'
           +'</svg>';
       })()}
     </div>
@@ -7732,9 +7882,9 @@ function renderRRMS(){
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
         <div style="font-weight:700;font-size:13px;color:#0f2744;">Detalhe das passagens (${shown.length} registos)</div>
         <select id="rrmsRwyFilter" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
-          <option value="all" ${($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)==='02'?'':'selected'}>Ambas as pistas</option>
-          <option value="02" ${($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)==='02'?'selected':''}>RWY 02</option>
-          <option value="20" ${($('rrmsRwyFilter')&&$('rrmsRwyFilter').value)==='20'?'selected':''}>RWY 20</option>
+          <option value="all" ${_rwyFilter==='all'?'selected':''}>Ambas as pistas</option>
+          <option value="02" ${_rwyFilter==='02'?'selected':''}>RWY 02</option>
+          <option value="20" ${_rwyFilter==='20'?'selected':''}>RWY 20</option>
         </select>
         <button onclick="rrmsExportCsv()" style="margin-left:auto;background:#0f2744;color:#fff;border:0;border-radius:6px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;">⬇ CSV</button>
       </div>
@@ -7809,7 +7959,7 @@ function sep_openDataModal(key){
     bodyRows=rows.map(r=>`<tr><td><b>${sep_escHtml(r.type||'')}</b></td><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.hora)}</td><td><b>${sep_escHtml(r.callsign||'')}</b></td><td>${sep_escHtml(r.company||'')}</td><td class="num">${sep_escHtml(r.ias||'')}</td><td>${sep_escHtml(r.fileName||'')}</td></tr>`).join('');
   } else {
     heads=['Callsign','Pista','Data','Hora THR','IAS prec.','Seguidor','IAS seg.','Sep. s','Sep. NM','Seq.','DEP','Hora DEP','Seguidor no DEP']; hint='Clica numa linha para abrir na aba Separação entre chegadas.';
-    bodyRows=rows.map(r=>`<tr data-rowid="${r._id}"><td><b>${sep_escHtml(r.csnA)}</b></td><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td class="num">${sep_escHtml(r.iasA)}</td><td><b>${sep_escHtml(r.csnB||'')}</b></td><td class="num">${sep_escHtml(r.iasB||'')}</td><td class="num ${r._sepSecNum<Number($('sep_anaLimit')?.value||165)?'red':'blue'}">${sep_escHtml(r.sepSec||'')}</td><td class="num">${sep_escHtml(r.sepNm||'')}</td><td>${sep_escHtml(r._seq||'')}</td><td>${r.depCsn?`<span class="pill dep">${sep_escHtml(r.depCsn)}</span>`:'<span class="pill nodep">Sem DEP</span>'}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}${r.bNmAtDep?` s / ${sep_escHtml(r.bNmAtDep)} NM`:''}</td></tr>`).join('');
+    bodyRows=rows.map(r=>`<tr data-rowid="${r._id}" data-csna="${sep_escHtml(r.csnA||'')}" data-csnb="${sep_escHtml(r.csnB||'')}" data-pista="${sep_escHtml(r.pista||'')}" data-hora="${sep_escHtml(r.horaA||'')}"><td><b>${sep_escHtml(r.csnA)}</b></td><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.horaA)}</td><td class="num">${sep_escHtml(r.iasA)}</td><td><b>${sep_escHtml(r.csnB||'')}</b></td><td class="num">${sep_escHtml(r.iasB||'')}</td><td class="num ${r._sepSecNum<Number($('sep_anaLimit')?.value||165)?'red':'blue'}">${sep_escHtml(r.sepSec||'')}</td><td class="num">${sep_escHtml(r.sepNm||'')}</td><td>${sep_escHtml(r._seq||'')}</td><td>${r.depCsn?`<span class="pill dep">${sep_escHtml(r.depCsn)}</span>`:'<span class="pill nodep">Sem DEP</span>'}</td><td>${sep_escHtml(r.depHora||'')}</td><td>${sep_escHtml(r.bSecAtDep||'')}${r.bNmAtDep?` s / ${sep_escHtml(r.bNmAtDep)} NM`:''}</td></tr>`).join('');
   }
   $('sep_dataModalBody').innerHTML=`<div class="modalActions"><button type="button" class="secondary" id="modalExportBtn">Exportar estes dados</button><button type="button" class="secondary" id="modalPdfBtn" style="margin-left:6px;">&#128196; PDF</button><span class="small">${hint}</span></div><div class="analysisTableWrap" style="max-height:62vh"><table><thead><tr>${heads.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${bodyRows||`<tr><td colspan="${heads.length}" class="mutedCell">Sem linhas de origem para este indicador.</td></tr>`}</tbody></table></div>`;
   $('sep_dataModalBackdrop').classList.add('open');
@@ -7827,28 +7977,35 @@ function sep_openDataModal(key){
       +tblH+'<scr'+'ipt>window.onload=function(){window.print();}<\/scr'+'ipt></body></html>');
     w.document.close();
   };}
-  document.querySelectorAll('#sep_dataModalBody tbody tr[data-rowid]').forEach(tr=>tr.onclick=()=>{
-    const rid=Number(tr.dataset.rowid);
+  document.querySelectorAll('#sep_dataModalBody tbody tr[data-rowid]').forEach(function(tr){tr.onclick=function(){
+    const csnA = tr.dataset.csna||'';
+    const csnB = tr.dataset.csnb||'';
+    const hora  = tr.dataset.hora||'';
     sep_closeDataModal();
-    // Navegar para aba Separação entre chegadas
     try{
-      const anaBtn=Array.from(document.querySelectorAll('.tab')).find(t=>t.onclick&&t.onclick.toString().indexOf('ana')>=0);
-            // Navigate directly to Separação entre chegadas
+      // Switch to Análise Op. tab
       const anaTabEl=Array.from(document.querySelectorAll('.tab')).find(function(t){return t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'ana'");});
-      if(anaTabEl){ switchTab('ana',anaTabEl); }
+      if(anaTabEl) switchTab('ana',anaTabEl);
+      // Switch to FAST sub-tab and highlight
       setTimeout(function(){
         switchAnaTab('fast');
         setTimeout(function(){
-          const target=document.querySelector('.timelineEvent[data-rowid="'+rid+'"]')||document.querySelector('[data-rowid="'+rid+'"]');
-          if(target){
-            target.scrollIntoView({behavior:'smooth',block:'center'});
-            if(target.style){target.style.outline='3px solid #f59e0b';target.style.background='rgba(245,158,11,0.15)';setTimeout(function(){target.style.outline='';target.style.background='';},3000);}
-            try{target.querySelectorAll('circle,rect,line').forEach(function(s){s.setAttribute('stroke','#f59e0b');s.setAttribute('stroke-width','3');setTimeout(function(){s.removeAttribute('stroke-width');},3000);});}catch(e){}
+          // Ensure FAST is rendered then highlight
+          if(typeof _fastHighlightPair==='function'){
+            if(!_fastHighlightPair(csnA,csnB,hora)){
+              // Fallback: try data-rowid in timeline
+              const rid=Number(tr.dataset.rowid);
+              const target=document.querySelector('.timelineEvent[data-rowid="'+rid+'"]');
+              if(target){
+                target.scrollIntoView({behavior:'smooth',block:'center'});
+                try{target.querySelectorAll('circle,rect,line').forEach(function(s){s.setAttribute('stroke','#f59e0b');s.setAttribute('stroke-width','3');setTimeout(function(){s.removeAttribute('stroke-width');},3000);});}catch(e){}
+              }
+            }
           }
-        },600);
+        },500);
       },300);
     }catch(e){}
-  });
+  };});
   const exp=$('modalExportBtn'); if(exp) exp.onclick=()=>sep_exportRowsAsExcel(rows,(data.title||'dados').replace(/[^\w\-]+/g,'_').toLowerCase()+'.xls');
 }
 function sep_closeDataModal(){const b=$('sep_dataModalBackdrop');if(b){b.style.display='none';}}
