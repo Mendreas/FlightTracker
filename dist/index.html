@@ -703,6 +703,13 @@ tr:hover td{background:rgba(0,200,255,.03);}
         <button class="btn" style="font-size:10px;padding:4px 12px;" onclick="exportIasAppCsv()">&#x2193; CSV</button>
         <span id="iasAppCount" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
       </div>
+      <!-- APP sub-tab buttons -->
+      <div id="iasAppSubBar" style="display:flex;gap:4px;padding:4px 12px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
+        <button class="btn on" id="iasAppSubBtn1" onclick="switchIasAppSubTab('viol')" style="font-size:10px;padding:3px 12px;">Violações por voo e pontos</button>
+        <button class="btn" id="iasAppSubBtn2" onclick="switchIasAppSubTab('dist')" style="font-size:10px;padding:3px 12px;">Violações por distância</button>
+      </div>
+      <!-- Sub-tab 1 wrapper (existing content) -->
+      <div id="iasAppSubViol" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
       <div id="iasAppSummary" style="display:none;padding:8px 14px;background:var(--panel);border-bottom:1px solid var(--border);font-size:11px;color:var(--txt);flex-wrap:wrap;gap:16px;"></div>
       <div class="pts-result-wrap" style="overflow:auto;padding:0;">
         <div class="empty" id="iasAppEmpty">
@@ -730,7 +737,36 @@ tr:hover td{background:rgba(0,200,255,.03);}
           </div>
         </div>
       </div>
-    </div>
+    </div><!-- close iasAppSubViol -->
+
+      <!-- Sub-tab 2: Violações por distância -->
+      <div id="iasAppSubDist" style="display:none;flex-direction:column;flex:1;overflow:hidden;background:var(--bg);">
+        <div style="padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+          <span style="font-size:11px;color:var(--muted);font-weight:700;">PISTA:</span>
+          <div style="display:flex;gap:3px;">
+            <button class="btn on" id="appDistRwy02" onclick="setAppDistRwy('02')" style="font-size:10px;padding:3px 10px;">RWY 02</button>
+            <button class="btn" id="appDistRwy20" onclick="setAppDistRwy('20')" style="font-size:10px;padding:3px 10px;">RWY 20</button>
+          </div>
+          <div style="width:1px;height:18px;background:var(--border);"></div>
+          <span style="font-size:11px;color:var(--muted);font-weight:700;">BUFFER &#177;</span>
+          <input class="inp inp-sm" id="appDistBuffer" type="number" value="4" min="0" max="20" step="1" style="width:48px;"> <span style="font-size:11px;color:var(--muted);">kt</span>
+          <div style="width:1px;height:18px;background:var(--border);"></div>
+          <button class="btn primary" onclick="computeAppDistViol()" style="font-size:10px;padding:3px 12px;">&#x25B6; Analisar</button>
+          <button class="btn" onclick="exportAppDistCsv()" style="font-size:10px;padding:3px 12px;">&#x2193; CSV</button>
+          <span id="appDistCount" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
+        </div>
+        <div style="padding:6px 12px;background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;">
+          <div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:5px;">ESCALA DA FINAL &#8212; selecciona pontos de an&#225;lise (12 NM &#8594; THR)</div>
+          <div id="appDistBtns" style="display:flex;flex-wrap:wrap;gap:3px;"></div>
+        </div>
+        <div style="flex:1;overflow:auto;padding:10px 14px;" id="appDistContent">
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--muted);">
+            <div style="font-size:28px;margin-bottom:8px;">&#x1F6EC;</div>
+            <div style="font-weight:700;font-size:13px;">Clica <em>Analisar</em> para calcular velocidades ao longo da final</div>
+          </div>
+        </div>
+      </div><!-- close iasAppSubDist -->
+  </div><!-- close panel-iasapp -->
     <div class="panel" id="panel-ana">
       <div class="pts-result-hdr" style="gap:8px;flex-wrap:wrap;">
         <span style="font-family:'Syne','Segoe UI',Arial,sans-serif;font-weight:700;font-size:13px;color:var(--accent);">An&aacute;lise Operacional</span>
@@ -1292,9 +1328,72 @@ function toDMS(deg,type){
 }
 function trRange(rows){return rows.length?`${String(rows[0].tod||'').substring(0,8)} \u2192 ${String(rows[rows.length-1].tod||'').substring(0,8)}`:''}
 function parseFilename(name){
-  const m=name.match(/(\d{6})_(\d{2}-\d{2})/);
-  if(m)return {date:m[1],block:m[2]};
-  return {date:'??',block:'??'};
+  // Format 1 (legacy): LPPT_260415_04-08.csv  → date=260415, block=04-08
+  const m1=name.match(/(\d{6})_(\d{2}-\d{2})/);
+  if(m1) return {date:m1[1], block:m1[2], airport:_airportFromFilename(name)};
+  // Format 2 (new):   LPFR_2026-03-01_00-04.csv → date=260301, block=00-04
+  const m2=name.match(/([A-Z]{4})_?(\d{4})-(\d{2})-(\d{2})_(\d{2}-\d{2})/i);
+  if(m2){
+    const yy=m2[2].slice(-2), mm=m2[3], dd=m2[4];
+    return {date:yy+mm+dd, block:m2[5], airport:m2[1].toUpperCase()};
+  }
+  // Format 3: LPFR_2026-03-01_00-04 without full match — try loose
+  const m3=name.match(/(\d{4})-(\d{2})-(\d{2}).*(\d{2})-(\d{2})/);
+  if(m3){
+    return {date:m3[1].slice(-2)+m3[2]+m3[3], block:m3[4]+'-'+m3[5], airport:_airportFromFilename(name)};
+  }
+  return {date:'??', block:'??', airport:null};
+}
+
+// Process NMIR XLSX file dropped/selected alongside CSVs
+async function _processNmirXlsxFile(file){
+  try{
+    // Load SheetJS if not already available
+    if(typeof XLSX==='undefined'){
+      try{ await loadXlsxLib(); }catch(e){ console.warn('Could not load SheetJS'); return; }
+    }
+    if(typeof XLSX==='undefined'){ console.warn('SheetJS not available for NMIR XLSX'); return; }
+    const ab = await file.arrayBuffer();
+    const wb = XLSX.read(ab, {type:'array', cellDates:true});
+    let loaded=0;
+    for(const sheetName of wb.SheetNames){
+      const ws=wb.Sheets[sheetName];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length) continue;
+      // Detect NMIR format: has 'Aircraft ID' column
+      const sample=rows[0];
+      const csnKey=Object.keys(sample).find(k=>k.toLowerCase().includes('aircraft id')||k.toLowerCase().includes('callsign'));
+      const typeKey=Object.keys(sample).find(k=>k.toLowerCase().includes('aircraft type')||k.toLowerCase().includes('type'));
+      const lobtKey=Object.keys(sample).find(k=>k.toLowerCase().includes('lobt')||k.toLowerCase().includes('off block'));
+      if(!csnKey||!typeKey) continue;
+      for(const r of rows){
+        const csn=String(r[csnKey]||'').trim().toUpperCase();
+        const atype=String(r[typeKey]||'').trim();
+        const lobt=r[lobtKey];
+        if(!csn||!atype) continue;
+        let yymmdd='';
+        try{
+          const dt=lobt instanceof Date?lobt:new Date(lobt);
+          if(!isNaN(dt)) yymmdd=String(dt.getFullYear()).slice(-2)+String(dt.getMonth()+1).padStart(2,'0')+String(dt.getDate()).padStart(2,'0');
+        }catch(e){}
+        const key=csn+'|'+(yymmdd||'??');
+        const wtc=nmir_wtc(atype);
+        if(!NMIR_DATA[key]) NMIR_DATA[key]=atype+':'+wtc;
+        if(!NMIR_FALLBACK[csn]) NMIR_FALLBACK[csn]=atype;
+        loaded++;
+      }
+    }
+    console.log(`[NMIR] Loaded ${loaded} entries from ${file.name}`);
+    showToast&&showToast(`NMIR: ${loaded} entradas carregadas de ${file.name}`);
+  }catch(e){ console.error('[NMIR] Error processing xlsx:',e); }
+}
+function _airportFromFilename(name){
+  const m=name.match(/\b(LP[A-Z]{2})\b/i);
+  return m?m[1].toUpperCase():null;
+}
+function extractDateBlockFromFolderName(name){
+  const p=parseFilename(String(name||''));
+  return (p.date&&p.date!=='??')?{date:p.date,block:p.block,airport:p.airport}:null;
 }
 function detectBlockFromRows(rows){
   let minH=24;
@@ -1528,6 +1627,7 @@ async function loadFiles(files,dropStats){
     const all=Array.from(files);
     const arr=all.filter(f=>{
       const n=f.name.toLowerCase();
+      if(n.endsWith('.xlsx')&&!f.name.startsWith('~')){ _processNmirXlsxFile(f); return false; }
       return n.endsWith('.csv')&&!f.name.startsWith('.')&&!f.name.startsWith('~');
     });
     console.log('[loadFiles] total input:',all.length,'— .csv after filter:',arr.length,all.length?'first names:':'', all.slice(0,5).map(f=>f.name));
@@ -1569,7 +1669,8 @@ async function loadFiles(files,dropStats){
           if(finalBlock!==block){
             for(const r of rows)r._block=finalBlock;
           }
-          loadedFiles[fileKey]={date,block:finalBlock,rows,filename:file.name};
+          const _fp=parseFilename(file.name);
+        loadedFiles[fileKey]={date,block:finalBlock,airport:_fp.airport,rows,filename:file.name};
         }
       }catch(err){errors++;console.warn('Erro a ler',file.name,err);}
       done++;updUI();
@@ -2486,7 +2587,7 @@ function switchTab(id,el){
       if(id==='ia'){_iaInit();}
       if(id==='ia'){_iaInit();}
       if(id==='ias'){if(!iasLimits)loadIasLimits();renderIasManage();}
-      if(id==='iasapp'){buildIasAppRwyButtons();renderIasAppResults();}
+      if(id==='iasapp'){if(!iasAppResults){setTimeout(()=>{try{runIasAppCompliance();}catch(e){}},200);}buildIasAppRwyButtons();renderIasAppResults();}
       if(id==='ana')renderAnaResults();
       applyUiTooltips(document);
     }catch(err){
@@ -2534,6 +2635,7 @@ function _buildExportSheets(){
     for(const idx of idxList){
       const rec=recs[idx];
       const p=(rec.points||[]).map(x=>({point:x.point||'',ias:x.ias==null?'':Math.round(x.ias),lim:x.limit==null?'':Math.round(x.limit),dev:x.deviation==null?'':`${x.deviation>=0?'+':''}${Math.round(x.deviation)}`}));
+      while(p.length<4)p.push({point:'',ias:'',lim:'',dev:''});
       while(p.length<4)p.push({point:'',ias:'',lim:'',dev:''});
       sheets['BLACK-LIST'].push([rec.tod||'',rec.date||'',rec.csn||'',(rec.rwy?parseInt(rec.rwy,10):''),p[0].point,p[0].ias,p[0].lim,p[0].dev,p[1].point,p[1].ias,p[1].lim,p[1].dev,p[2].point,p[2].ias,p[2].lim,p[2].dev,p[3].point,p[3].ias,p[3].lim,p[3].dev]);
     }
@@ -4384,12 +4486,16 @@ function renderIasAppResults(){
   }
   $('iasAppDetailBody').innerHTML=selected.map(idx=>{
     const rec=res.records[idx];
+    // Safe accessor: returns placeholder if point index doesn't exist
+    const _E={point:'—',ias:'—',lim:'—',dev:'—',devCls:''};
     const p=rec.points.map(x=>{
       const ias=x.ias==null?'—':Math.round(x.ias);
       const dev=x.deviation==null?'—':`${x.deviation>=0?'+':''}${Math.round(x.deviation)}`;
       const devCls=(x.absDeviation||0)>res.tol?'ias-bad':'';
       return {point:x.point,ias,lim:Math.round(x.limit),dev,devCls};
     });
+    // Pad to at least 4 entries
+    while(p.length<4) p.push(_E);
     return `<tr>
       <td style="color:var(--muted);">${rec.tod||'—'}</td>
       <td style="color:var(--muted);">${rec.date||'—'}</td>
@@ -4412,6 +4518,7 @@ function exportIasAppCsv(){
   L.push(`Voos ARR analisados;${r.arrAnalysed}/${r.flightsTotal}`);
   L.push('');
   L.push('Hora;Data;Voo;Pista;PONTO1;IAS1;LIMITE1;DESVIO1;PONTO2;IAS2;LIMITE2;DESVIO2;PONTO3;IAS3;LIMITE3;DESVIO3;PONTO4;IAS4;LIMITE4;DESVIO4');
+  const _Ec={point:'',ias:'',lim:'',dev:''};
   for(const rec of r.records){
     const p=rec.points.map(x=>({
       point:x.point||'',
@@ -4419,6 +4526,7 @@ function exportIasAppCsv(){
       lim:x.limit==null?'':Math.round(x.limit),
       dev:x.deviation==null?'':`${x.deviation>=0?'+':''}${Math.round(x.deviation)}`
     }));
+    while(p.length<4)p.push(_Ec);
     L.push([
       rec.tod||'',rec.date||'',rec.csn||'',(rec.rwy?parseInt(rec.rwy,10):''),
       p[0].point,p[0].ias,p[0].lim,p[0].dev,
@@ -4649,6 +4757,480 @@ function iasAppHistogramCard(samples,limit,tol,title,rwyLbl){
   const svg=iasAppHistogramSvg(samples,limit,tol,title,rwyLbl,W,H);
   return `<div class="ias-app-chart-card">${svg}</div>`;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// APP VELOCIDADES — sub-aba "Violações por distância"
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Waypoints on the final approach — distances from AIP LPPT charts (AD 2.24.12)
+// scalePt: the 0.5NM scale button this waypoint takes (diff ≤ 0.2 NM rule)
+const APP_DIST_WAYPOINTS = {
+  '02': [
+    {name:'PESEX', nm:11.3,  limit:180, scalePt:11.5},
+    {name:'NETVO', nm:8.2,   limit:160, scalePt:8.0},
+    {name:'OKNIB', nm:4.2,   limit:160, scalePt:4.0},
+    {name:'THR 02',nm:0.0,   limit:160, scalePt:0.0},
+  ],
+  '20': [
+    {name:'UPKAT', nm:11.3,  limit:180, scalePt:11.5},
+    {name:'TOPVI', nm:8.2,   limit:160, scalePt:8.0},
+    {name:'ROKOB', nm:3.96,  limit:160, scalePt:4.0},
+    {name:'THR 20',nm:0.0,   limit:160, scalePt:0.0},
+  ],
+};
+// Scale button definitions: for each 0.5NM step, which waypoints (if any) take it
+// analysisNm[rwy] = actual NM to interpolate for that runway (may differ from scalePt)
+const _APP_SCALE_MAP = (function(){
+  const map = {}; // scalePt (string) → {label, isNamed, wps:{rwy→{name,actualNm,limit}}}
+  ['02','20'].forEach(function(rwy){
+    (APP_DIST_WAYPOINTS[rwy]||[]).forEach(function(wp){
+      const k = wp.scalePt.toFixed(1);
+      if(!map[k]) map[k]={label:'',isNamed:true,wps:{}};
+      map[k].wps[rwy] = {name:wp.name, actualNm:wp.nm, limit:wp.limit};
+    });
+  });
+  // Build labels
+  Object.keys(map).forEach(function(k){
+    const names = Object.values(map[k].wps).map(function(w){return w.name;});
+    // deduplicate
+    map[k].label = [...new Set(names)].join('/');
+  });
+  return map;
+})();
+// Scale max, step
+const APP_DIST_MAX = 12.0;
+const APP_DIST_STEP = 0.5;
+
+// State
+let _appDistRwy = '02';
+let _appDistSelNm = new Set([0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0, 10.5, 11.0, 11.5, 12.0]);
+let _appDistData = null; // computed results
+let _appDistSortCol = null;
+let _appDistSortDir = 1;
+
+function switchIasAppSubTab(tab){
+  const v = $('iasAppSubViol'), d = $('iasAppSubDist');
+  const b1 = $('iasAppSubBtn1'), b2 = $('iasAppSubBtn2');
+  if(v) v.style.display = tab==='viol' ? 'flex' : 'none';
+  if(d) d.style.display = tab==='dist' ? 'flex' : 'none';
+  if(b1){b1.classList.toggle('on', tab==='viol');}
+  if(b2){b2.classList.toggle('on', tab==='dist');}
+  if(tab==='dist') initAppDistBtns();
+}
+
+function setAppDistRwy(rwy){
+  _appDistRwy = rwy;
+  ['02','20'].forEach(r => {
+    const b = $('appDistRwy'+r);
+    if(b) b.classList.toggle('on', r===rwy);
+  });
+  // Rebuild buttons with runway-specific labels
+  const bCont = $('appDistBtns');
+  if(bCont){ delete bCont.dataset.init; initAppDistBtns(); }
+  // Rerender if data exists
+  if(_appDistData) renderAppDistResults();
+}
+
+function initAppDistBtns(){
+  const container = $('appDistBtns');
+  if(!container || container.dataset.init) return;
+  container.dataset.init = '1';
+  // Named waypoints handled via _APP_SCALE_MAP
+  // Generate buttons from 12.0 NM down to 0.0 NM in 0.5 NM steps
+  const steps = [];
+  for(let d = APP_DIST_MAX; d >= -0.001; d -= APP_DIST_STEP) steps.push(Math.round(d*10)/10);
+  container.innerHTML = '';
+  steps.forEach(nm => {
+    const key = nm.toFixed(1);
+    const scaleEntry = _APP_SCALE_MAP[key];
+    const isNamed = !!scaleEntry;
+    // Show runway-specific name when a single runway is selected
+    let label;
+    if(isNamed){
+      const rwyWp = scaleEntry.wps[_appDistRwy];
+      label = rwyWp ? rwyWp.name : scaleEntry.label;
+    } else {
+      label = nm.toFixed(1);
+    }
+    const isOn = _appDistSelNm.has(nm);
+    const btn = document.createElement('button');
+    btn.dataset.nm = nm;
+    // Explicit on/off styling
+    btn.style.cssText = 'font-size:9px;padding:2px 7px;min-width:'+(isNamed?'56':'44')+'px;border-radius:4px;cursor:pointer;font-weight:'+(isNamed?'700':'400')+';border:1.5px solid '+(isOn?'var(--accent)':'#d7dce3')+';background:'+(isOn?'var(--accent)':'#fff')+';color:'+(isOn?'#fff':'#374151')+';';
+    if(isNamed&&!isOn) btn.style.borderColor='var(--accent)'; // named but off: coloured border
+    if(isNamed&&!isOn) btn.style.color='var(--accent)';
+    if(isNamed){
+      const rwyWp = scaleEntry.wps[_appDistRwy];
+      btn.title = rwyWp ? rwyWp.name+' — '+rwyWp.actualNm.toFixed(2)+' NM — lim '+rwyWp.limit+'kt' : '';
+    } else {
+      btn.title = nm.toFixed(1)+' NM da THR';
+    }
+    btn.textContent = label;
+    btn.onclick = function(){
+      const n = parseFloat(this.dataset.nm);
+      const on = _appDistSelNm.has(n) ? (_appDistSelNm.delete(n),false) : (_appDistSelNm.add(n),true);
+      this.style.background = on ? 'var(--accent)' : (isNamed?'#fff':'#fff');
+      this.style.color = on ? '#fff' : (isNamed?'var(--accent)':'#374151');
+      this.style.borderColor = on ? 'var(--accent)' : (isNamed?'var(--accent)':'#d7dce3');
+    };
+    container.appendChild(btn);
+  });
+}
+
+// Get IAS limit for a given distance (NM from THR) on a given runway
+function getAppDistLimit(nm, rwy){
+  const wps = (APP_DIST_WAYPOINTS[rwy]||[]).slice().sort((a,b)=>b.nm-a.nm); // farthest first
+  for(const wp of wps){
+    if(nm <= wp.nm) return wp.limit; // aircraft has passed this waypoint (nm ≤ wp.nm means closer)
+  }
+  return wps[wps.length-1]?.limit || 160; // default to last limit
+}
+// Actually: limit applies FROM the waypoint inward. At 11.3NM (PESEX), limit=180. At 9.2NM (NETVO), limit=160.
+// Correct logic: find the first waypoint WITH nm >= current distance
+function getAppDistLimitAt(distFromThr, rwy){
+  // Approach speed limit profile for LPPT (both runways symmetric):
+  // FAF (11.3 NM): 180 kt — maintained until TOPVI/NETVO (8.2 NM)
+  // TOPVI/NETVO (8.2 NM): step down to 160 kt — maintained until 4.0 NM
+  // 4.0 NM to THR (0.0 NM): linear decrease from 160 kt to 135 kt (touchdown)
+  const FAF = 11.3, TV = 8.2, FLAT_END = 4.0, THR_SPD = 135;
+  if(distFromThr >= TV)  return 180;                                  // FAF and before
+  if(distFromThr >= FLAT_END) return 160;                             // TOPVI → 4 NM flat
+  // Linear from 160 at 4 NM to 135 at 0 NM
+  const k = distFromThr / FLAT_END;
+  return Math.round(THR_SPD + k * (160 - THR_SPD));                  // 135..160
+}
+
+function computeAppDistViol(){
+  const el = $('appDistContent');
+  if(!el) return;
+  if(!Object.keys(flights).length){ el.innerHTML='<p style="padding:20px;color:var(--muted);">Sem dados carregados.</p>'; return; }
+  el.innerHTML = '<p style="padding:20px;color:var(--muted);">A calcular...</p>';
+  setTimeout(function(){
+    try { _computeAppDistViol(); } catch(e){ el.innerHTML='<p style="padding:20px;color:red;">Erro: '+e.message+'</p>'; console.error(e); }
+  }, 50);
+}
+
+function _computeAppDistViol(){
+  const buffer = parseInt(($('appDistBuffer')&&$('appDistBuffer').value)||'4');
+  const selNm = Array.from(_appDistSelNm).sort((a,b)=>b-a); // high→low (approach direction)
+  if(!selNm.length){ $('appDistContent').innerHTML='<p style="padding:20px;color:var(--muted);">Selecciona pelo menos um ponto na escala.</p>'; return; }
+
+  const rwyCfg = getActiveRwy();
+  const rwys = _appDistRwy==='all' ? Object.keys(rwyCfg) : [_appDistRwy];
+  const results = [];
+  let _dbgTotal=0, _dbgProfiles=0;
+
+  const legs = getFlightLegs();
+  for(const leg of legs){
+    // Respeitar filtro de datas/blocos mas ignorar filtro ARR/DEP da sidebar
+    // (análise requer sempre voos ARR independentemente do filtro activo)
+    if(!leg._flight||!leg._flight.visible) continue;
+    _dbgTotal++;
+    if(classifyFlight(leg.rows)!=='arr') continue;
+    // Try each active runway
+    for(const rwyId of rwys){
+      const rwy = rwyCfg[rwyId]; if(!rwy) continue;
+      // Project all rows onto approach axis
+      const pts = leg.rows
+        .filter(r => !isNaN(+r.latitude)&&!isNaN(+r.longitude)&&rowEpoch(r)>0)
+        .map(r => {
+          const ac = approachCoords(+r.latitude,+r.longitude,rwy.thr.lat,rwy.thr.lon,rwy.brg);
+          return {along:ac.along, cross:ac.cross, ias:_iasFromRow(r), alt:_altFromRow(r), t:rowEpoch(r), r};
+        })
+        .filter(p => p.along>=0 && p.along<=APP_DIST_MAX && Math.abs(p.cross)<1.5) // in corridor
+        .sort((a,b)=>b.along-a.along); // farthest first
+      if(pts.length < 3) continue;
+      // Must reach close to THR
+      if(pts[pts.length-1].along > 1.5) continue;
+
+      // Interpolate IAS at each selected distance
+      const distData = {};
+      let hasViol = false;
+      for(const nm of selNm){
+        // Use actual waypoint distance for named scale points, else use scale nm
+        const scE = _APP_SCALE_MAP[nm.toFixed(1)];
+        const analysisNm = (scE&&scE.wps[rwyId]) ? scE.wps[rwyId].actualNm : nm;
+        const lim = (scE&&scE.wps[rwyId]) ? scE.wps[rwyId].limit : getAppDistLimitAt(nm, rwyId);
+        // Find bracketing points using analysisNm
+        let iasInterp = null;
+        for(let i=0;i<pts.length-1;i++){
+          const a=pts[i], b=pts[i+1];
+          if(a.along>=analysisNm && b.along<=analysisNm){
+            const range = a.along-b.along;
+            const k = range>0.001 ? (a.along-analysisNm)/range : 0;
+            const iasA = a.ias||0, iasB = b.ias||0;
+            if(iasA>0&&iasB>0) iasInterp = Math.round(iasA + k*(iasB-iasA));
+            else if(iasA>0) iasInterp = iasA;
+            else if(iasB>0) iasInterp = iasB;
+            break;
+          }
+        }
+        const dev = iasInterp!=null ? iasInterp - lim : null;
+        const viol = dev!=null && Math.abs(dev)>buffer;
+        if(viol) hasViol=true;
+        distData[nm.toFixed(1)] = {ias:iasInterp, lim, dev, viol, analysisNm};
+      }
+      _dbgProfiles++;
+      if(!hasViol) continue; // only show flights with at least one violation
+
+      // Compute average deviation across selected points
+      const devs = selNm.map(nm=>distData[nm.toFixed(1)]?.dev).filter(d=>d!=null);
+      const avgDev = devs.length ? Math.round(devs.reduce((a,b)=>a+b,0)/devs.length) : null;
+
+      // Get first row for date/time
+      const firstRow = leg.rows.filter(r=>rowEpoch(r)>0).sort((a,b)=>rowEpoch(a)-rowEpoch(b))[0];
+      results.push({
+        csn: leg.csn,
+        date: firstRow&&firstRow._date?fmtDate(firstRow._date):'',
+        _dateRaw: firstRow&&firstRow._date||'',
+        tod: String(firstRow&&firstRow.tod||'').substring(0,8),
+        rwy: rwyId,
+        distData,
+        avgDev,
+        comp: (leg.csn.match(/^[A-Z]{2,3}/)||['?'])[0],
+      });
+    }
+  }
+  _appDistData = {results, selNm, buffer, _dbgTotal:_dbgTotal, _dbgProfiles:_dbgProfiles};
+  $('appDistCount').textContent = results.length+' voo(s) com violações';
+  renderAppDistResults();
+}
+
+function renderAppDistResults(){
+  const el = $('appDistContent'); if(!el||!_appDistData) return;
+  const {results:allRes, selNm, buffer} = _appDistData;
+  // Apply RWY filter
+  const res = allRes.filter(r=>r.rwy===_appDistRwy);
+  if(!res.length){ 
+    // Debug: count what was processed
+    const _dbg = `Sem violações encontradas · Pista: RWY${_appDistRwy} · Buffer: ±${_appDistData?.buffer??0}kt · Voos ARR analisados: ${_appDistData?._dbgTotal??0} · Perfis construídos: ${_appDistData?._dbgProfiles??0}`;
+    el.innerHTML='<div style="padding:20px;color:var(--muted);text-align:center;font-size:13px;font-weight:700;">Sem violações encontradas com os filtros actuais.</div><div style="padding:4px 20px;color:#94a3b8;font-size:11px;text-align:center;">'+_dbg+'</div>'; return; }
+
+  // Named waypoints lookup for column headers
+
+  const colHeader = nm => {
+    const k=nm.toFixed(1);
+    const scE = _APP_SCALE_MAP[k];
+    if(scE){
+      const rwyWp = scE.wps[_appDistRwy];
+      const name = rwyWp ? rwyWp.name : scE.label;
+      const detail = rwyWp ? name+' ('+rwyWp.actualNm.toFixed(2)+' NM)' : name;
+      return detail;
+    }
+    return k+' NM';
+  };
+
+  // Table
+  const allCols = ['CALLSIGN','DATA','HORA','PISTA',
+    ...selNm.map(nm=>`${colHeader(nm)}`),
+    'MÉD DEV.'];
+  const ths = allCols.map((h,ci)=>{
+    const isOn = _appDistSortCol===ci;
+    const align = ci<4 ? 'left' : 'center';
+    return `<th onclick="appDistSort(${ci})" style="padding:5px 8px;font-size:9px;text-align:${align};background:#0f2744;color:#fff;position:sticky;top:0;cursor:pointer;user-select:none;" title="Ordenar por ${h}">${h} <span style="opacity:0.7;">${isOn?(_appDistSortDir>0?'▲':'▼'):'⇅'}</span></th>`;
+  }).join('');
+
+  const rows = res.slice().sort((a,b)=>{
+    if(_appDistSortCol===null) return Math.abs(b.avgDev||0)-Math.abs(a.avgDev||0); // default: by avg dev
+    const cols = [a.csn,a.date,a.tod,'RWY'+a.rwy,...selNm.map(nm=>a.distData[nm.toFixed(1)]?.ias||0),a.avgDev||0];
+    const colsB = [b.csn,b.date,b.tod,'RWY'+b.rwy,...selNm.map(nm=>b.distData[nm.toFixed(1)]?.ias||0),b.avgDev||0];
+    const va=cols[_appDistSortCol], vb=colsB[_appDistSortCol];
+    return (typeof va==='number'?(va-vb)*_appDistSortDir : String(va).localeCompare(String(vb))*_appDistSortDir);
+  }).map((r,i)=>{
+    const bg = i%2===0?'':'background:#f8fafc;';
+    const cells = selNm.map(nm=>{
+      const d=r.distData[nm.toFixed(1)];
+      if(!d||d.ias==null) return '<td style="padding:4px 6px;text-align:center;color:#94a3b8;font-size:10px;">—</td>';
+      const col = d.viol ? (d.dev>0?'#b91c1c':'#0b5cad') : '#6b7280';
+      return `<td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:${d.viol?'700':'400'};color:${col};" title="Lim: ${d.lim}kt Dev: ${d.dev>0?'+':''}${d.dev}kt">${d.ias}</td>`;
+    }).join('');
+    const avgCol = r.avgDev!=null ? (r.avgDev>0?'#b91c1c':r.avgDev<0?'#0b5cad':'#6b7280') : '#94a3b8';
+    const rMk=sep_registerModalData('APP · '+r.csn+' · RWY'+r.rwy+' · '+r.date,[{_isAppDist:true,csn:r.csn,rwy:r.rwy,date:r.date,tod:r.tod,avgDev:r.avgDev,distData:r.distData,selNm}],r.csn+' · Méd dev: '+(r.avgDev!=null?(r.avgDev>0?'+':'')+r.avgDev+'kt':'—'));
+    return `<tr class="modalSource" data-modal-key="${rMk}" style="${bg}cursor:pointer;">
+      <td style="padding:4px 8px;font-weight:700;font-size:11px;">${sep_escHtml(r.csn)}</td>
+      <td style="padding:4px 8px;font-size:11px;">${sep_escHtml(r.date)}</td>
+      <td style="padding:4px 8px;font-size:11px;font-family:monospace;">${sep_escHtml(r.tod)}</td>
+      <td style="padding:4px 8px;font-size:11px;font-weight:700;">RWY ${r.rwy}</td>
+      ${cells}
+      <td style="padding:4px 8px;text-align:center;font-weight:700;font-size:11px;color:${avgCol};">${r.avgDev!=null?(r.avgDev>0?'+':'')+r.avgDev+'kt':'—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Chart: line chart showing speed profiles across the final
+  const chartHtml = buildAppDistChart(res, selNm, buffer);
+
+  setTimeout(function(){try{sep_bindModalClicks();}catch(e){}},100);
+  setTimeout(function(){try{sep_bindModalClicks();}catch(e){}},150);
+  el.innerHTML = chartHtml + `
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-weight:700;font-size:13px;color:#0f2744;margin-bottom:8px;">
+        Violações por distância — ${res.length} voo(s) · buffer ±${buffer}kt
+        <span style="font-size:10px;color:#64748b;font-weight:400;margin-left:8px;">Azul = abaixo do limite · Vermelho = acima do limite</span>
+      </div>
+      <div style="overflow:auto;max-height:420px;">
+        <table style="border-collapse:collapse;width:100%;font-size:11px;">
+          <thead><tr>${ths}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function buildAppDistChart(res, selNm, buffer){
+  // Dropdowns for company and runway
+  const companies = ['Todas', ...Array.from(new Set(res.map(r=>r.comp))).sort((a,b)=>{
+    const va=res.filter(x=>x.comp===a).length, vb=res.filter(x=>x.comp===b).length;
+    return vb-va; // most violations first
+  })];
+  const selComp = ($('appDistChartComp')&&$('appDistChartComp').value)||'Todas';
+  const selRwy2 = _appDistRwy; // always tied to main RWY selector
+  const selBuf2 = parseInt(($('appDistChartBuf')&&$('appDistChartBuf').value)||4);
+
+  const filtered = res.filter(r=>
+    (selComp==='Todas'||r.comp===selComp) &&
+    (selRwy2==='all'||r.rwy===selRwy2)
+  ).map(r=>({
+    ...r,
+    distData: Object.fromEntries(selNm.map(nm=>{
+      const d=r.distData[nm.toFixed(1)];
+      const viol = d&&d.ias!=null&&Math.abs(d.dev||0)>selBuf2;
+      return [nm.toFixed(1), d?{...d, viol}:null];
+    }))
+  }));
+
+  // SVG line chart
+  const pad={l:50,r:20,t:24,b:52}; // extra bottom space for rotated waypoint labels
+  const W=760, H=200, plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
+  // X axis: selNm reversed (high→low), distance from THR
+  const xs = selNm;
+  const nX = xs.length;
+  const toX = i => pad.l + (nX>1 ? (i/(nX-1))*plotW : plotW/2);
+  // Find Y range
+  const allIas = filtered.flatMap(r=>xs.map(nm=>r.distData[nm.toFixed(1)]?.ias)).filter(v=>v&&v>0);
+  const allLims = xs.map(nm=>{
+    const k=nm.toFixed(1);
+    return Math.max(...(APP_DIST_WAYPOINTS['02']||[]).concat(APP_DIST_WAYPOINTS['20']||[]).map(wp=>wp.limit));
+  });
+  const yMin = Math.max(100, Math.min(...allIas, 150)-20);
+  const yMax = Math.min(300, Math.max(...allIas, 200)+20);
+  const toY = v => pad.t + plotH*(1-(v-yMin)/(yMax-yMin));
+
+  // Grid
+  const nY=4;
+  const grids=Array.from({length:nY+1},(_,i)=>{const v=Math.round(yMin+i*(yMax-yMin)/nY);return `<line x1="${pad.l}" y1="${toY(v)}" x2="${W-pad.r}" y2="${toY(v)}" stroke="#f1f5f9" stroke-width="1"/><text x="${pad.l-4}" y="${toY(v)+4}" text-anchor="end" font-size="9" fill="#94a3b8">${v}</text>`;}).join('');
+
+  // Limit lines
+  const limitLines = xs.map((nm,i)=>{
+    const x=toX(i);
+    const lim02=getAppDistLimitAt(nm,'02'), lim20=getAppDistLimitAt(nm,'20');
+    return (selRwy2==='20'?'':`<circle cx="${x}" cy="${toY(lim02)}" r="2" fill="#dc2626" opacity="0.4"/>`) +
+           (selRwy2==='02'?'':`<circle cx="${x}" cy="${toY(lim20)}" r="2" fill="#f97316" opacity="0.4"/>`);
+  }).join('');
+
+  // Limit line for selected runway only
+  const limPolyRwy=xs.map((nm,i)=>`${toX(i)},${toY(getAppDistLimitAt(nm,selRwy2))}`).join(' ');
+  // Limit annotation points (FAF, TOPVI/NETVO, 4NM, THR)
+  const _lwps = APP_DIST_WAYPOINTS[selRwy2]||[];
+  const _fafNm = _lwps[0]?_lwps[0].nm:11.3;
+  const _tvNm  = _lwps[1]?_lwps[1].nm:8.2;
+  const _fafIdx = xs.findIndex(nm=>Math.abs(nm-_fafNm)<0.26);
+  const _tvIdx  = xs.findIndex(nm=>Math.abs(nm-_tvNm)<0.26);
+
+  // Flight lines
+  const flightLines = filtered.slice(0,80).map(r=>{
+    const pts=xs.map((nm,i)=>{const d=r.distData[nm.toFixed(1)];return d?.ias?`${toX(i)},${toY(d.ias)}`:null;}).filter(Boolean);
+    if(pts.length<2) return '';
+    const midD=r.distData[xs[Math.floor(xs.length/2)]?.toFixed(1)];
+    const color = midD?.viol ? '#b91c1c' : '#3b82f6';
+    const mk=sep_registerModalData('APP · '+r.csn+' · RWY'+r.rwy+' · '+r.date,
+      [{_isAppDist:true,csn:r.csn,rwy:r.rwy,date:r.date,tod:r.tod,avgDev:r.avgDev,distData:r.distData,selNm}],
+      r.csn+' · RWY'+r.rwy+' · Méd dev: '+(r.avgDev!=null?(r.avgDev>0?'+':'')+r.avgDev+'kt':'—'));
+    return `<polyline class="modalSource" data-modal-key="${mk}" points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.4" style="cursor:pointer;"
+      onmouseover="this.style.opacity='1';this.style.strokeWidth='3';"
+      onmouseout="this.style.opacity='0.4';this.style.strokeWidth='1.5';"/>`;
+  }).join('');
+
+  // X labels (every 2 steps or at named waypoints)
+  // X labels: only named waypoints + 12.0 + 0.0 + every ~2NM, rotated to avoid overlap
+  const _showLabel = (nm, i, wpName) => {
+    if(wpName) return true;       // always show named waypoints
+    if(i===0) return true;         // leftmost (12.0)
+    if(i===xs.length-1) return true; // rightmost (THR)
+    return Number.isInteger(nm) && nm%2===0; // whole even NM
+  };
+  const xLabels=xs.map((nm,i)=>{
+    const k=nm.toFixed(1);
+    const scE=_APP_SCALE_MAP[k];
+    const wpName = scE&&scE.wps[selRwy2] ? scE.wps[selRwy2].name : null;
+    const lbl = _showLabel(nm,i,wpName) ? (wpName||k) : '';
+    if(!lbl) return '';
+    const isNamed = !!wpName;
+    const xpos = toX(i);
+    // Rotate named waypoint labels to avoid overlap
+    return isNamed
+      ? `<text transform="rotate(-40,${xpos},${H-8})" x="${xpos}" y="${H-8}" text-anchor="end" font-size="9" font-weight="700" fill="#0f2744">${lbl}</text>`
+      : `<text x="${xpos}" y="${H-5}" text-anchor="middle" font-size="8" fill="#94a3b8">${lbl}</text>`;
+  }).join('');
+
+  const bufDropdown=(selBuf2===buffer)?'':' style="background:var(--accent-bg);"';
+  const compOpts=companies.map(co=>`<option value="${co}" ${co===selComp?'selected':''}>${co}</option>`).join('');
+
+  const bufOpts=Array.from({length:9},(_,i)=>i*2).map(b=>`<option value="${b}" ${b===selBuf2?'selected':''}>${b} kt</option>`).join('');
+
+  return `<div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:12px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="font-weight:700;font-size:13px;color:#0f2744;">&#128200; Perfil de velocidade ao longo da final</div>
+      <select id="appDistChartComp" onchange="renderAppDistResults()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;">
+        <option disabled>Companhia</option>${compOpts}
+      </select>
+
+      <select id="appDistChartBuf" onchange="renderAppDistResults()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;">
+        <option disabled>Buffer</option>${bufOpts}
+      </select>
+      <span style="font-size:10px;color:#64748b;">${filtered.length} voo(s) · azul=abaixo lim · vermelho=acima</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;font-family:Segoe UI,Arial,sans-serif;">
+      ${grids}
+      <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${H-pad.b}" stroke="#e2e8f0" stroke-width="1"/>
+      <polyline points="${limPolyRwy}" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,3"/>
+      ${_fafIdx>=0?`<circle cx="${toX(_fafIdx)}" cy="${toY(180)}" r="4" fill="#dc2626"/><text x="${toX(_fafIdx)}" y="${toY(180)-8}" text-anchor="middle" font-size="9" fill="#dc2626">180kt</text>`:'' }
+      ${_tvIdx>=0?`<circle cx="${toX(_tvIdx)}" cy="${toY(160)}" r="4" fill="#dc2626"/><text x="${toX(_tvIdx)}" y="${toY(160)-8}" text-anchor="middle" font-size="9" fill="#dc2626">160kt</text>`:'' }
+      <text x="${toX(xs.length-1)+4}" y="${toY(getAppDistLimitAt(0,selRwy2))}" font-size="9" fill="#dc2626">~135kt</text>
+      ${flightLines}
+      ${xLabels}
+      <text x="${pad.l}" y="${pad.t-6}" font-size="9" fill="#64748b">kt</text>
+      <text x="${W-pad.r}" y="${pad.t+10}" text-anchor="end" font-size="9" fill="#dc2626">--- limite RWY ${selRwy2}</text>
+      <text x="${pad.l}" y="${H-5}" font-size="9" fill="#64748b">← THR (0 NM)</text>
+    </svg>
+  </div>`;
+}
+
+
+function appDistSort(colIdx){
+  if(_appDistSortCol===colIdx) _appDistSortDir*=-1;
+  else{_appDistSortCol=colIdx;_appDistSortDir=1;}
+  if(_appDistData) renderAppDistResults();
+}
+function appDistHighlightFlight(csn, dateRaw){
+  // Switch to map tab and highlight the flight
+  const el = Array.from(document.querySelectorAll('.tab')).find(t=>t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'map'"));
+  if(el){ switchTab('map',el); }
+}
+
+function exportAppDistCsv(){
+  if(!_appDistData||!_appDistData.results.length){ alert('Sem dados.'); return; }
+  const {results, selNm} = _appDistData;
+  const hdr=['Callsign','Data','Hora','Pista',...selNm.map(nm=>_APP_SCALE_MAP[nm.toFixed(1)]?_APP_SCALE_MAP[nm.toFixed(1)].label+'_'+nm.toFixed(1)+'NM':nm.toFixed(1)+'NM'),'Med_Desvio_kt'];
+  const rows=results.filter(r=>r.rwy===_appDistRwy).map(r=>[
+    r.csn,r.date,r.tod,'RWY'+r.rwy,
+    ...selNm.map(nm=>r.distData[nm.toFixed(1)]?.ias??''),
+    r.avgDev??''
+  ]);
+  const csv='\uFEFF'+[hdr,...rows].map(r=>r.join(';')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download='APP_violacoes_distancia.csv';a.click();
+}
+
 function openIasAppCharts(){
   if(!Object.keys(flights).length){alert('Sem dados carregados.');return;}
   const cap=getIasAppChartsFilterCaption();
@@ -6527,10 +7109,8 @@ async function _autoAnalyseAndAlert(){
     try{await runIasCompliance();}catch(e){}
   }
 
-  // ── 5. IAS APP ────────────────────────────────────────────────────────────
-  if(!iasAppResults){
-    try{runIasAppCompliance();}catch(e){}
-  }
+  // ── 5. IAS APP ─ NÃO auto-executar: só ao abrir a aba Velocidades APP ──────
+  // (evita crash que bloqueava toda a Análise Operacional)
 
   // ── 6. Holdings + Go-arounds ─────────────────────────────────────────────
   if(!_anaTabLoaded.hold){await detectHoldings();_anaTabLoaded.hold=true;_computeAlerts();}
@@ -7311,7 +7891,7 @@ const RRMS_POINTS = {
   '20': { lat: 38 + 46/60 + 20.54/3600, lon: -(9 + 8/60 + 26.60/3600), label: 'RWY 20 · TWY P · 2400m'  }
 };
 const RRMS_RADIUS_NM = 0.40; // ~740m, radar position tolerance // ~550m — tolerância de detecção
-const RRMS_MIN_ALT_FT = 0; // qualquer altitude positiva = no ar // altitude mínima para confirmar aeronave no ar
+const RRMS_MIN_ALT_FT = -9999; // sem filtro de altitude — mostrar todas (airborne E solo) // altitude mínima para confirmar aeronave no ar
 
 // ── NMIR Aircraft Type Lookup (EUROCONTROL NMIR / LPPT 2026) ─────────────────
 // Fonte: dados reais do plano de voo via NMIR para LPPT Jan-Mai 2026
@@ -7400,8 +7980,8 @@ function rrmsSort(col){
 }
 function rrmsExportCsv(){
   if(!window._rrmsLastShown||!window._rrmsLastShown.length){alert('Sem dados.');return;}
-  const hdr=['Callsign','WTC','Tipo_AC','RWY','Data','Hora','Alt_ft','IAS_kt','Dist_NM'];
-  const rows=window._rrmsLastShown.map(h=>[h.csn,h.cat,h.acType||RRMS_AC_TYPE(h.csn),h.rwy,h.date,h.tod,h.altFt,h.ias||'',h.distNM]);
+  const hdr=['Callsign','WTC','Tipo_AC','RWY','Status','Data','Hora','Alt_ft','IAS_kt','Dist_NM'];
+  const rows=window._rrmsLastShown.map(h=>[h.csn,h.cat,h.acType||RRMS_AC_TYPE(h.csn),h.rwy,h.airborne?'No_ar':'Solo',h.date,h.tod,h.altFt,h.ias||'',h.distNM]);
   const csv='\uFEFF'+[hdr,...rows].map(r=>r.join(';')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download='RRMS_passagens.csv';a.click();
@@ -7426,14 +8006,22 @@ function rrmsExportPdf(){
   }
   function detailTbl(rows){
     if(!rows.length) return '<p style="color:#94a3b8;">Sem registos.</p>';
-    return '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;font-size:10px;width:100%;margin-bottom:20px;"><thead style="background:#e2e8f0;"><tr><th>Callsign</th><th>WTC</th><th>Tipo A/C</th><th>RWY</th><th>Data</th><th>Hora</th><th>Alt.(ft)</th><th>IAS(kt)</th><th>Dist.(NM)</th></tr></thead><tbody>'+rows.map(function(h,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'"><td><b>'+h.csn+'</b></td><td>'+h.cat+'</td><td style="font-size:10px;">'+(h.acType||RRMS_AC_TYPE(h.csn))+'</td><td>'+h.rwy+'</td><td>'+h.date+'</td><td>'+h.tod+'</td><td>'+h.altFt+'</td><td>'+(h.ias||'—')+'</td><td>'+h.distNM+'</td></tr>';}).join('')+'</tbody></table>';
+    return '<table border="1" cellpadding="4" cellspacing="0" style="border-collapse:collapse;font-size:10px;width:100%;margin-bottom:20px;"><thead style="background:#e2e8f0;"><tr><th>Callsign</th><th>WTC</th><th>Tipo A/C</th><th>RWY</th><th>Status</th><th>Data</th><th>Hora</th><th>Alt.(ft)</th><th>IAS(kt)</th><th>Dist.(NM)</th></tr></thead><tbody>'+rows.map(function(h,i){return '<tr style="background:'+(i%2?'#f8fafc':'#fff')+'"><td><b>'+h.csn+'</b></td><td>'+h.cat+'</td><td style="font-size:10px;">'+(h.acType||RRMS_AC_TYPE(h.csn))+'</td><td>'+h.rwy+'</td><td>'+h.date+'</td><td>'+h.tod+'</td><td>'+h.altFt+'</td><td>'+(h.ias||'—')+'</td><td>'+h.distNM+'</td></tr>';}).join('')+'</tbody></table>';
   }
   function hourDist(rows,rwy){
     const bh={};rows.forEach(function(h){const hr=(h.tod||'').substring(0,2)+'h';bh[hr]=(bh[hr]||0)+1;});
     const sorted=Object.entries(bh).sort(function(a,b){return a[0].localeCompare(b[0]);});
     if(!sorted.length) return '';
-    const mx=Math.max(...sorted.map(function(e){return e[1];}));
-    return '<table cellpadding="3" cellspacing="0" style="font-size:11px;margin-bottom:8px;"><tbody>'+sorted.map(function(e){const w=Math.round(e[1]/mx*200);return '<tr><td style="width:30px;color:#64748b;">'+e[0]+'</td><td><div style="width:'+w+'px;height:12px;background:#0b5cad;border-radius:2px;display:inline-block;"></div></td><td style="padding-left:6px;">'+e[1]+'</td></tr>';}).join('')+'</tbody></table>';
+    const mx=Math.max(...sorted.map(function(e){return e[1];}),1);
+    const n=sorted.length, barH=14, gap=3, padL=32, padR=50, padT=4, maxW=380;
+    const H=padT+(barH+gap)*n+4;
+    const bars=sorted.map(function(e,i){
+      const y=padT+i*(barH+gap), w=Math.round(e[1]/mx*maxW);
+      return '<text x="'+(padL-4)+'" y="'+(y+barH-3)+'" text-anchor="end" font-size="10" fill="#64748b">'+e[0]+'</text>'
+        +'<rect x="'+padL+'" y="'+y+'" width="'+w+'" height="'+barH+'" rx="2" fill="#0b5cad"/>'
+        +'<text x="'+(padL+w+4)+'" y="'+(y+barH-3)+'" font-size="10" fill="#374151">'+e[1]+'</text>';
+    }).join('');
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="'+(padL+maxW+padR)+'" height="'+H+'" viewBox="0 0 '+(padL+maxW+padR)+' '+H+'" style="display:block;margin:6px 0 10px;">'+bars+'</svg>';
   }
   function narrative(rows,rwy){
     const s=sf(rows);if(!s.ok)return'<p>Sem dados suficientes.</p>';
@@ -7442,25 +8030,73 @@ function rrmsExportPdf(){
     const pct=function(n){return rows.length?Math.round(n/rows.length*100):'—';};
     const bh={};rows.forEach(function(h){const hr=(h.tod||'').substring(0,2);bh[hr]=(bh[hr]||0)+1;});
     const pk=Object.entries(bh).sort(function(a,b){return b[1]-a[1];})[0]||['—','—'];
+    const nAir=rows.filter(function(h){return h.airborne;}).length;
+    const nGnd=rows.filter(function(h){return !h.airborne;}).length;
+    const pAir=rows.length?Math.round(nAir/rows.length*100):0;
     return '<p>Na <strong>RWY '+rwy+'</strong>, foram registadas <strong>'+rows.length+' passagens</strong> no ponto de referência 2400m da THR deslocada (valores obtidos por interpolação linear entre amostras radar consecutivas).</p>'
       +'<p>A <strong>altitude interpolada</strong> variou entre <b>'+s.minA+' ft</b> e <b>'+s.maxA+' ft</b>, com média de <b>'+s.avgA+' ft</b>. '
       +(s.avgA<500?'A maioria das aeronaves ainda se encontrava a baixa altitude no ponto de referência.':'A maioria das aeronaves já se encontrava a altitude positiva, confirmando que estavam no ar ao passar o ponto.')+'</p>'
       +'<p>A <strong>IAS interpolada</strong> variou entre <b>'+(s.minI||'—')+' kt</b> e <b>'+(s.maxI||'—')+' kt</b>, com média de <b>'+(s.avgI||'—')+' kt</b>.</p>'
       +'<p>Distribuição por categoria: <b>M (Medium)</b> — '+mRows.length+' ('+pct(mRows.length)+'%) · <b>H (Heavy)</b> — '+hRows.length+' ('+pct(hRows.length)+'%) · <b>?</b> — '+(rows.length-mRows.length-hRows.length)+' ('+pct(rows.length-mRows.length-hRows.length)+'%).</p>'
       +'<p>Hora de pico: <b>'+pk[0]+'h</b> com <b>'+pk[1]+' passagens</b>.</p>'
+      +'<p><strong>Estado no ponto 2400m:</strong> <span style="color:#16a34a;">'+nAir+' aeronaves no ar ('+pAir+'%)</span> · <span style="color:#b45309;">'+nGnd+' no solo ('+(100-pAir)+'%)</span>.'+(nGnd===0?' Todas estavam airborne ao passar o ponto — condição favorável para RRMS.':' ⚠ Algumas aeronaves ainda estavam em rolagem ao passar o ponto — analisar casos individuais.')+'</p>'
       +(sM.ok?'<p>Aeronaves M: alt méd='+sM.avgA+'ft, IAS méd='+(sM.avgI||'—')+'kt.</p>':'')
       +(sH.ok?'<p>Aeronaves H: alt méd='+sH.avgA+'ft, IAS méd='+(sH.avgI||'—')+'kt.</p>':'');
   }
+  // Gráfico No ar vs Solo — SVG para garantir impressão correcta
+  function airGroundChart(rows,rwy){
+    const totAir=rows.filter(function(h){return h.airborne;}).length;
+    const totGnd=rows.filter(function(h){return !h.airborne;}).length;
+    const tot=rows.length;
+    if(!tot) return '';
+    const pctAir=Math.round(totAir/tot*100);
+    const pctGnd=100-pctAir;
+    const bh={};
+    rows.forEach(function(h){
+      const hr=(h.tod||'').substring(0,2)+'h';
+      if(!bh[hr]) bh[hr]={air:0,gnd:0};
+      if(h.airborne) bh[hr].air++; else bh[hr].gnd++;
+    });
+    const sorted=Object.entries(bh).sort(function(a,b){return a[0].localeCompare(b[0]);});
+    const mx=Math.max(...sorted.map(function(e){return e[1].air+e[1].gnd;}),1);
+    const summary=totGnd===0
+      ?'<p style="color:#16a34a;font-weight:700;margin:6px 0;">&#10003; Todas as aeronaves ('+tot+') já estavam no ar ao passar o ponto 2400m.</p>'
+      :'<p style="color:#b45309;font-weight:700;margin:6px 0;">&#9888; '+totGnd+' aeronave(s) passaram o ponto ainda no solo ('+pctGnd+'%). '+totAir+' ('+pctAir+'%) estavam no ar.</p>';
+    // SVG chart
+    const n=sorted.length;
+    const barH=16, gap=4, padL=32, padR=60, padT=8, padB=4;
+    const maxBarW=420;
+    const H=padT+(barH+gap)*n+padB;
+    const W=padL+maxBarW+padR;
+    const bars=sorted.map(function(e,i){
+      const hr=e[0],air=e[1].air,gnd=e[1].gnd,tot2=air+gnd;
+      const y=padT+i*(barH+gap);
+      const wAir=Math.round(air/mx*maxBarW);
+      const wGnd=Math.round(gnd/mx*maxBarW);
+      const wTot=wAir+wGnd;
+      return '<text x="'+(padL-4)+'" y="'+(y+barH-4)+'" text-anchor="end" font-size="10" fill="#64748b">'+hr+'</text>'
+        +(air>0?'<rect x="'+padL+'" y="'+y+'" width="'+wAir+'" height="'+barH+'" rx="2" fill="#16a34a"/>':'')
+        +(gnd>0?'<rect x="'+(padL+wAir)+'" y="'+y+'" width="'+wGnd+'" height="'+barH+'" rx="2" fill="#f59e0b"/>':'')
+        +'<text x="'+(padL+wTot+4)+'" y="'+(y+barH-4)+'" font-size="10" fill="#374151">'+tot2+(gnd>0?' <tspan fill="#b45309">('+gnd+' solo)</tspan>':'')+'</text>';
+    }).join('');
+    const legend='<g transform="translate('+padL+','+(H-padB+14)+')">'
+      +'<rect x="0" y="0" width="12" height="12" rx="2" fill="#16a34a"/><text x="16" y="10" font-size="10" fill="#374151">No ar</text>'
+      +'<rect x="55" y="0" width="12" height="12" rx="2" fill="#f59e0b"/><text x="71" y="10" font-size="10" fill="#374151">No solo</text>'
+      +'</g>';
+    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+(W)+'" height="'+(H+20)+'" viewBox="0 0 '+(W)+' '+(H+20)+'" style="display:block;margin:8px 0 12px;">'
+      +bars+legend+'</svg>';
+    return summary+svg;
+  }
   const d02=shown.filter(function(h){return h.rwy==='02';}),d20=shown.filter(function(h){return h.rwy==='20';});
   const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>RRMS — Relatório</title>'
-    +'<style>*{box-sizing:border-box;}body{font-family:Arial,sans-serif;padding:24px;color:#1e293b;font-size:13px;}h1{color:#0f2744;font-size:20px;border-bottom:3px solid #0f2744;padding-bottom:8px;}h2{color:#0f2744;font-size:15px;margin-top:24px;border-left:4px solid #0b5cad;padding-left:10px;}h3{color:#1e3a5f;font-size:13px;margin-top:14px;}p{line-height:1.6;margin:6px 0;}@media print{@page{margin:1.5cm;}}</style></head><body>'
+    +'<style>*{box-sizing:border-box;}body{font-family:Arial,sans-serif;padding:24px;color:#1e293b;font-size:13px;}h1{color:#0f2744;font-size:20px;border-bottom:3px solid #0f2744;padding-bottom:8px;}h2{color:#0f2744;font-size:15px;margin-top:24px;border-left:4px solid #0b5cad;padding-left:10px;}h3{color:#1e3a5f;font-size:13px;margin-top:14px;}p{line-height:1.6;margin:6px 0;}@media print{@page{margin:1.5cm;} * {-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;} svg{page-break-inside:avoid;}}</style></head><body>'
     +'<h1>&#128748; RRMS — Relatório de Estatísticas</h1>'
     +'<p><strong>Data:</strong> '+new Date().toLocaleString('pt-PT')+'</p>'
     +'<p><strong>Filtros activos:</strong> Categoria = '+catF+' · Pista = '+(rwyF==='all'?'Ambas':'RWY '+rwyF)+' · Total passagens mostradas: '+shown.length+'</p>'
     +'<p><strong>Pontos de referência:</strong></p><ul><li>RWY 02 → TWY U6: 38°47′10.93″N 009°07′59.65″W (2400m da THR deslocada)</li><li>RWY 20 → TWY P: 38°46′20.54″N 009°08′26.60″W (2400m da THR deslocada)</li></ul>'
     +'<p><strong>Metodologia:</strong> Para cada aeronave DEP, o algoritmo determina a pista pela direcção de movimento (latitude crescente→RWY02, decrescente→RWY20), encontra o par de amostras radar consecutivas com menor distância perpendicular ao ponto de referência (raio máx: 0.40 NM) e interpola linearmente a altitude e IAS no instante exacto de passagem.</p>'
-    +(d02.length?('<h2>RWY 02 ('+d02.length+' passagens) · Ponto TWY U6</h2>'+narrative(d02,'02')+'<h3>Estatísticas por categoria</h3>'+statTbl(d02)+'<h3>Distribuição horária</h3>'+hourDist(d02,'02')+'<h3>Detalhe completo</h3>'+detailTbl(d02)):'')
-    +(d20.length?('<h2>RWY 20 ('+d20.length+' passagens) · Ponto TWY P</h2>'+narrative(d20,'20')+'<h3>Estatísticas por categoria</h3>'+statTbl(d20)+'<h3>Distribuição horária</h3>'+hourDist(d20,'20')+'<h3>Detalhe completo</h3>'+detailTbl(d20)):'')
+    +(d02.length?('<h2>RWY 02 ('+d02.length+' passagens) · Ponto TWY U6</h2>'+narrative(d02,'02')+'<h3>No ar vs Solo no ponto 2400m</h3>'+airGroundChart(d02,'02')+'<h3>Estatísticas por categoria</h3>'+statTbl(d02)+'<h3>Distribuição horária</h3>'+hourDist(d02,'02')+'<h3>Detalhe completo</h3>'+detailTbl(d02)):'')
+    +(d20.length?('<h2>RWY 20 ('+d20.length+' passagens) · Ponto TWY P</h2>'+narrative(d20,'20')+'<h3>No ar vs Solo no ponto 2400m</h3>'+airGroundChart(d20,'20')+'<h3>Estatísticas por categoria</h3>'+statTbl(d20)+'<h3>Distribuição horária</h3>'+hourDist(d20,'20')+'<h3>Detalhe completo</h3>'+detailTbl(d20)):'')
     +'<scr'+'ipt>window.onload=function(){window.print();}<\/scr'+'ipt></body></html>';
   w.document.write(html);w.document.close();
 }
@@ -7495,29 +8131,50 @@ function renderRRMS(){
   const _statGrp     = ($('rrmsStatGrp')&&$('rrmsStatGrp').value)       || 'rwy';
   let _dbgTotal=0, _dbgFiltered=0, _dbgNoClose=0, _dbgLowAlt=0;
 
-  Object.entries(flights).forEach(function(kv){
-    const csn = kv[0], fl = kv[1];
-    if(!fl||!fl.rows||fl.rows.length<3) return;
-    _dbgTotal++;
+  // Iterar por flights e agrupar rows por data (_date) para processar cada dia
+  // separadamente — evita contar 1 passagem por callsign em vez de 1 por dia
+  const _rrmsFlightEntries = Object.entries(flights);
+  for(var _fi=0; _fi<_rrmsFlightEntries.length; _fi++){
+    const csn = _rrmsFlightEntries[_fi][0];
+    const fl  = _rrmsFlightEntries[_fi][1];
+    if(!fl||!fl.rows||fl.rows.length<2) continue;
 
-    // Aceitar DEP e lvl (voos que saem do alcance a subir) — não filtrar por cls
-    // para não perder aeronaves com poucas amostras
-    const cls = classifyFlight(fl.rows);
-    if(cls === 'arr') return; // excluir chegadas claras
+    // Agrupar rows desta aeronave por data
+    const _byDate = {};
+    for(var _ri=0; _ri<fl.rows.length; _ri++){
+      const r = fl.rows[_ri];
+      const d = r._date||'??';
+      if(!_byDate[d]) _byDate[d]=[];
+      _byDate[d].push(r);
+    }
 
-    const cat = RRMS_WAKE.cat(csn);
-    const rows = fl.rows.filter(function(r){
-      return !isNaN(+r.latitude) && !isNaN(+r.longitude);
-    }).sort((a,b)=>rowEpoch(a)-rowEpoch(b));
-    if(rows.length<2) return;
-    _dbgFiltered++;
+    // Processar cada (callsign, data) separadamente
+    const _dates = Object.keys(_byDate);
+    for(var _di=0; _di<_dates.length; _di++){
+      const leg_date = _dates[_di];
+      // Respeitar filtro de datas activas
+      if(leg_date!=='??' && selDaysSet.size>0 && !selDaysSet.has(leg_date)) continue;
+      const leg_rows = _byDate[leg_date];
+      if(!leg_rows||leg_rows.length<2) continue;
+      _dbgTotal++;
+
+      // RRMS analisa sempre DEP — ignorar filtro ARR/DEP da sidebar
+      const cls = classifyFlight(leg_rows);
+      if(cls === 'arr') continue; // excluir chegadas
+
+      const cat = RRMS_WAKE.cat(csn);
+      const rows = leg_rows.filter(function(r){
+        return !isNaN(+r.latitude) && !isNaN(+r.longitude);
+      }).sort(function(a,b){return rowEpoch(a)-rowEpoch(b);});
+      if(rows.length<2){continue;}
+      _dbgFiltered++;
 
     // Determinar pista pelo sentido de movimento (RWY02=norte, RWY20=sul)
     const fR=rows.slice(0,Math.min(5,rows.length)), lR=rows.slice(-Math.min(5,rows.length));
     const latF=fR.reduce((s,r)=>s+(+r.latitude),0)/fR.length;
     const latL=lR.reduce((s,r)=>s+(+r.latitude),0)/lR.length;
     const depRwys=latL>latF+0.001?['02']:(latF>latL+0.001?['20']:[]);
-    if(!depRwys.length){_dbgNoClose++;return;}
+    if(!depRwys.length){_dbgNoClose++;continue;}
     depRwys.forEach(function(rwy){
       const pt = RRMS_POINTS[rwy];
       // Interpolacao exacta: encontra par de rows com menor distancia perpendicular ao ponto
@@ -7546,16 +8203,19 @@ function renderRRMS(){
       const tI=rowEpoch(rA)+bestK*(rowEpoch(rB)-rowEpoch(rA));
       const ts=Math.round(tI%86400);
       const todStr=String(Math.floor(ts/3600)).padStart(2,'0')+':'+String(Math.floor((ts%3600)/60)).padStart(2,'0')+':'+String(ts%60).padStart(2,'0');
-      const _nmir=NMIR_LOOKUP(csn, rA._date||''); // uses raw YYMMDD for lookup
+      const _nmir=NMIR_LOOKUP(csn, leg_date||rA._date||''); // leg_date = YYMMDD
       const acType=_nmir.type; const _wtcReal=_nmir.wtc; const _typeSource=_nmir.source;
-      const hit={_isRRMS:true,csn,rwy,cat:_wtcReal!=='?'?_wtcReal:cat,cls,acType,
+      // Determinar se aeronave já está no ar (threshold 50ft — LPPT QFE)
+      const airborne = (altFt !== null && altFt >= 50);
+      const hit={_isRRMS:true,csn,rwy,cat:_wtcReal!=='?'?_wtcReal:cat,cls,acType,airborne,
                  _typeSource,distNM:bestDist.toFixed(3),altFt,ias,
-                 tod:todStr,t:tI,date:rrmsFormatDate(rA._date||''),_dateRaw:rA._date||'',epoch:tI,
+                 tod:todStr,t:tI,date:rrmsFormatDate(leg_date||rA._date||''),_dateRaw:leg_date||rA._date||'',epoch:tI,
                  comp:(csn.match(/^[A-Z]{2,3}/)||['?'])[0]};
       hits.all.push(hit);
       hits[rwy].push(hit);
-    });
-  });
+    }); // end depRwys.forEach
+    } // end dates loop
+  } // end flights loop
   setTimeout(function(){try{sep_bindModalClicks();}catch(e){}},100);
   // Wire RRMS chart tooltip
   setTimeout(function(){
@@ -7602,7 +8262,7 @@ function renderRRMS(){
       });
     });
   },200);
-  const _dbgMsg=`Debug: ${_dbgTotal} voos, ${_dbgFiltered} não-ARR, ${_dbgNoClose} sem proximidade, ${_dbgLowAlt} altitude baixa`;
+
 
   // Ordenar por hora
   hits.all.sort((a,b)=>a.epoch-b.epoch);
@@ -7618,6 +8278,9 @@ function renderRRMS(){
   };
   const shown = hits.all.filter(filterFn);
   window._rrmsLastShown = shown; // for export
+  const _selDays=[...selDaysSet].sort().join(', ')||'(nenhum)';
+  const _selBlks=[...selBlocksSet].sort().join(', ')||'(nenhum)';
+  const _dbgMsg=`RRMS · DEP independente do filtro ARR/DEP · Datas: ${_selDays} · Blocos: ${_selBlks} · Analisados: ${_dbgTotal} · Detectados: ${shown.length}`;
   const shown02 = hits['02'].filter(filterFn);
   const shown20 = hits['20'].filter(filterFn);
 
@@ -7654,8 +8317,8 @@ function renderRRMS(){
     <!-- KPI cards -->
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px;">
       ${[
-        {l:'RWY 02 — passagens',v:shown02.length,sub:'aeronaves M+H no ar',rows:shown02},
-        {l:'RWY 20 — passagens',v:shown20.length,sub:'aeronaves M+H no ar',rows:shown20},
+        {l:'RWY 02 — passagens',v:shown02.length,sub:shown02.filter(h=>h.airborne).length+' no ar · '+shown02.filter(h=>!h.airborne).length+' no solo',rows:shown02},
+        {l:'RWY 20 — passagens',v:shown20.length,sub:shown20.filter(h=>h.airborne).length+' no ar · '+shown20.filter(h=>!h.airborne).length+' no solo',rows:shown20},
         {l:'Alt. mín/méd/máx RWY 02',v:stats02.avgAlt?stats02.minAlt+' / '+stats02.avgAlt+' / '+stats02.maxAlt+' ft':'—',sub:'mínima / média / máxima',rows:shown02},
         {l:'Alt. mín/méd/máx RWY 20',v:stats20.avgAlt?stats20.minAlt+' / '+stats20.avgAlt+' / '+stats20.maxAlt+' ft':'—',sub:'mínima / média / máxima',rows:shown20},
         {l:'IAS mín/méd/máx RWY 02',v:stats02.avgIas?stats02.minIas+' / '+stats02.avgIas+' / '+stats02.maxIas+' kt':'—',sub:'mínima / média / máxima',rows:shown02},
@@ -7673,6 +8336,7 @@ function renderRRMS(){
         <div style="font-weight:700;font-size:13px;color:#0f2744;">&#9883; Estatísticas no ponto de referência (valores interpolados)</div>
         <select id="rrmsStatGrp" onchange="renderRRMS()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;cursor:pointer;">
           <option value="rwy" ${_statGrp==='rwy'?'selected':''}>Por pista</option>
+          <option value="gnd" ${_statGrp==='gnd'?'selected':''}>Ar vs Solo (2400m)</option>
           <option value="hour" ${_statGrp==='hour'?'selected':''}>Por hora</option>
           <option value="cat" ${_statGrp==='cat'?'selected':''}>Por categoria</option>
           <option value="actype" ${_statGrp==='actype'?'selected':''}>Por tipo de aeronave</option>
@@ -7695,6 +8359,7 @@ function renderRRMS(){
         let groups={};
         if(grp==='rwy'){groups={'RWY 02':filtered.filter(h=>h.rwy==='02'),'RWY 20':filtered.filter(h=>h.rwy==='20')};}
         else if(grp==='hour'){filtered.forEach(h=>{const hr=(h.tod||'').substring(0,2)+'h';if(!groups[hr])groups[hr]=[];groups[hr].push(h);});}
+        else if(grp==='gnd'){groups={'✈ No ar (alt ≥ 50ft)':filtered.filter(h=>h.airborne),'⊙ No solo (alt < 50ft)':filtered.filter(h=>!h.airborne)};}
         else if(grp==='cat'){groups={'M (Medium)':filtered.filter(h=>h.cat==='M'),'H (Heavy)':filtered.filter(h=>h.cat==='H'),'? (Desconhecido)':filtered.filter(h=>h.cat==='?')};}
         else if(grp==='actype'){const tops={};filtered.forEach(h=>{const t=h.acType||'Desconhecido';if(!tops[t])tops[t]=[];tops[t].push(h);});Object.entries(tops).sort((a,b)=>b[1].length-a[1].length).forEach(e=>groups[e[0]]=e[1]);}
         else if(grp==='top10csn'){const tops={};filtered.forEach(h=>{if(!tops[h.csn])tops[h.csn]=[];tops[h.csn].push(h);});Object.entries(tops).sort((a,b)=>b[1].length-a[1].length).slice(0,10).forEach(e=>groups[e[0]+'  ('+RRMS_AC_TYPE(e[0])+')  '+(e[1][0]&&e[1][0].cat?'['+e[1][0].cat+']':'')]=e[1]);}
@@ -7858,6 +8523,88 @@ function renderRRMS(){
       })()}
     </div>
 
+    <!-- Gráfico: No ar vs Solo por hora -->
+    <div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="font-weight:700;font-size:13px;color:#0f2744;margin-bottom:12px;">&#9650; No ar vs &#9899; Solo no ponto 2400m — por hora</div>
+      ${(function(){
+        const rwyF=_rwyFilter;
+        const src=rwyF==='all'?shown:(rwyF==='02'?shown02:shown20);
+        if(!src.length) return '<div style="color:#94a3b8;font-size:12px;">Sem dados.</div>';
+
+        // Aggregate by hour
+        const byHour={};
+        src.forEach(function(h){
+          const hr=(h.tod||'').substring(0,2)||'??';
+          if(!byHour[hr]) byHour[hr]={air:0,gnd:0};
+          if(h.airborne) byHour[hr].air++;
+          else byHour[hr].gnd++;
+        });
+        const hrs=Object.keys(byHour).sort();
+        if(!hrs.length) return '<div style="color:#94a3b8;font-size:12px;">Sem dados.</div>';
+
+        const totals=hrs.map(h=>byHour[h].air+byHour[h].gnd);
+        const maxVal=Math.max(...totals,1);
+
+        // SVG stacked bar chart
+        const pad={l:52,r:120,t:16,b:36};
+        const W=760, H=160;
+        const plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
+        const n=hrs.length;
+        const bw=Math.min(40, plotW/n*0.7);
+        const gap=plotW/n;
+        const toY=function(v){return pad.t+plotH*(1-v/maxVal);};
+        const toX=function(i){return pad.l+i*gap+gap/2;};
+
+        // Y ticks
+        const nY=4;
+        const yTicks=Array.from({length:nY+1},function(_,i){
+          const v=Math.round(maxVal*i/nY);
+          return {v,y:toY(v)};
+        });
+
+        const bars=hrs.map(function(hr,i){
+          const x=toX(i)-bw/2;
+          const air=byHour[hr].air, gnd=byHour[hr].gnd, tot=air+gnd;
+          const yTop=toY(tot);
+          const hAir=plotH*air/maxVal, hGnd=plotH*gnd/maxVal;
+          const yAir=toY(tot);
+          const yGnd=toY(gnd);
+          const tipAir='RRMS · hora '+hr+'h · No ar';
+          const tipGnd='RRMS · hora '+hr+'h · Solo';
+          const mkAir=air>0?sep_registerModalData('No ar · '+hr+'h'+(rwyF!=='all'?' · RWY'+rwyF:''),src.filter(h=>(h.tod||'').substring(0,2)===hr&&h.airborne).map(h=>Object.assign({},h,{_isRRMS:true})),air+' passagens no ar'):'';
+          const mkGnd=gnd>0?sep_registerModalData('Solo · '+hr+'h'+(rwyF!=='all'?' · RWY'+rwyF:''),src.filter(h=>(h.tod||'').substring(0,2)===hr&&!h.airborne).map(h=>Object.assign({},h,{_isRRMS:true})),gnd+' passagens no solo'):'';
+          return (air>0?'<g class="modalSource rrmsTipPoint" data-modal-key="'+mkAir+'" data-tip="'+hr+'h | No ar: '+air+'" style="cursor:pointer;"><rect x="'+x+'" y="'+yAir+'" width="'+bw+'" height="'+hAir+'" rx="3" fill="#16a34a" opacity="0.85"/>'+(tot<10?'':'<text x="'+(x+bw/2)+'" y="'+(yAir-3)+'" text-anchor="middle" font-size="9" fill="#15803d">'+air+'</text>')+'</g>':'')
+               +(gnd>0?'<g class="modalSource rrmsTipPoint" data-modal-key="'+mkGnd+'" data-tip="'+hr+'h | Solo: '+gnd+'" style="cursor:pointer;"><rect x="'+x+'" y="'+yGnd+'" width="'+bw+'" height="'+hGnd+'" rx="3" fill="#f59e0b" opacity="0.85"/>'+(gnd<2?'':'<text x="'+(x+bw/2)+'" y="'+(yGnd-3)+'" text-anchor="middle" font-size="9" fill="#b45309">'+gnd+'</text>')+'</g>':'')
+               +'<text x="'+(x+bw/2)+'" y="'+(H-8)+'" text-anchor="middle" font-size="9" fill="#64748b">'+hr+'h</text>';
+        }).join('');
+
+        const grids=yTicks.map(function(g){
+          return '<line x1="'+pad.l+'" y1="'+g.y+'" x2="'+(W-pad.r)+'" y2="'+g.y+'" stroke="#f1f5f9" stroke-width="1"/>'
+                +'<text x="'+(pad.l-6)+'" y="'+(g.y+4)+'" text-anchor="end" font-size="9" fill="#94a3b8">'+g.v+'</text>';
+        }).join('');
+
+        // Summary counts
+        const totAir=src.filter(h=>h.airborne).length;
+        const totGnd=src.filter(h=>!h.airborne).length;
+        const pctAir=Math.round(totAir/src.length*100);
+
+        return '<div style="font-size:11px;color:#475569;margin-bottom:8px;">'
+          +'Total: <b style="color:#16a34a;">'+totAir+' no ar ('+(pctAir)+'%)</b>'
+          +' · <b style="color:#b45309;">'+totGnd+' no solo ('+(100-pctAir)+'%)</b>'
+          +(totGnd===0?' — <span style="color:#16a34a;font-weight:700;">&#10003; Todas as aeronaves já estavam no ar ao passar o ponto</span>':totAir===0?' — <span style="color:#b45309;font-weight:700;">&#9888; Nenhuma aeronave estava no ar ao passar o ponto</span>':' — <span style="color:#b45309;">&#9888; '+totGnd+' aeronave(s) passaram o ponto ainda no solo</span>')
+          +'</div>'
+          +'<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;">'
+          +grids
+          +'<line x1="'+pad.l+'" y1="'+(H-pad.b)+'" x2="'+(W-pad.r)+'" y2="'+(H-pad.b)+'" stroke="#e2e8f0" stroke-width="1"/>'
+          +bars
+          +'<g transform="translate('+(W-pad.r+10)+','+pad.t+')">'
+          +'<rect x="0" y="2" width="12" height="12" rx="2" fill="#16a34a" opacity="0.85"/><text x="16" y="12" font-size="10" fill="#374151">No ar</text>'
+          +'<rect x="0" y="22" width="12" height="12" rx="2" fill="#f59e0b" opacity="0.85"/><text x="16" y="32" font-size="10" fill="#374151">No solo</text>'
+          +'</g>'
+          +'</svg>';
+      })()}
+    </div>
+
     <!-- Distribution by hour -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
       ${['02','20'].map(function(rwy){
@@ -7900,7 +8647,7 @@ function renderRRMS(){
         <table id="rrmsDetailTbl" style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead>
             <tr style="background:#0f2744;color:#fff;position:sticky;top:0;z-index:1;cursor:pointer;">
-              ${['Callsign','WTC','Tipo A/C','RWY','Data','Hora','Alt. (ft)','IAS (kt)','Dist. (NM)'].map((h,i)=>`<th data-col="${i}" onclick="rrmsSort(${i})" style="padding:8px 10px;text-align:${i>=6?'right':'left'};white-space:nowrap;" title="Ordenar">${h} <span id="rrmsSort${i}" style="font-size:9px;opacity:.7;"></span></th>`).join('')}
+              ${['Callsign','WTC','Tipo A/C','RWY','Status','Data','Hora','Alt. (ft)','IAS (kt)','Dist. (NM)'].map((h,i)=>`<th data-col="${i}" onclick="rrmsSort(${i})" style="padding:8px 10px;text-align:${i>=6?'right':'left'};white-space:nowrap;" title="Ordenar">${h} <span id="rrmsSort${i}" style="font-size:9px;opacity:.7;"></span></th>`).join('')}
             </tr>
           </thead>
           <tbody>
@@ -7909,17 +8656,18 @@ function renderRRMS(){
               const sortCol=window._rrmsSort||0, sortDir=window._rrmsSortDir||1;
               let rows=shown.filter(h=>rwyF==='all'||h.rwy===rwyF);
               rows=rows.slice().sort(function(a,b){
-                const vals=[a.csn,a.cat,a.acType||'',a.rwy,a.date,a.tod,a.altFt||0,a.ias||0,+a.distNM];
-                const valb=[b.csn,b.cat,b.acType||'',b.rwy,b.date,b.tod,b.altFt||0,b.ias||0,+b.distNM];
+                const vals=[a.csn,a.cat,a.acType||'',a.rwy,a.airborne?0:1,a.date,a.tod,a.altFt||0,a.ias||0,+a.distNM];
+                const valb=[b.csn,b.cat,b.acType||'',b.rwy,b.airborne?0:1,b.date,b.tod,b.altFt||0,b.ias||0,+b.distNM];
                 const va=vals[sortCol],vb=valb[sortCol];
                 return typeof va==='number'?(va-vb)*sortDir:(String(va).localeCompare(String(vb)))*sortDir;
               });
-              if(!rows.length) return '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">Sem passagens</td></tr>';
+              if(!rows.length) return '<tr><td colspan="10" style="padding:20px;text-align:center;color:#94a3b8;">Sem passagens</td></tr>';
               return rows.map(function(h,i){
                 const bg=i%2===0?'#fff':'#f8fafc';
                 const ac=h.altFt<500?'#b91c1c':h.altFt<1000?'#d97706':'#16a34a';
                 const mk=sep_registerModalData('RRMS · '+h.csn+' · RWY'+h.rwy,[h],'Alt='+h.altFt+'ft · IAS='+(h.ias||'—')+'kt · '+h.tod);
-                return '<tr class="modalSource" data-modal-key="'+mk+'" style="background:'+bg+';cursor:pointer;">'+'<td style="padding:6px 10px;font-weight:700;">'+sep_escHtml(h.csn)+'</td>'+'<td style="padding:6px 10px;text-align:center;">'+pill(h.cat)+'</td>'+'<td style="padding:6px 10px;font-size:11px;color:#475569;">'+sep_escHtml(h.acType||'—')+'</td>'+'<td style="padding:6px 10px;text-align:center;font-weight:700;">'+h.rwy+'</td>'+'<td style="padding:6px 10px;">'+sep_escHtml(String(h.date||''))+'</td>'+'<td style="padding:6px 10px;font-family:monospace;">'+sep_escHtml(h.tod)+'</td>'+'<td style="padding:6px 10px;text-align:right;font-weight:700;color:'+ac+';">'+h.altFt+'</td>'+'<td style="padding:6px 10px;text-align:right;">'+(h.ias||'—')+'</td>'+'<td style="padding:6px 10px;text-align:right;color:#64748b;">'+h.distNM+'</td>'+'</tr>';
+                return '<tr class="modalSource" data-modal-key="'+mk+'" style="background:'+bg+';cursor:pointer;">'+'<td style="padding:6px 10px;font-weight:700;">'+sep_escHtml(h.csn)+'</td>'+'<td style="padding:6px 10px;text-align:center;">'+pill(h.cat)+'</td>'+'<td style="padding:6px 10px;font-size:11px;color:#475569;">'+sep_escHtml(h.acType||'—')+'</td>'+'<td style="padding:6px 10px;text-align:center;font-weight:700;">'+h.rwy+'</td>'
+                +'<td style="padding:6px 10px;text-align:center;">'+(h.airborne?'<span style="background:#dcfce7;color:#16a34a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;">&#9650; No ar</span>':'<span style="background:#fef9c3;color:#92400e;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;">&#9899; Solo</span>')+'</td>'+'<td style="padding:6px 10px;">'+sep_escHtml(String(h.date||''))+'</td>'+'<td style="padding:6px 10px;font-family:monospace;">'+sep_escHtml(h.tod)+'</td>'+'<td style="padding:6px 10px;text-align:right;font-weight:700;color:'+ac+';">'+h.altFt+'</td>'+'<td style="padding:6px 10px;text-align:right;">'+(h.ias||'—')+'</td>'+'<td style="padding:6px 10px;text-align:right;color:#64748b;">'+h.distNM+'</td>'+'</tr>';
               }).join('');
             })()}
           </tbody>
@@ -7952,12 +8700,31 @@ function sep_openDataModal(key){
   const _ms=$('sep_dataModalSub');if(_ms)_ms.textContent=(data.subtitle?data.subtitle+' · ':'')+`${rows.length.toLocaleString('pt-PT')} linha(s) de origem`;
   const isMov=rows.some(r=>r && r._isMovement);
   const isRRMS=rows.some(r=>r && r._isRRMS);
+  const isAppDist=rows.some(r=>r && r._isAppDist);
   let heads, bodyRows, hint;
-  if(isRRMS){
-    heads=['Callsign','WTC','Tipo A/C','RWY','Data','Hora','Alt. (ft)','IAS (kt)','Dist. (NM)']; hint='Dados RRMS — passagens no ponto 2400m da THR (valores interpolados).';
+  if(isAppDist){
+    // APP distance violation modal
+    const r = rows[0]; if(!r) return;
+    const sNm = r.selNm||[];
+    heads = ['Ponto','Dist. (NM)','IAS (kt)','Limite (kt)','Desvio (kt)','Violação'];
+    hint = 'Velocidades interpoladas ao longo da final · '+sep_escHtml(r.csn||'')+' · RWY '+sep_escHtml(r.rwy||'')+' · '+sep_escHtml(r.date||'');
+    bodyRows = sNm.map(nm=>{
+      const k=nm.toFixed(1);
+      const d=r.distData&&r.distData[k];
+      const scE=_APP_SCALE_MAP&&_APP_SCALE_MAP[k];
+      const rwyWp=scE&&scE.wps&&scE.wps[r.rwy];
+      const ptName=rwyWp?rwyWp.name:k+' NM';
+      if(!d||d.ias==null) return `<tr><td>${sep_escHtml(ptName)}</td><td class="num">${k}</td><td class="num" style="color:#94a3b8;">—</td><td class="num">${d?d.lim:'—'}</td><td class="num">—</td><td>—</td></tr>`;
+      const devCol=d.dev>0?'#b91c1c':d.dev<0?'#0b5cad':'#6b7280';
+      const violIcon=d.viol?(d.dev>0?'⬆ ACIMA':'⬇ ABAIXO'):'✓ OK';
+      const violCol=d.viol?(d.dev>0?'#b91c1c':'#0b5cad'):'#16a34a';
+      return `<tr><td style="font-weight:700;">${sep_escHtml(ptName)}</td><td class="num">${k}</td><td class="num" style="font-weight:700;">${d.ias}</td><td class="num">${d.lim}</td><td class="num" style="color:${devCol};font-weight:700;">${d.dev>0?'+':''}${d.dev}</td><td style="color:${violCol};font-weight:700;">${violIcon}</td></tr>`;
+    }).join('');
+  } else if(isRRMS){
+    heads=['Callsign','WTC','Tipo A/C','RWY','Status','Data','Hora','Alt. (ft)','IAS (kt)','Dist. (NM)']; hint='Dados RRMS — passagens no ponto 2400m da THR (valores interpolados).';
     const pill=function(cat){const col=cat==='H'?'#b91c1c':cat==='M'?'#0b5cad':'#64748b';return '<span style="display:inline-block;background:'+col+';color:#fff;border-radius:10px;padding:1px 8px;font-size:10px;font-weight:700;">'+cat+'</span>';};
     const altCol=function(a){return a<500?'#b91c1c':a<1000?'#d97706':'#16a34a';};
-    bodyRows=rows.map(r=>`<tr><td><b>${sep_escHtml(r.csn||'')}</b></td><td>${pill(r.cat||'?')}</td><td style="font-size:11px;color:#475569;">${sep_escHtml(r.acType||RRMS_AC_TYPE(r.csn||''))}</td><td style="font-weight:700;">RWY ${sep_escHtml(r.rwy||'')}</td><td>${sep_escHtml(String(r.date||''))}</td><td style="font-family:monospace;">${sep_escHtml(r.tod||'')}</td><td class="num" style="font-weight:700;color:${altCol(r.altFt||0)};">${r.altFt||'—'}</td><td class="num">${r.ias||'—'}</td><td class="num">${r.distNM||'—'}</td></tr>`).join('');
+    bodyRows=rows.map(r=>`<tr><td><b>${sep_escHtml(r.csn||'')}</b></td><td>${pill(r.cat||'?')}</td><td style="font-size:11px;color:#475569;">${sep_escHtml(r.acType||RRMS_AC_TYPE(r.csn||''))}</td><td style="font-weight:700;">RWY ${sep_escHtml(r.rwy||'')}</td><td style="text-align:center;">${r.airborne?'<span style="background:#dcfce7;color:#16a34a;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;">&#9650; No ar</span>':'<span style="background:#fef9c3;color:#92400e;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:700;">&#9899; Solo</span>'}</td><td>${sep_escHtml(String(r.date||''))}</td><td style="font-family:monospace;">${sep_escHtml(r.tod||'')}</td><td class="num" style="font-weight:700;color:${altCol(r.altFt||0)};">${r.altFt||'—'}</td><td class="num">${r.ias||'—'}</td><td class="num">${r.distNM||'—'}</td></tr>`).join('');
   } else if(isMov){
     heads=['Tipo','Pista','Data','Hora','Callsign','Companhia','IAS','Ficheiro']; hint='Dados de movimentos detetados. ARR = aterragem; DEP = descolagem estimada.';
     bodyRows=rows.map(r=>`<tr><td><b>${sep_escHtml(r.type||'')}</b></td><td>${sep_escHtml(r.pista)}</td><td>${sep_escHtml(r.data)}</td><td>${sep_escHtml(r.hora)}</td><td><b>${sep_escHtml(r.callsign||'')}</b></td><td>${sep_escHtml(r.company||'')}</td><td class="num">${sep_escHtml(r.ias||'')}</td><td>${sep_escHtml(r.fileName||'')}</td></tr>`).join('');
@@ -7976,7 +8743,7 @@ function sep_openDataModal(key){
       Array.from(document.querySelectorAll('#sep_dataModalBody thead th')).map(function(th){return '<th>'+th.textContent+'</th>';}).join('')+'</tr></thead><tbody>'+
       Array.from(document.querySelectorAll('#sep_dataModalBody tbody tr')).map(function(tr){return '<tr>'+Array.from(tr.querySelectorAll('td')).map(function(td){return '<td>'+td.innerText+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table>';
     w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+_title+'</title>'
-      +'<style>body{font-family:Arial,sans-serif;padding:20px;font-size:12px;}h2{color:#0f2744;}table{border-collapse:collapse;width:100%;}@media print{@page{margin:1.5cm;}}</style>'
+      +'<style>body{font-family:Arial,sans-serif;padding:20px;font-size:12px;}h2{color:#0f2744;}table{border-collapse:collapse;width:100%;}@media print{@page{margin:1.5cm;} * {-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;} svg{page-break-inside:avoid;}}</style>'
       +'</head><body><h2>'+_title+'</h2><p>Exportado em: '+new Date().toLocaleString('pt-PT')+'&nbsp;&middot;&nbsp;'+rows.length+' linha(s)</p>'
       +tblH+'<scr'+'ipt>window.onload=function(){window.print();}<\/scr'+'ipt></body></html>');
     w.document.close();
