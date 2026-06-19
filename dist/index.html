@@ -320,9 +320,15 @@ tr:hover td{background:rgba(0,200,255,.03);}
     <div class="upload-layout">
       <div>
         <span class="upload-plane">&#x2708;&#xFE0F;</span>
-        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v3.0</span></h2>
+        <h2>Flight Track Viewer <span style="font-size:14px;font-weight:400;color:#6366f1;background:rgba(99,102,241,0.1);padding:2px 10px;border-radius:12px;vertical-align:middle;margin-left:6px;">v3.5</span></h2>
         <p style="margin-bottom:18px;color:#64748b;">Escolhe o <b>modo de carregamento</b> (painel direito) e depois carrega os CSV ou restaura a sessão anterior.</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+          <div class="upload-card" id="fsaCard" style="border:2px solid var(--accent,#2563eb);">
+            <div style="font-size:28px;margin-bottom:8px;">&#x26A1;&#x1F4C1;</div>
+            <div class="upload-card-title">Pasta inteligente <span style="font-size:10px;background:#dbeafe;color:#1d4ed8;padding:1px 6px;border-radius:10px;font-weight:700;margin-left:4px;">NOVO</span></div>
+            <div class="upload-card-desc">Modo <b>lazy</b>: calendário instantâneo, dados lidos só ao filtrar.<br><span style="font-size:10px;color:#6b7280;">Chrome/Edge · sessão persiste</span></div>
+            <button class="upload-btn-file" onclick="openFSADirectory()">&#x26A1; Seleccionar pasta</button>
+          </div>
           <div class="upload-card">
             <div style="font-size:28px;margin-bottom:8px;">&#x1F4C1;</div>
             <div class="upload-card-title">Pasta</div>
@@ -364,8 +370,8 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <input type="checkbox" id="skipUnknownDatesChk" onchange="_setSkipUnknownDates(this.checked)" style="margin-top:2px;">
           <span>Ignorar ficheiros <b>sem data reconhecível</b> no nome (não perguntar). Útil ao arrastar pastas com ficheiros extra.</span>
         </label>
+        <button type="button" id="restoreSessionBtn" style="display:none;width:100%;margin-bottom:10px;padding:10px 14px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;" onclick="_restoreSession()">&#x1F501; Carregar dados da última sessão</button>
         <h3>2. Carregar dados</h3>
-        <button type="button" id="restoreSessionBtn" class="upload-btn-file" style="display:none;width:100%;margin-bottom:8px;background:#6366f1;" onclick="_restoreSession()">↩ Restaurar sessão anterior</button>
         <p style="font-size:11px;color:#64748b;margin:0;">Usa as opções à esquerda (pasta, ficheiros, calendário ou drag &amp; drop).</p>
         <h3 style="margin-top:14px;">Ferramentas</h3>
         <p>Gera automaticamente um mês de ficheiros CSV normalizados a partir de várias pastas de origem.</p>
@@ -1103,7 +1109,7 @@ tr:hover td{background:rgba(0,200,255,.03);}
           <button class="btn" id="prefPastaBtn" onclick="document.getElementById('addDir').click()">&#x2191; Pasta</button>
           <button class="btn" id="prefFicheirosBtn" onclick="document.getElementById('addFiles').click()">&#x2191; Ficheiros</button>
           <button class="btn" style="color:#f87171;" onclick="_clearSession()">&#x1F5D1; Limpar sessão guardada</button>
-          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v3.0</button>
+          <button class="btn" style="color:#a78bfa;" onclick="_openEmailModal()">&#x2709; Email novidades v3.5</button>
         </div>
         <div class="kpi-h" style="margin-top:16px;margin-bottom:8px;">&#x1F916; Análise IA — Configuração</div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
@@ -1743,7 +1749,13 @@ function finishLoading(){
   selBlocksSet=new Set(Object.values(loadedFiles).map(f=>f.block));
   renderDayPicker();
   const loaded=Object.keys(loadedFiles).length;
-  if(loaded<=6){applyFilter();}
+  const _fsaOnly=loaded>0&&Object.values(loadedFiles).every(f=>f._fsa);
+  if(_fsaOnly){
+    try{renderSidebar();}catch(e){}
+    $('statsBar').style.display='';
+    $('sTxt').textContent=loaded+' ficheiro(s) disponíveis — selecciona dias/blocos e clica ▶ Aplicar filtro';
+    showWarn('⚡ Modo lazy: '+loaded+' ficheiros disponíveis. Selecciona e clica Aplicar filtro.');
+  } else if(loaded<=6){applyFilter();}
   else{
     renderSidebar();updateStats();
     $('statsBar').style.display='';
@@ -2068,7 +2080,7 @@ function renderDayPicker(){
   const days=[...new Set(files.map(f=>f.date))].sort();
   const daysSet=new Set(days);
   const dayCounts={};
-  files.forEach(f=>{dayCounts[f.date]=(dayCounts[f.date]||0)+f.rows.length;});
+  files.forEach(f=>{dayCounts[f.date]=(dayCounts[f.date]||0)+(f.rows?f.rows.length:0);});
   const blocksAvail=new Set(files.map(f=>f.block));
   // Helper: from YYMMDD extract month key "2026-03" and label "Março 2026"
   const MNAMES=['Janeiro','Fevereiro','Mar\xe7o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
@@ -2155,8 +2167,10 @@ function selBlocks(v){const avail=new Set(Object.values(loadedFiles).map(f=>f.bl
 async function applyFilter(){
   const csnFilter=($('fSearch').value||'').trim().toLowerCase();
   flights={};
-  const filtered=Object.values(loadedFiles).filter(f=>selDaysSet.has(f.date)&&selBlocksSet.has(f.block));
-  const totalRows=filtered.reduce((s,f)=>s+f.rows.length,0);
+  const filtered=Object.values(loadedFiles).filter(f=>selDaysSet.has(f.date)&&selBlocksSet.has(f.block)&&(!f._fsa||!f.airport||f.airport===activeAirport));
+  const _fsaToLoad=filtered.filter(f=>f._fsa&&(!f.rows||!(f.rows?f.rows.length:0)));
+  if(_fsaToLoad.length) await _fsaLoadRows(_fsaToLoad);
+  const totalRows=filtered.reduce((s,f)=>s+(f.rows?f.rows.length:0),0);
   if(totalRows>200000){
     showWarn(`\u26A0\uFE0F ${totalRows.toLocaleString()} linhas \u2014 a processar, pode demorar alguns segundos...`);
   }else{
@@ -2238,7 +2252,7 @@ function renderSidebar(){
     d.className='fi'+(f.visible?' on':'');d.dataset.csn=csn;
     const cls=classifyFlight(f.rows);
     const cb=cls==='arr'?'<span style="color:#f87171;font-size:9px;margin-left:4px;">\u25bcARR</span>':cls==='dep'?'<span style="color:#22d3a0;font-size:9px;margin-left:4px;">\u25b2DEP</span>':'<span style="color:#64748b;font-size:9px;margin-left:4px;">\u2014NVL</span>';
-    d.innerHTML=`<div class="fi-dot" style="background:${f.color}"></div><div class="fi-info"><div class="fi-csn">${csn}${cb}</div><div class="fi-meta">${f.rows.length} pts \u00b7 ${trRange(f.rows)}</div></div><div class="fi-chk">${f.visible?'\u2713':''}</div>`;
+    d.innerHTML=`<div class="fi-dot" style="background:${f.color}"></div><div class="fi-info"><div class="fi-csn">${csn}${cb}</div><div class="fi-meta">${(f.rows?f.rows.length:0)} pts \u00b7 ${trRange(f.rows)}</div></div><div class="fi-chk">${f.visible?'\u2713':''}</div>`;
     d.addEventListener('click',()=>toggleFlight(csn));
     frag.appendChild(d);
   });
@@ -2544,7 +2558,7 @@ function renderTable(){
 function updateStats(){
   const vis=Object.entries(flights).filter(([csn,f])=>isFlightVisible(csn,f));
   let pts=0,mA=0,mS=0,f1='',lx='';
-  vis.forEach(([,f])=>{pts+=f.rows.length;for(const r of f.rows){
+  vis.forEach(([,f])=>{pts+=(f.rows?f.rows.length:0);for(const r of f.rows){
     const av=getAlt(r),a=av==='\u2014'?0:+av,s=+r.tas||0;
     if(a>mA)mA=a;if(s>mS)mS=s;
     const t=String(r.tod||'');if(!f1||t<f1)f1=t;if(!lx||t>lx)lx=t;
@@ -3258,7 +3272,7 @@ function flightTimeIndex(f){
   if(!f||!f.rows)return null;
   if(f._tIdx)return f._tIdx;
   const arr=[];
-  for(let i=0;i<f.rows.length;i++){
+  for(let i=0;i<(f.rows?f.rows.length:0);i++){
     const r=f.rows[i],lat=+r.latitude,lon=+r.longitude,t=rowEpoch(r);
     if(!isNaN(t)&&lat&&lon&&!isNaN(lat)&&!isNaN(lon))arr.push({t,lat,lon});
   }
@@ -3448,7 +3462,20 @@ function switchAirport(icao){
   iasAppResults=null;iasAppSelectedSet=new Set();iasAppRwyFilter='ALL';
   buildIasAppRwyButtons();
   renderIasAppResults();
-  if(typeof markMapDirty==='function'){markMapDirty();renderMapIfActive();}
+  // Clear FSA rows of other airports (free memory, force lazy reload)
+  Object.values(loadedFiles).forEach(function(f){if(f._fsa&&f.airport&&f.airport!==icao)f.rows=null;});
+  // Reload flights for new airport, then redraw map
+  // Navegar para o mapa
+  try{
+    var _mT=document.querySelector('.tab[onclick*="map"]');
+    if(_mT&&typeof switchTab==='function')switchTab('map',_mT);
+  }catch(e){}
+  // Zoom no aeroporto
+  var _cfg=AIRPORT_CONFIGS[icao];
+  if(_cfg&&_cfg.center){try{map.setView(_cfg.center,11,{animate:true});}catch(e){}}
+  applyFilter().then(function(){
+    if(typeof markMapDirty==='function'){markMapDirty();renderMapIfActive();}
+  }).catch(function(e){console.warn('[switchAirport applyFilter]',e);});
 }
 let finalResults=[];
 let _finalOverlayOn=false;
@@ -4819,10 +4846,10 @@ function switchIasAppSubTab(tab){
 }
 
 function setAppDistRwy(rwy){
-  _appDistRwy = rwy;
-  ['02','20'].forEach(r => {
-    const b = $('appDistRwy'+r);
-    if(b) b.classList.toggle('on', r===rwy);
+  _appDistRwy=rwy;
+  ['02','20'].forEach(function(r){
+    var b=$('appDistRwy'+r);if(!b)return;
+    var on=r===rwy;b.style.background=on?'var(--accent)':'#fff';b.style.color=on?'#fff':'var(--accent)';b.style.border='2px solid var(--accent)';b.style.fontWeight=on?'700':'400';
   });
   // Rebuild buttons with runway-specific labels
   const bCont = $('appDistBtns');
@@ -4830,6 +4857,15 @@ function setAppDistRwy(rwy){
   // Rerender if data exists
   if(_appDistData) renderAppDistResults();
 }
+
+
+var _adcS=1,_adcX=0,_adcY=0,_adcD=false,_adcLx=0,_adcLy=0;
+function _appDistApplyTransform(){var e=document.getElementById('appDistChartInner');if(e)e.style.transform='translate('+_adcX+'px,'+_adcY+'px) scale('+_adcS+')';}
+function _appDistWheel(e){e.preventDefault();var w=document.getElementById('appDistChartWrap');if(!w)return;var r=w.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,f=e.deltaY<0?1.18:0.85;_adcX=mx-f*(mx-_adcX);_adcY=my-f*(my-_adcY);_adcS=Math.max(0.5,Math.min(10,_adcS*f));_appDistApplyTransform();}
+function _appDistDragStart(e){if(e.button!==0)return;_adcD=true;_adcLx=e.clientX;_adcLy=e.clientY;var w=document.getElementById('appDistChartWrap');if(w)w.style.cursor='grabbing';}
+function _appDistDragMove(e){if(!_adcD)return;_adcX+=e.clientX-_adcLx;_adcY+=e.clientY-_adcLy;_adcLx=e.clientX;_adcLy=e.clientY;_appDistApplyTransform();}
+function _appDistDragEnd(){_adcD=false;var w=document.getElementById('appDistChartWrap');if(w)w.style.cursor='grab';}
+function _appDistResetZoom(){_adcS=1;_adcX=0;_adcY=0;_appDistApplyTransform();}
 
 function initAppDistBtns(){
   const container = $('appDistBtns');
@@ -4856,7 +4892,7 @@ function initAppDistBtns(){
     const btn = document.createElement('button');
     btn.dataset.nm = nm;
     // Explicit on/off styling
-    btn.style.cssText = 'font-size:9px;padding:2px 7px;min-width:'+(isNamed?'56':'44')+'px;border-radius:4px;cursor:pointer;font-weight:'+(isNamed?'700':'400')+';border:1.5px solid '+(isOn?'var(--accent)':'#d7dce3')+';background:'+(isOn?'var(--accent)':'#fff')+';color:'+(isOn?'#fff':'#374151')+';';
+    btn.style.cssText = 'font-size:9px;padding:2px 7px;min-width:'+(isNamed?'56':'44')+'px;flex:1;border-radius:4px;cursor:pointer;font-weight:'+(isNamed?'700':'400')+';border:1.5px solid '+(isOn?'var(--accent)':'#d7dce3')+';background:'+(isOn?'var(--accent)':'#fff')+';color:'+(isOn?'#fff':'#374151')+';';
     if(isNamed&&!isOn) btn.style.borderColor='var(--accent)'; // named but off: coloured border
     if(isNamed&&!isOn) btn.style.color='var(--accent)';
     if(isNamed){
@@ -4875,6 +4911,30 @@ function initAppDistBtns(){
     };
     container.appendChild(btn);
   });
+  var _sRow=document.createElement('div');_sRow.style.cssText='display:flex;gap:3px;margin-top:4px;flex-basis:100%;width:100%;';
+  // Spacer for btn 12.0 (not in any segment)
+  var _sSpacer=document.createElement('div');_sSpacer.style.flex='1';_sRow.appendChild(_sSpacer);
+  // Non-overlapping segment ranges: NETVO/OKNIB belong to preceding segment visually
+  var _sDefs=({'02':[{l:'PESEX→NETVO',f:11.5,t:8.0,c:'#3b82f6'},{l:'NETVO→OKNIB',f:7.5,t:4.0,c:'#f59e0b'},{l:'OKNIB→THR',f:3.5,t:0.0,c:'#ef4444'}],'20':[{l:'UPKAT→TOPVI',f:11.5,t:8.0,c:'#3b82f6'},{l:'TOPVI→ROKOB',f:7.5,t:4.0,c:'#f59e0b'},{l:'ROKOB→THR',f:3.5,t:0.0,c:'#ef4444'}]})[_appDistRwy]||[];
+  _sDefs.forEach(function(seg){
+    var cnt=steps.filter(function(nm){return nm>=seg.t&&nm<=seg.f;}).length;
+    var sb=document.createElement('button');sb.type='button';sb.title=seg.l;sb.dataset.sf=seg.f;sb.dataset.st=seg.t;
+    sb.style.cssText='height:8px;border-radius:3px;border:none;cursor:pointer;flex:'+cnt+';background:'+seg.c+';opacity:0.5;transition:opacity .15s;';
+    sb.onmouseover=function(){this.style.opacity='1';};sb.onmouseout=function(){this.style.opacity='0.5';};
+    sb.onclick=function(){
+      var f2=parseFloat(this.dataset.sf),t2=parseFloat(this.dataset.st);
+      var ns=steps.filter(function(nm){return nm>=t2&&nm<=f2;});
+      var ao=ns.every(function(nm){return _appDistSelNm.has(nm);});
+      ns.forEach(function(nm){ao?_appDistSelNm.delete(nm):_appDistSelNm.add(nm);});
+      container.querySelectorAll('button[data-nm]').forEach(function(b){
+        var n=parseFloat(b.dataset.nm);if(n<t2||n>f2)return;
+        var on=_appDistSelNm.has(n),isN=!!_APP_SCALE_MAP[n.toFixed(1)];
+        b.style.background=on?'var(--accent)':'#fff';b.style.color=on?'#fff':(isN?'var(--accent)':'#374151');b.style.borderColor=on?'var(--accent)':(isN?'var(--accent)':'#d7dce3');
+      });
+    };
+    _sRow.appendChild(sb);
+  });
+  container.appendChild(_sRow);
 }
 
 // Get IAS limit for a given distance (NM from THR) on a given runway
@@ -5000,7 +5060,10 @@ function renderAppDistResults(){
   const el = $('appDistContent'); if(!el||!_appDistData) return;
   const {results:allRes, selNm, buffer} = _appDistData;
   // Apply RWY filter
-  const res = allRes.filter(r=>r.rwy===_appDistRwy);
+  var _sT=($('appDistTopFilter')&&$('appDistTopFilter').value)||'all';
+  let res=allRes.filter(r=>r.rwy===_appDistRwy);
+  if(_sT==='top5above')res=res.filter(r=>r.avgDev>0).sort((a,b)=>(b.avgDev||0)-(a.avgDev||0)).slice(0,5);
+  else if(_sT==='top5below')res=res.filter(r=>r.avgDev<0).sort((a,b)=>(a.avgDev||0)-(b.avgDev||0)).slice(0,5);
   if(!res.length){ 
     // Debug: count what was processed
     const _dbg = `Sem violações encontradas · Pista: RWY${_appDistRwy} · Buffer: ±${_appDistData?.buffer??0}kt · Voos ARR analisados: ${_appDistData?._dbgTotal??0} · Perfis construídos: ${_appDistData?._dbgProfiles??0}`;
@@ -5046,7 +5109,7 @@ function renderAppDistResults(){
     }).join('');
     const avgCol = r.avgDev!=null ? (r.avgDev>0?'#b91c1c':r.avgDev<0?'#0b5cad':'#6b7280') : '#94a3b8';
     const rMk=sep_registerModalData('APP · '+r.csn+' · RWY'+r.rwy+' · '+r.date,[{_isAppDist:true,csn:r.csn,rwy:r.rwy,date:r.date,tod:r.tod,avgDev:r.avgDev,distData:r.distData,selNm}],r.csn+' · Méd dev: '+(r.avgDev!=null?(r.avgDev>0?'+':'')+r.avgDev+'kt':'—'));
-    return `<tr class="modalSource" data-modal-key="${rMk}" style="${bg}cursor:pointer;">
+    return `<tr class="modalSource" data-modal-key="${rMk}" onclick="sep_openDataModal('${rMk}')" style="${bg}cursor:pointer;">
       <td style="padding:4px 8px;font-weight:700;font-size:11px;">${sep_escHtml(r.csn)}</td>
       <td style="padding:4px 8px;font-size:11px;">${sep_escHtml(r.date)}</td>
       <td style="padding:4px 8px;font-size:11px;font-family:monospace;">${sep_escHtml(r.tod)}</td>
@@ -5076,133 +5139,78 @@ function renderAppDistResults(){
     </div>`;
 }
 
-function buildAppDistChart(res, selNm, buffer){
-  // Dropdowns for company and runway
-  const companies = ['Todas', ...Array.from(new Set(res.map(r=>r.comp))).sort((a,b)=>{
-    const va=res.filter(x=>x.comp===a).length, vb=res.filter(x=>x.comp===b).length;
-    return vb-va; // most violations first
-  })];
-  const selComp = ($('appDistChartComp')&&$('appDistChartComp').value)||'Todas';
-  const selRwy2 = _appDistRwy; // always tied to main RWY selector
-  const selBuf2 = parseInt(($('appDistChartBuf')&&$('appDistChartBuf').value)||4);
-
-  const filtered = res.filter(r=>
-    (selComp==='Todas'||r.comp===selComp) &&
-    (selRwy2==='all'||r.rwy===selRwy2)
-  ).map(r=>({
-    ...r,
-    distData: Object.fromEntries(selNm.map(nm=>{
-      const d=r.distData[nm.toFixed(1)];
-      const viol = d&&d.ias!=null&&Math.abs(d.dev||0)>selBuf2;
-      return [nm.toFixed(1), d?{...d, viol}:null];
-    }))
-  }));
-
-  // SVG line chart
-  const pad={l:50,r:20,t:24,b:52}; // extra bottom space for rotated waypoint labels
-  const W=760, H=200, plotW=W-pad.l-pad.r, plotH=H-pad.t-pad.b;
-  // X axis: selNm reversed (high→low), distance from THR
-  const xs = selNm;
-  const nX = xs.length;
-  const toX = i => pad.l + (nX>1 ? (i/(nX-1))*plotW : plotW/2);
-  // Find Y range
-  const allIas = filtered.flatMap(r=>xs.map(nm=>r.distData[nm.toFixed(1)]?.ias)).filter(v=>v&&v>0);
-  const allLims = xs.map(nm=>{
-    const k=nm.toFixed(1);
-    return Math.max(...(APP_DIST_WAYPOINTS['02']||[]).concat(APP_DIST_WAYPOINTS['20']||[]).map(wp=>wp.limit));
-  });
-  const yMin = Math.max(100, Math.min(...allIas, 150)-20);
-  const yMax = Math.min(300, Math.max(...allIas, 200)+20);
-  const toY = v => pad.t + plotH*(1-(v-yMin)/(yMax-yMin));
-
-  // Grid
-  const nY=4;
-  const grids=Array.from({length:nY+1},(_,i)=>{const v=Math.round(yMin+i*(yMax-yMin)/nY);return `<line x1="${pad.l}" y1="${toY(v)}" x2="${W-pad.r}" y2="${toY(v)}" stroke="#f1f5f9" stroke-width="1"/><text x="${pad.l-4}" y="${toY(v)+4}" text-anchor="end" font-size="9" fill="#94a3b8">${v}</text>`;}).join('');
-
-  // Limit lines
-  const limitLines = xs.map((nm,i)=>{
-    const x=toX(i);
-    const lim02=getAppDistLimitAt(nm,'02'), lim20=getAppDistLimitAt(nm,'20');
-    return (selRwy2==='20'?'':`<circle cx="${x}" cy="${toY(lim02)}" r="2" fill="#dc2626" opacity="0.4"/>`) +
-           (selRwy2==='02'?'':`<circle cx="${x}" cy="${toY(lim20)}" r="2" fill="#f97316" opacity="0.4"/>`);
+function buildAppDistChart(res,selNm,buffer){
+  var companies=['Todas'].concat(Array.from(new Set(res.map(function(r){return r.comp;}))).sort(function(a,b){return res.filter(function(x){return x.comp===b;}).length-res.filter(function(x){return x.comp===a;}).length;}));
+  var selComp=($('appDistChartComp')&&$('appDistChartComp').value)||'Todas';
+  var selRwy2=_appDistRwy;
+  var selBuf2=parseInt(($('appDistChartBuf')&&$('appDistChartBuf').value)||4);
+  var selTop=($('appDistTopFilter')&&$('appDistTopFilter').value)||'all';
+  var filtered=res.filter(function(r){return(selComp==='Todas'||r.comp===selComp)&&(selRwy2==='all'||r.rwy===selRwy2);})
+    .map(function(r){return Object.assign({},r,{distData:Object.fromEntries(selNm.map(function(nm){var d=r.distData[nm.toFixed(1)];var viol=d&&d.ias!=null&&Math.abs(d.dev||0)>selBuf2;return[nm.toFixed(1),d?Object.assign({},d,{viol:viol}):null];}))});});
+  if(selTop==='top5above') filtered=filtered.filter(function(r){return r.avgDev!=null&&r.avgDev>0;}).sort(function(a,b){return(b.avgDev||0)-(a.avgDev||0);}).slice(0,5);
+  else if(selTop==='top5below') filtered=filtered.filter(function(r){return r.avgDev!=null&&r.avgDev<0;}).sort(function(a,b){return(a.avgDev||0)-(b.avgDev||0);}).slice(0,5);
+  var pad={l:48,r:16,t:20,b:46};
+  var W=760,H=220,plotW=W-pad.l-pad.r,plotH=H-pad.t-pad.b;
+  var xs=selNm,nX=xs.length;
+  function toX(i){return pad.l+(nX>1?(i/(nX-1))*plotW:plotW/2);}
+  var allIas=filtered.reduce(function(a,r){return a.concat(xs.map(function(nm){var d=r.distData[nm.toFixed(1)];return d&&d.ias>0?d.ias:null;}).filter(Boolean));;},[]);
+  var allLims=xs.map(function(nm){return getAppDistLimitAt(nm,selRwy2==='all'?'02':selRwy2);}).filter(function(v){return v>0;});
+  var allVals=allIas.concat(allLims);
+  var rawMin=allVals.length?Math.min.apply(null,allVals):140;
+  var rawMax=allVals.length?Math.max.apply(null,allVals):200;
+  var pad5=Math.max(5,(rawMax-rawMin)*0.12);
+  var yMin=Math.max(80,Math.round((rawMin-pad5)/5)*5);
+  var yMax=Math.min(320,Math.round((rawMax+pad5)/5)*5);
+  function toY(v){return pad.t+plotH*(1-(v-yMin)/(yMax-yMin||1));}
+  var nY=Math.min(6,Math.round((yMax-yMin)/10));
+  var grids=Array.from({length:nY+1},function(_,i2){var v=Math.round(yMin+i2*(yMax-yMin)/nY);return '<line x1="'+pad.l+'" y1="'+toY(v).toFixed(1)+'" x2="'+(W-pad.r)+'" y2="'+toY(v).toFixed(1)+'" stroke="#f1f5f9" stroke-width="1"/><text x="'+(pad.l-3)+'" y="'+(toY(v)+4).toFixed(1)+'" text-anchor="end" font-size="9" fill="#94a3b8">'+v+'</text>';}).join('');
+  var limPts=xs.map(function(nm,i){return toX(i).toFixed(1)+','+toY(getAppDistLimitAt(nm,selRwy2==='all'?'02':selRwy2)).toFixed(1);}).join(' ');
+  window._adcMks=[];
+  var flightLines=filtered.slice(0,100).map(function(r){
+    var pts=xs.map(function(nm,i){var d=r.distData[nm.toFixed(1)];return(d&&d.ias)?toX(i).toFixed(1)+','+toY(d.ias).toFixed(1):null;}).filter(Boolean);
+    if(pts.length<2)return '';
+    var hasViol=xs.some(function(nm){var d=r.distData[nm.toFixed(1)];return d&&d.viol;});
+    var avgD=r.distData[xs[Math.floor(xs.length/2)]&&xs[Math.floor(xs.length/2)].toFixed?xs[Math.floor(xs.length/2)].toFixed(1):0];
+    var color=hasViol?(avgD&&avgD.dev>0?'#b91c1c':'#2563eb'):'#94a3b8';
+    var mk=sep_registerModalData('APP · '+r.csn+' · RWY'+r.rwy+' · '+r.date,[{_isAppDist:true,csn:r.csn,rwy:r.rwy,date:r.date,tod:r.tod,avgDev:r.avgDev,distData:r.distData,selNm:selNm}],r.csn+' · Méd dev: '+(r.avgDev!=null?(r.avgDev>0?'+':'')+r.avgDev+'kt':'—'));
+    var op2=hasViol?'0.55':'0.20',sw=hasViol?'2':'1';
+        if(!window._adcMks)window._adcMks=[];var mkIdx=window._adcMks.length;window._adcMks.push(mk);
+    return '<g onclick="sep_openDataModal(window._adcMks['+mkIdx+'])" style="cursor:pointer;"><polyline points="'+pts.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="'+sw+'" opacity="'+op2+'"/></g>';
   }).join('');
-
-  // Limit line for selected runway only
-  const limPolyRwy=xs.map((nm,i)=>`${toX(i)},${toY(getAppDistLimitAt(nm,selRwy2))}`).join(' ');
-  // Limit annotation points (FAF, TOPVI/NETVO, 4NM, THR)
-  const _lwps = APP_DIST_WAYPOINTS[selRwy2]||[];
-  const _fafNm = _lwps[0]?_lwps[0].nm:11.3;
-  const _tvNm  = _lwps[1]?_lwps[1].nm:8.2;
-  const _fafIdx = xs.findIndex(nm=>Math.abs(nm-_fafNm)<0.26);
-  const _tvIdx  = xs.findIndex(nm=>Math.abs(nm-_tvNm)<0.26);
-
-  // Flight lines
-  const flightLines = filtered.slice(0,80).map(r=>{
-    const pts=xs.map((nm,i)=>{const d=r.distData[nm.toFixed(1)];return d?.ias?`${toX(i)},${toY(d.ias)}`:null;}).filter(Boolean);
-    if(pts.length<2) return '';
-    const midD=r.distData[xs[Math.floor(xs.length/2)]?.toFixed(1)];
-    const color = midD?.viol ? '#b91c1c' : '#3b82f6';
-    const mk=sep_registerModalData('APP · '+r.csn+' · RWY'+r.rwy+' · '+r.date,
-      [{_isAppDist:true,csn:r.csn,rwy:r.rwy,date:r.date,tod:r.tod,avgDev:r.avgDev,distData:r.distData,selNm}],
-      r.csn+' · RWY'+r.rwy+' · Méd dev: '+(r.avgDev!=null?(r.avgDev>0?'+':'')+r.avgDev+'kt':'—'));
-    return `<polyline class="modalSource" data-modal-key="${mk}" points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.4" style="cursor:pointer;"
-      onmouseover="this.style.opacity='1';this.style.strokeWidth='3';"
-      onmouseout="this.style.opacity='0.4';this.style.strokeWidth='1.5';"/>`;
+  var xLabels=xs.map(function(nm,i){
+    var k=nm.toFixed(1),scE=_APP_SCALE_MAP[k];
+    var wpName=scE&&scE.wps[selRwy2==='all'?'02':selRwy2]?scE.wps[selRwy2==='all'?'02':selRwy2].name:null;
+    if(!wpName&&!Number.isInteger(nm))return '';
+    var x=toX(i);
+    return wpName?'<text transform="rotate(-35,'+x+','+(H-6)+')" x="'+x+'" y="'+(H-6)+'" text-anchor="end" font-size="9" font-weight="700" fill="#0f2744">'+wpName+'</text>':'<text x="'+x+'" y="'+(H-3)+'" text-anchor="middle" font-size="8" fill="#94a3b8">'+Math.round(nm)+'</text>';
   }).join('');
-
-  // X labels (every 2 steps or at named waypoints)
-  // X labels: only named waypoints + 12.0 + 0.0 + every ~2NM, rotated to avoid overlap
-  const _showLabel = (nm, i, wpName) => {
-    if(wpName) return true;       // always show named waypoints
-    if(i===0) return true;         // leftmost (12.0)
-    if(i===xs.length-1) return true; // rightmost (THR)
-    return Number.isInteger(nm) && nm%2===0; // whole even NM
-  };
-  const xLabels=xs.map((nm,i)=>{
-    const k=nm.toFixed(1);
-    const scE=_APP_SCALE_MAP[k];
-    const wpName = scE&&scE.wps[selRwy2] ? scE.wps[selRwy2].name : null;
-    const lbl = _showLabel(nm,i,wpName) ? (wpName||k) : '';
-    if(!lbl) return '';
-    const isNamed = !!wpName;
-    const xpos = toX(i);
-    // Rotate named waypoint labels to avoid overlap
-    return isNamed
-      ? `<text transform="rotate(-40,${xpos},${H-8})" x="${xpos}" y="${H-8}" text-anchor="end" font-size="9" font-weight="700" fill="#0f2744">${lbl}</text>`
-      : `<text x="${xpos}" y="${H-5}" text-anchor="middle" font-size="8" fill="#94a3b8">${lbl}</text>`;
-  }).join('');
-
-  const bufDropdown=(selBuf2===buffer)?'':' style="background:var(--accent-bg);"';
-  const compOpts=companies.map(co=>`<option value="${co}" ${co===selComp?'selected':''}>${co}</option>`).join('');
-
-  const bufOpts=Array.from({length:9},(_,i)=>i*2).map(b=>`<option value="${b}" ${b===selBuf2?'selected':''}>${b} kt</option>`).join('');
-
-  return `<div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:12px;margin-bottom:12px;">
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      <div style="font-weight:700;font-size:13px;color:#0f2744;">&#128200; Perfil de velocidade ao longo da final</div>
-      <select id="appDistChartComp" onchange="renderAppDistResults()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;">
-        <option disabled>Companhia</option>${compOpts}
-      </select>
-
-      <select id="appDistChartBuf" onchange="renderAppDistResults()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:6px;font-size:11px;padding:3px 8px;">
-        <option disabled>Buffer</option>${bufOpts}
-      </select>
-      <span style="font-size:10px;color:#64748b;">${filtered.length} voo(s) · azul=abaixo lim · vermelho=acima</span>
-    </div>
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;font-family:Segoe UI,Arial,sans-serif;">
-      ${grids}
-      <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${H-pad.b}" stroke="#e2e8f0" stroke-width="1"/>
-      <polyline points="${limPolyRwy}" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,3"/>
-      ${_fafIdx>=0?`<circle cx="${toX(_fafIdx)}" cy="${toY(180)}" r="4" fill="#dc2626"/><text x="${toX(_fafIdx)}" y="${toY(180)-8}" text-anchor="middle" font-size="9" fill="#dc2626">180kt</text>`:'' }
-      ${_tvIdx>=0?`<circle cx="${toX(_tvIdx)}" cy="${toY(160)}" r="4" fill="#dc2626"/><text x="${toX(_tvIdx)}" y="${toY(160)-8}" text-anchor="middle" font-size="9" fill="#dc2626">160kt</text>`:'' }
-      <text x="${toX(xs.length-1)+4}" y="${toY(getAppDistLimitAt(0,selRwy2))}" font-size="9" fill="#dc2626">~135kt</text>
-      ${flightLines}
-      ${xLabels}
-      <text x="${pad.l}" y="${pad.t-6}" font-size="9" fill="#64748b">kt</text>
-      <text x="${W-pad.r}" y="${pad.t+10}" text-anchor="end" font-size="9" fill="#dc2626">--- limite RWY ${selRwy2}</text>
-      <text x="${pad.l}" y="${H-5}" font-size="9" fill="#64748b">← THR (0 NM)</text>
-    </svg>
-  </div>`;
+  var compOpts=companies.map(function(co){return '<option value="'+co+'"'+(co===selComp?' selected':'')+'>'+(co||'Todas')+'</option>';}).join('');
+  var bufOpts=[0,2,4,6,8,10,12].map(function(b){return '<option value="'+b+'"'+(b===selBuf2?' selected':'')+'>'+(b>0?'±':'')+b+' kt</option>';}).join('');
+  return '<div style="background:#fff;border:1px solid #d7dce3;border-radius:10px;padding:10px;margin-bottom:12px;">'+
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">'+
+    '<b style="font-size:12px;color:#0f2744;">&#128200; Perfil de velocidade ao longo da final</b>'+
+    '<select id="appDistChartComp" onchange="renderAppDistResults()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:5px;font-size:11px;padding:2px 6px;">'+compOpts+'</select>'+
+    '<select id="appDistChartBuf" onchange="renderAppDistResults()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:5px;font-size:11px;padding:2px 6px;"><option disabled>Buffer</option>'+bufOpts+'</select>'+
+    '<select id="appDistTopFilter" onchange="renderAppDistResults()" style="background:#f0f4f8;border:1px solid #d7dce3;border-radius:5px;font-size:11px;padding:2px 6px;">'+
+      '<option value="all"'+(selTop==='all'?' selected':'')+'>Todos</option>'+
+      '<option value="top5above"'+(selTop==='top5above'?' selected':'')+'>Top 5 ▲ acima</option>'+
+      '<option value="top5below"'+(selTop==='top5below'?' selected':'')+'>Top 5 ▼ abaixo</option>'+
+    '</select>'+
+    '<span style="font-size:10px;color:#64748b;margin-left:auto;">'+filtered.length+' voo(s)</span>'+
+    '<button onclick="_appDistResetZoom()" style="font-size:9px;padding:2px 8px;border:1px solid #d7dce3;border-radius:4px;background:#f8fafc;cursor:pointer;">&#x21BA; zoom</button>'+
+    '</div>'+
+    '<div id="appDistChartWrap" style="overflow:hidden;cursor:grab;border:1px solid #e2e8f0;border-radius:6px;user-select:none;" '+
+      'onwheel="_appDistWheel(event)" onmousedown="_appDistDragStart(event)" onmousemove="_appDistDragMove(event)" onmouseup="_appDistDragEnd()" onmouseleave="_appDistDragEnd()">'+
+      '<div id="appDistChartInner" style="transform-origin:0 0;">'+
+        '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:auto;display:block;">'+
+          grids+'<line x1="'+pad.l+'" y1="'+pad.t+'" x2="'+pad.l+'" y2="'+(H-pad.b)+'" stroke="#e2e8f0" stroke-width="1"/>'+
+          '<polyline points="'+limPts+'" fill="none" stroke="#dc2626" stroke-width="2" stroke-dasharray="6,3" opacity="0.7"/>'+
+          flightLines+xLabels+
+          '<text x="'+pad.l+'" y="'+(pad.t-4)+'" font-size="9" fill="#64748b">kt</text>'+
+        '</svg>'+
+      '</div>'+
+    '</div>'+
+  '</div>';
 }
 
 
@@ -5656,8 +5664,8 @@ function renderAnaResults(){
   const gEmp=$('anaGAEmpty'),gCnt=$('anaGAContent');
   if(gEmp&&gCnt){gEmp.style.display=gHasData?'none':'flex';gCnt.style.display=gHasData?'block':'none';}
   if(gHasData){
-    $('gaHead').innerHTML='<tr><th>#</th><th>Hora</th><th>Data</th><th>Voo</th><th>Alt mín (ft)</th><th>AGL (ft)</th><th>IAS</th><th>Subida (ft)</th><th>Dur. (s)</th><th>Aterrou?</th></tr>';
-    $('gaBody').innerHTML=goAroundResults.map((g,i)=>`<tr>
+    if($('gaHead'))$('gaHead').innerHTML='<tr><th>#</th><th>Hora</th><th>Data</th><th>Voo</th><th>Alt mín (ft)</th><th>AGL (ft)</th><th>IAS</th><th>Subida (ft)</th><th>Dur. (s)</th><th>Aterrou?</th></tr>';
+    if($('gaBody'))$('gaBody').innerHTML=goAroundResults.map((g,i)=>`<tr>
     <td style="color:var(--muted);">${i+1}</td><td style="color:var(--muted);">${g.tMinStr}</td>
     <td style="color:var(--muted);">${g.date}</td>
     <td><span style="display:inline-block;width:10px;height:10px;background:${g.color};border-radius:2px;vertical-align:middle;margin-right:6px;"></span><b>${g.csn}</b></td>
@@ -6628,7 +6636,7 @@ function _sortTblMain(col){
 }
 
 // ===== PERSISTÊNCIA DE SESSÃO (IndexedDB) =====
-const _IDB_NAME='FT_Session_v2';
+const _IDB_NAME='FT_Session_v3';
 let _idb=null;
 function _openIDB(){
   return new Promise((res,rej)=>{
@@ -6637,24 +6645,143 @@ function _openIDB(){
     r.onupgradeneeded=e=>{
       const db=e.target.result;
       if(!db.objectStoreNames.contains('files'))db.createObjectStore('files',{keyPath:'_key'});
+      if(!db.objectStoreNames.contains('fsaHandle'))db.createObjectStore('fsaHandle',{keyPath:'_key'});
     };
-    r.onsuccess=e=>{_idb=e.target.result;res(_idb);};
+    r.onsuccess=e=>{
+      _idb=e.target.result;
+      // Fechar conexão se outra aba tentar fazer upgrade
+      _idb.onversionchange=()=>{_idb.close();_idb=null;};
+      res(_idb);
+    };
     r.onerror=()=>rej(r.error);
+    // Tratar estado blocked (outra aba com DB aberta numa versão anterior)
+    r.onblocked=()=>{
+      console.warn('[IDB] blocked — fecha outras abas da app e refresca');
+      rej(new Error('IDB blocked — outra aba aberta'));
+    };
   });
 }
+// ═══ FSA — Pasta Inteligente (File System Access API / Lazy Loading) ═══
+var _fsaDirHandle=null;
+
+function _parseFSAFilename(name){
+  var n=name.replace(/\.csv$/i,'');
+  var m=n.match(/^([A-Z]{2,5})_(\d{4})-(\d{2})-(\d{2})_(\d{2}-\d{2})$/i);
+  if(m){var date=m[2].slice(2)+m[3]+m[4];return{date:date,block:m[5],airport:m[1].toUpperCase()};}
+  m=n.match(/[_\-](\d{6})[_\-](\d{2}-\d{2})$/i);
+  if(m) return{date:m[1],block:m[2]};
+  m=n.match(/(\d{4})-(\d{2})-(\d{2})[_\-](\d{2}-\d{2})/i);
+  if(m) return{date:m[1].slice(2)+m[2]+m[3],block:m[4]};
+  return null;
+}
+
+async function openFSADirectory(){
+  if(!window.showDirectoryPicker){alert('Esta função requer Chrome/Edge 86+.');return;}
+  try{
+    var dirHandle=await window.showDirectoryPicker({mode:'read'});
+    _fsaDirHandle=dirHandle;
+    _saveHandleNow(dirHandle); // guardar handle imediatamente
+    loadedFiles={};flights={};
+    await scanFSADirectory(dirHandle);
+    $('uploadOv').style.display='none';
+    setSplashMode(false);
+  }catch(e){if(e.name!=='AbortError')console.error('[FSA]',e);}
+}
+
+async function _saveHandleNow(handle){
+  try{
+    const db=await Promise.race([_openIDB(),new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),4000))]);
+    if(db.objectStoreNames.contains('fsaHandle')){
+      const tx=db.transaction('fsaHandle','readwrite');
+      tx.objectStore('fsaHandle').put({_key:'main',handle:handle,name:handle.name,savedAt:Date.now()});
+      await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=()=>rej(tx.error);});
+      console.log('[session] handle FSA guardado em IDB:',handle.name);
+    }
+    localStorage.setItem('ft_fsa_session',JSON.stringify({name:handle.name,t:Date.now()}));
+  }catch(e){console.warn('[session] handle save:',e.message);}
+}
+
+async function scanFSADirectory(dirHandle){
+  var pw=$('progressWrap'),pb=$('progressBar'),pt=$('progressTxt');
+  if(pw)pw.style.display='';
+  if(pt){pt.style.display='';pt.textContent='A indexar ficheiros...';}
+  var found=0,scanned=0;
+  async function scanDir(dh,depth){
+    if(!dh||depth>6)return;
+    for await(var [name,handle] of dh.entries()){
+      if(!name||!handle||name.startsWith('.'))continue;
+      if(handle.kind==='directory'){await scanDir(handle,depth+1);}
+      else if(name.toLowerCase().endsWith('.csv')){
+        scanned++;
+        var parsed=_parseFSAFilename(name);
+        if(parsed&&parsed.date&&parsed.date!=='??'&&parsed.block){
+          if(!loadedFiles[name]){
+            loadedFiles[name]={date:parsed.date,block:parsed.block,filename:name,_fsa:true,_fsaHandle:handle,rows:null,size:0,airport:parsed.airport||''};
+            found++;
+          }
+        }
+        if(scanned%30===0){if(pt)pt.textContent='A indexar... '+scanned+' CSV encontrados: '+found;await new Promise(r=>setTimeout(r,0));}
+      }
+    }
+  }
+  await scanDir(dirHandle,0);
+  if(pw)pw.style.display='none';if(pt)pt.style.display='none';
+  console.log('[FSA] '+found+' ficheiros indexados de '+scanned+' CSV encontrados');
+  try{localStorage.setItem('ft_fsa_session',JSON.stringify({name:dirHandle.name,n:found,t:Date.now()}));}catch(e){}
+  if(found===0){alert('Nenhum CSV encontrado.\nFormato esperado: ZZZZ_YYYY-MM-DD_HH-HH.csv');}
+  finishLoading();
+  setTimeout(function(){_saveSession();},300);
+}
+
+async function _fsaLoadRows(files){
+  var pw=$('progressWrap'),pb=$('progressBar'),pt=$('progressTxt');
+  if(pw)pw.style.display='';if(pt){pt.style.display='';pt.textContent='A carregar '+files.length+' ficheiro(s)...';}
+  for(var i=0;i<files.length;i++){
+    var fd=files[i];
+    if(pb)pb.style.width=((i+1)/files.length*100)+'%';
+    if(pt)pt.textContent='A carregar '+(i+1)+'/'+files.length+': '+fd.filename;
+    try{
+      var handle=fd._fsaHandle;
+      if(!handle&&_fsaDirHandle)try{handle=await _fsaDirHandle.getFileHandle(fd.filename);}catch(e){}
+      if(!handle){fd.rows=[];continue;}
+      var perm=await handle.queryPermission({mode:'read'}).catch(()=>'unknown');
+      if(perm!=='granted')await handle.requestPermission({mode:'read'}).catch(()=>{});
+      var file=await handle.getFile();
+      var text=await file.text();
+      fd.rows=parseCSVSync(text,fd.filename,fd.date,fd.block);
+      fd.size=file.size;fd._fsaHandle=handle;
+    }catch(e){console.warn('[FSA] erro',fd.filename,e);fd.rows=[];}
+    if(i%3===0)await new Promise(r=>setTimeout(r,0));
+  }
+  if(pw)pw.style.display='none';if(pt)pt.style.display='none';
+}
+
+if(typeof window!=='undefined'&&!window.showDirectoryPicker){var _fc=document.getElementById('fsaCard');if(_fc)_fc.style.display='none';}
+
 async function _saveSession(){
   try{
     const db=await _openIDB();
+    // 1. Guardar handle FSA em store separado (awaited)
+    if(_fsaDirHandle&&db.objectStoreNames.contains('fsaHandle')){
+      const hTx=db.transaction('fsaHandle','readwrite');
+      hTx.objectStore('fsaHandle').put({_key:'main',handle:_fsaDirHandle,name:_fsaDirHandle.name,savedAt:Date.now()});
+      await new Promise((res,rej)=>{hTx.oncomplete=res;hTx.onerror=rej;});
+    }
+    // 2. Guardar metadados dos ficheiros
     const tx=db.transaction('files','readwrite');
     const store=tx.objectStore('files');
     store.clear();
     const entries=Object.entries(loadedFiles);
     for(const[k,fd]of entries){
-      const trimmed=fd.rows?_trimRowsToMode(fd.rows):fd.rows;
-      store.put({...fd,rows:trimmed,_key:k});
+      var toSave=fd._fsa
+        ?{_key:k,date:fd.date,block:fd.block,filename:fd.filename,_fsa:true,size:fd.size||0,airport:fd.airport||''}
+        :{...fd,rows:fd.rows?_trimRowsToMode(fd.rows):fd.rows,_key:k};
+      delete toSave._fsaHandle;
+      store.put(toSave);
     }
     await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=rej;});
     console.log('[session] guardada:',entries.length,'ficheiros · modo',_loadMode);
+    try{localStorage.setItem('ft_fsa_session',JSON.stringify({n:entries.length,name:_fsaDirHandle?_fsaDirHandle.name:'',t:Date.now()}));}catch(e){}
   }catch(e){console.warn('[session] save failed',e);}
 }
 async function _countSavedSession(){
@@ -6668,29 +6795,87 @@ async function _countSavedSession(){
 }
 async function _updateRestoreBtn(){
   const btn=$('restoreSessionBtn');if(!btn)return;
-  const n=await _countSavedSession();
+  // 1. Verificar localStorage (rápido, funciona sempre com file://)
+  var lsData=null;
+  try{var lsRaw=localStorage.getItem('ft_fsa_session');if(lsRaw)lsData=JSON.parse(lsRaw);}catch(e){}
+  if(lsData&&lsData.name){
+    btn.style.display='';
+    btn.textContent='🔁 Carregar dados da última sessão — '+lsData.name;
+    return;
+  }
+  // 2. Fallback: verificar IDB
+  let n=await _countSavedSession();
+  let fsaName='';
+  if(n===0){
+    try{
+      const db=await _openIDB();
+      if(db.objectStoreNames.contains('fsaHandle')){
+        var hR=db.transaction('fsaHandle','readonly').objectStore('fsaHandle').get('main');
+        var hD=await new Promise((r,j)=>{hR.onsuccess=()=>r(hR.result);hR.onerror=()=>r(null);});
+        if(hD&&hD.handle){n=1;fsaName=hD.name||'';}
+      }
+    }catch(e){}
+  }
   if(n>0){
     btn.style.display='';
-    btn.textContent=`↩ Restaurar sessão anterior (${n} ficheiro(s))`;
+    btn.textContent='🔁 Carregar dados da última sessão'+(fsaName?' — '+fsaName:n>1?' ('+n+' fich.)':'');
   }else{btn.style.display='none';}
 }
 async function _restoreSession(){
+  const btn=$('restoreSessionBtn');
+  if(btn){btn.disabled=true;btn.textContent='A carregar...';}
   try{
-    const db=await _openIDB();
-    const tx=db.transaction('files','readonly');
-    const req=tx.objectStore('files').getAll();
-    const all=await new Promise((res,rej)=>{req.onsuccess=()=>res(req.result);req.onerror=rej;});
-    if(!all||!all.length){alert('Não há sessão guardada.');return;}
-    for(const fd of all){
-      const k=fd._key;
-      const obj={...fd};delete obj._key;
-      if(obj.rows)obj.rows=_trimRowsToMode(obj.rows);
-      loadedFiles[k]=obj;
+    var dirHandle=null;
+    // Tentar obter handle do IDB
+    try{
+      const db=await Promise.race([_openIDB(),new Promise((_,r)=>setTimeout(()=>r(new Error('IDB timeout')),5000))]);
+      console.log('[session] IDB aberto, stores:',Array.from(db.objectStoreNames));
+      if(db.objectStoreNames.contains('fsaHandle')){
+        var hR=db.transaction('fsaHandle','readonly').objectStore('fsaHandle').get('main');
+        var hD=await new Promise((r,j)=>{hR.onsuccess=()=>r(hR.result);hR.onerror=()=>r(null);});
+        console.log('[session] handle IDB:',hD);
+        if(hD&&hD.handle)dirHandle=hD.handle;
+      }else{
+        console.warn('[session] fsaHandle store não encontrado');
+      }
+    }catch(e){console.warn('[session] IDB erro:',e.message);}
+
+    if(!dirHandle){
+      // IDB falhou — mostrar mensagem clara
+      var lsData=null;
+      try{var r2=localStorage.getItem('ft_fsa_session');if(r2)lsData=JSON.parse(r2);}catch(e){}
+      var nomePasta=lsData&&lsData.name?lsData.name:'(desconhecida)';
+      alert('Não foi possível restaurar a sessão automaticamente.\n\nPasta: '+nomePasta+'\n\nClica em "⚡ Seleccionar Pasta" e navega para a mesma pasta.\n\n(Causa provável: Chrome revogou a permissão da pasta após reiniciar.)');
+      if(btn){btn.disabled=false;btn.textContent='🔁 Carregar dados da última sessão — '+nomePasta;}
+      return;
     }
-    finishLoading();
-    showWarn('✅ Sessão restaurada ('+all.length+' ficheiro(s)) · modo '+(_loadMode==='full'?'Completo':'Essencial')+'. Preferências → Limpar sessão para apagar.');
-    console.log('[session] restaurada:',all.length,'ficheiros · modo',_loadMode);
-  }catch(e){console.warn('[session] restore failed',e);alert('Erro ao restaurar sessão: '+(e.message||e));}
+
+    // Pedir permissão (o clique no botão é o gesto do utilizador)
+    var perm='prompt';
+    try{perm=await dirHandle.queryPermission({mode:'read'});}catch(e){}
+    console.log('[session] permissão actual:',perm);
+    if(perm!=='granted'){
+      try{perm=await dirHandle.requestPermission({mode:'read'});}catch(e){perm='denied';}
+      console.log('[session] permissão após pedido:',perm);
+    }
+
+    if(perm!=='granted'){
+      alert('Permissão negada para aceder à pasta.\nClica em "⚡ Seleccionar Pasta" para reconectar.');
+      if(btn){btn.disabled=false;btn.textContent='🔁 Carregar dados da última sessão';}
+      return;
+    }
+
+    // Scan da pasta (sem ler conteúdo — só nomes)
+    _fsaDirHandle=dirHandle;
+    loadedFiles={};flights={};
+    await scanFSADirectory(dirHandle);
+    $('uploadOv').style.display='none';
+    setSplashMode(false);
+  }catch(e){
+    console.error('[session] restore failed',e);
+    alert('Erro ao restaurar: '+(e.message||e));
+  }
+  if(btn){btn.disabled=false;btn.textContent='🔁 Carregar dados da última sessão';}
 }
 async function _clearSession(){
   try{
@@ -7160,12 +7345,12 @@ function _renderAlerts(){
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// v3.0 — EMAIL DE NOVIDADES (editável)
+// v3.5 — EMAIL DE NOVIDADES (editável)
 // ═══════════════════════════════════════════════════════════════════════════
 function _emailHtml(){
   return `<!DOCTYPE html><html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
-<title>Flight Track Viewer v3.0</title></head>
+<title>Flight Track Viewer v3.5</title></head>
 <body style="margin:0;padding:0;background:#f0f4f8;font-family:'Segoe UI',Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f0f4f8" style="background:#f0f4f8;padding:30px 0;">
 <tr><td align="center">
@@ -7175,90 +7360,95 @@ function _emailHtml(){
 <tr><td bgcolor="#0f1923" style="background:#0f1923;padding:36px 40px 24px;text-align:center;">
   <div style="font-size:32px;margin-bottom:10px;">&#9992;</div>
   <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:-0.5px;">Flight Track Viewer</h1>
-  <div style="display:inline-block;background:#1a3a5c;border:1px solid #3a7ab5;color:#7ee8fa;padding:4px 18px;border-radius:20px;font-size:13px;margin-top:10px;letter-spacing:1px;">VERS&#195;O 3.0</div>
+  <div style="display:inline-block;background:#1a3a5c;border:1px solid #3a7ab5;color:#7ee8fa;padding:4px 18px;border-radius:20px;font-size:13px;margin-top:10px;letter-spacing:1px;">VERS&#195;O 3.5</div>
   <p style="color:#94a3b8;font-size:13px;margin:12px 0 0;">An&#225;lise de tr&#225;fego a&#233;reo com Intelig&#234;ncia Artificial integrada</p>
 </td></tr>
 
 <!-- INTRO -->
 <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:28px 40px 10px;">
-  <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">A vers&#227;o <strong>3.0</strong> do Flight Track Viewer traz uma nova sub-aba <strong>RRMS</strong> dedicada ao estudo estat&#237;stico para a Torre de Lisboa, melhorias no c&#225;lculo da IAS na THR, na dist&#226;ncia do seguidor no FAST, no sistema de modais e na navega&#231;&#227;o entre abas.</p>
+  <p style="color:#374151;font-size:14px;line-height:1.7;margin:0;">A vers&#227;o <strong>3.5</strong> do Flight Track Viewer reimagina a forma de carregar dados com a <strong>Pasta Inteligente</strong> (File System Access API), melhora a an&#225;lise de viola&#231;&#245;es na final e corrige erros cr&#237;ticos de arranque.</p>
 </td></tr>
 
-<!-- RRMS -->
+<!-- PASTA INTELIGENTE -->
 <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #bae6fd;">
     <tr><td bgcolor="#0284c7" style="background:#0284c7;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128748; Nova sub-aba RRMS &#8212; Reduced Runway Separation Minima</span>
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128448; Pasta Inteligente &#8212; File System Access API</span>
     </td></tr>
     <tr><td bgcolor="#f0fdff" style="background:#f0fdff;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Estudo estat&#237;stico das passagens nos pontos de referência de 2400m das THR deslocadas de LPPT (RWY 02 &#8594; TWY U6, RWY 20 &#8594; TWY P), para suporte ao pedido de implementa&#231;&#227;o de RRSM noct&#250;rna pela TWRLIS. Inclui:
+      Em vez de arrastar ficheiros CSV, a app liga directamente a uma pasta do disco. L&#234; os nomes dos ficheiros (<em>AEROPORTO_AAAA-MM-DD_HH-HH.csv</em>) e indexa todos os dias e blocos dispon&#237;veis instantaneamente &#8212; sem carregar nenhum conte&#250;do. 2000+ ficheiros indexados em menos de 2 segundos.
       <ul style="margin:8px 0 0;padding-left:20px;">
-        <li><strong>Interpola&#231;&#227;o exacta</strong> da altitude e IAS no instante de passagem no ponto</li>
-        <li><strong>Gr&#225;fico de percentis</strong> com banda Q1&#8211;Q3, mediana, m&#237;n e m&#225;x por hora</li>
-        <li><strong>Tabela de estat&#237;sticas</strong> agrup&#225;vel por pista, hora, categoria, tipo de aeronave ou companhia</li>
-        <li><strong>Filtros</strong> por categoria de rasto (M/H), pista e hora</li>
-        <li><strong>Exporta&#231;&#227;o CSV e PDF</strong> com an&#225;lise narrativa autom&#225;tica</li>
-        <li>Lookup de <strong>tipo de aeronave</strong> por prefixo de callsign (40+ companhias)</li>
+        <li><strong>Carregamento lazy</strong>: os dados s&#243; s&#227;o lidos quando o utilizador aplica um filtro, e apenas para os ficheiros seleccionados</li>
+        <li><strong>Gest&#227;o autom&#225;tica de mem&#243;ria</strong>: ao mudar de aeroporto ou filtro, os dados desnecess&#225;rios s&#227;o descartados</li>
+        <li><strong>Persist&#234;ncia de sess&#227;o</strong>: ao refrescar o browser, a liga&#231;&#227;o &#224; pasta &#233; restaurada automaticamente se a permiss&#227;o estiver activa</li>
+        <li><strong>Multi-aeroporto</strong>: uma s&#243; pasta com dados de LPPT, LPPR, LPFR e LPMA &#8212; a app separa automaticamente pelo nome do ficheiro</li>
       </ul>
     </td></tr>
   </table>
 </td></tr>
 
-<!-- IAS THR fix -->
+<!-- FILTRO POR AEROPORTO -->
 <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #bbf7d0;">
     <tr><td bgcolor="#16a34a" style="background:#16a34a;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#9889; Correc&#231;&#227;o do c&#225;lculo da IAS na THR</span>
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#127758; Filtro autom&#225;tico por aeroporto</span>
     </td></tr>
     <tr><td bgcolor="#f0fdf4" style="background:#f0fdf4;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      O algoritmo de detec&#231;&#227;o do cruzamento da THR selecciona agora o candidato de <strong>menor altitude</strong> em vez do primeiro encontrado, evitando falsos positivos durante curvas de base. A dist&#226;ncia do seguidor no FAST &#233; agora calculada por <strong>interpola&#231;&#227;o radar</strong> (erro m&#233;dio de 0.4 NM eliminado).
+      Ao mudar de aeroporto no selector, a aplica&#231;&#227;o:
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        <li>Descarta da mem&#243;ria os dados dos outros aeroportos</li>
+        <li>Recarrega on-demand os dados do novo aeroporto ao aplicar o filtro</li>
+        <li>Navega o mapa para o aeroporto seleccionado com zoom ajustado</li>
+      </ul>
     </td></tr>
   </table>
 </td></tr>
 
-<!-- Modais -->
+<!-- VIOLAÇÕES POR DISTÂNCIA -->
 <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #fde68a;">
     <tr><td bgcolor="#d97706" style="background:#d97706;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128202; Modais de dados melhorados</span>
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128202; Viola&#231;&#245;es por Dist&#226;ncia &#8212; melhorias</span>
     </td></tr>
     <tr><td bgcolor="#fffbf0" style="background:#fffbf0;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      Ao clicar numa linha de qualquer modal nas abas <strong>KPIs</strong>, <strong>An&#225;lise de Dados</strong> e <strong>An&#225;lise Di&#225;ria</strong>, a app navega para a sub-aba <strong>Separa&#231;&#227;o entre chegadas</strong> e destaca o par a amarelo com scroll autom&#225;tico. Bot&#227;o <strong>&#128196; PDF</strong> adicionado a todos os modais. Coluna &#8220;Precedente&#8221; renomeada para <strong>&#8220;Callsign&#8221;</strong> e movida para a primeira posi&#231;&#227;o.
+      A sub-aba <strong>Viola&#231;&#245;es por Dist&#226;ncia</strong> recebeu v&#225;rias melhorias:
+      <ul style="margin:8px 0 0;padding-left:20px;">
+        <li><strong>Barras de segmento clicáveis</strong>: abaixo dos bot&#245;es de ponto surgem tr&#234;s barras coloridas por fase da aproxima&#231;&#227;o (PESEX&#8594;NETVO / NETVO&#8594;OKNIB / OKNIB&#8594;THR para RWY02; UPKAT&#8594;TOPVI / TOPVI&#8594;ROKOB / ROKOB&#8594;THR para RWY20). Clicar numa barra selecciona todos os pontos desse segmento</li>
+        <li><strong>Gr&#225;fico de perfil de velocidade</strong>: escala Y autom&#225;tica, zoom e pan com roda do rato e arrasto, bot&#227;o para repor zoom. Clicar numa linha abre o modal de detalhe do voo</li>
+        <li><strong>Filtro Top 5</strong>: dropdown integrado no gr&#225;fico para mostrar os 5 voos com maior desvio acima ou abaixo do limite</li>
+        <li><strong>Bot&#245;es de pista</strong>: RWY 02 / RWY 20 com estilo visual consistente com o resto da app</li>
+      </ul>
     </td></tr>
   </table>
 </td></tr>
 
-<!-- IA melhorias -->
+<!-- CORRECÇÕES -->
 <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:10px;overflow:hidden;border:1px solid #e9d5ff;">
     <tr><td bgcolor="#7c3aed" style="background:#7c3aed;padding:12px 18px;">
-      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#129504; An&#225;lise IA &#8212; contexto melhorado</span>
+      <span style="color:#ffffff;font-size:13px;font-weight:700;">&#128295; Correc&#231;&#245;es cr&#237;ticas</span>
     </td></tr>
     <tr><td bgcolor="#fdf4ff" style="background:#fdf4ff;padding:14px 18px;color:#374151;font-size:13px;line-height:1.6;">
-      A IA recebe agora: tr&#225;fego por dia (ARR/DEP/NVL), detalhe completo por operador, dados da aba Pontos e viola&#231;&#245;es IAS APP por waypoint. Labels mostram o fornecedor real activo. Exporta&#231;&#227;o <strong>HTML</strong> substitui CSV (mant&#233;m gr&#225;ficos e formata&#231;&#227;o). Corre&#231;&#245;es nas contagens ARR/DEP que apareciam como zero.
-    </td></tr>
-  </table>
-</td></tr>
-
-<!-- outras -->
-<tr><td bgcolor="#ffffff" style="background:#ffffff;padding:10px 40px;">
-  <p style="color:#6b7280;font-size:12px;margin:6px 0 4px;text-transform:uppercase;letter-spacing:1px;">Outras correc&#231;&#245;es e melhorias</p>
-  <table width="100%" cellpadding="0" cellspacing="0">
-    <tr><td bgcolor="#f8fafc" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;color:#374151;font-size:13px;line-height:1.7;">
-      Gráficos de barras clicáveis nas sub-abas Análise de Dados e Análise Diária &middot; Modal RRMS fora do contentor overflow (correção visual) &middot; Dropdowns persistem seleção após re-render &middot; Exportação Word usa bgcolor HTML (cores preservadas ao reencaminhar no Outlook) &middot; Badge <strong>V3.0</strong> no modal About &middot; Auto-análise ao arrancar (PESEX por defeito)
+      <ul style="margin:0;padding-left:20px;">
+        <li>Erro <strong><code>async is not defined</code></strong> que impedia o arranque completo da app ap&#243;s ligar a Pasta Inteligente &#8212; todos os modais e alertas ficavam inoperacionais</li>
+        <li>Vari&#225;veis <strong><code>_alerts</code></strong> e <strong><code>sep_modalCounter</code></strong> em Temporal Dead Zone (TDZ) &#8212; causavam falha silenciosa em cadeia</li>
+        <li>Mapa mostrava dados de todos os aeroportos ignorando o aeroporto seleccionado no selector</li>
+        <li>Barras de segmento desalinhadas com os bot&#245;es &#8212; corrigido com spacer proporcional e ranges n&#227;o sobrepostos</li>
+        <li>Ao mudar de aeroporto os voos n&#227;o eram recarregados &#8212; <code>switchAirport</code> chama agora <code>applyFilter()</code> e aguarda o resultado antes de redesenhar o mapa</li>
+      </ul>
     </td></tr>
   </table>
 </td></tr>
 
 <!-- DOWNLOAD -->
 <tr><td bgcolor="#0f2744" style="background:#0f2744;padding:24px 40px;text-align:center;">
-  <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da vers&#227;o 3.0</p>
+  <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da vers&#227;o 3.5</p>
   <table cellpadding="0" cellspacing="0" align="center"><tr>
     <td style="padding:0 8px;">
-      <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_3.0.0_x64-setup.exe" style="display:inline-block;background:#3b82f6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; Windows (.exe)</a>
+      <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_3.5.0_x64-setup.exe" style="display:inline-block;background:#3b82f6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; Windows (.exe)</a>
     </td>
     <td style="padding:0 8px;">
-      <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_3.0.0_aarch64.dmg" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; macOS (.dmg)</a>
+      <a href="https://github.com/Mendreas/FlightTracker/releases/download/latest/Flight.Track.Viewer_3.5.0_aarch64.dmg" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; macOS (.dmg)</a>
     </td>
   </tr></table>
   <p style="color:#64748b;font-size:11px;margin:14px 0 0;">Instala&#231;&#227;o directa sobre vers&#227;o anterior &middot; Dados e sess&#227;o preservados</p>
@@ -7266,7 +7456,7 @@ function _emailHtml(){
 
 <!-- FOOTER -->
 <tr><td bgcolor="#ffffff" style="background:#ffffff;padding:18px 40px;text-align:center;border-top:1px solid #e2e8f0;">
-  <p style="color:#9ca3af;font-size:11px;margin:0;">Flight Track Viewer v3.0 &middot; NAV Portugal &middot; Desenvolvido para an&#225;lise interna de tr&#225;fego a&#233;reo</p>
+  <p style="color:#9ca3af;font-size:11px;margin:0;">Flight Track Viewer v3.5 &middot; NAV Portugal &middot; Desenvolvido para an&#225;lise interna de tr&#225;fego a&#233;reo</p>
   <p style="color:#d1d5db;font-size:10px;margin:4px 0 0;"><a href="https://github.com/Mendreas/FlightTracker" style="color:#60a5fa;text-decoration:none;">github.com/Mendreas/FlightTracker</a></p>
 </td></tr>
 
@@ -7275,21 +7465,6 @@ function _emailHtml(){
 </table>
 </body></html>`;
 }
-function _openEmailModal(){
-  const m=$('emailModal');if(!m)return;
-  m.style.display='flex';
-  const prev=$('emailPreview');
-  if(prev){
-    const iframe=document.createElement('iframe');
-    iframe.style.cssText='width:100%;height:480px;border:none;border-radius:6px;background:#fff;';
-    iframe.srcdoc=_emailHtml();
-    // Permite editar o conteúdo da prévia directamente (WYSIWYG)
-    iframe.addEventListener('load',()=>{try{iframe.contentDocument.designMode='on';}catch(e){}});
-    prev.innerHTML='';prev.appendChild(iframe);
-    _emailIframe=iframe;
-  }
-}
-// Lê o corpo do email a partir da prévia (com edições do utilizador), ou o template original
 function _emailBodyHtml(){
   try{
     if(_emailIframe&&_emailIframe.contentDocument&&_emailIframe.contentDocument.documentElement){
@@ -7300,7 +7475,7 @@ function _emailBodyHtml(){
 }
 function _emailVal(id,fallback){const el=$(id);const v=el&&el.value!=null?el.value.trim():'';return v||fallback;}
 async function _sendEmailOutlook(){
-  const subject=_emailVal('emailSubject','Flight Track Viewer v3.0 — Novas funcionalidades');
+  const subject=_emailVal('emailSubject','Flight Track Viewer v3.5 — Novas funcionalidades');
   const htmlBody=_emailBodyHtml();
   // Build RFC 2822 .eml with HTML body so Outlook renders it properly.
   // X-Unsent: 1 -> faz o Outlook abrir como RASCUNHO por enviar (botao "Enviar"),
@@ -7312,7 +7487,7 @@ async function _sendEmailOutlook(){
     try{
       const tmpDir=await window.__TAURI__.path.tempDir();
       const sep=(tmpDir.endsWith('/')||tmpDir.endsWith('\\')?'':'/');
-      const emlPath=tmpDir+sep+'FlightTracker_v3.0_novidades.eml';
+      const emlPath=tmpDir+sep+'FlightTracker_v3.5_novidades.eml';
       await window.__TAURI__.fs.writeTextFile(emlPath,eml);
       await window.__TAURI__.shell.open(emlPath);
       return;
@@ -7322,7 +7497,7 @@ async function _sendEmailOutlook(){
   const blob=new Blob([eml],{type:'message/rfc822'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v3.0_novidades.eml';
+  a.href=url;a.download='FlightTracker_v3.5_novidades.eml';
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
@@ -7331,7 +7506,7 @@ function _downloadEmailHtml(){
   const blob=new Blob([html],{type:'text/html'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;a.download='FlightTracker_v3.0_novidades.html';
+  a.href=url;a.download='FlightTracker_v3.5_novidades.html';
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
@@ -9461,7 +9636,7 @@ function sep_exportAnalysisPdf(){
   }
   const w=window.open('','_blank','width=1100,height=800');
   if(!w){alert('Permite popups.');return;}
-  w.document.write('<html><head><title>Relatório Análise de Dados v3.0</title><style>'+sep_reportCss()+'</style></head><body>');
+  w.document.write('<html><head><title>Relatório Análise de Dados v3.5</title><style>'+sep_reportCss()+'</style></head><body>');
   w.document.write(sep_buildAnalysisReportHtml(sep_analysisExportCtx));
   w.document.write('</body></html>');
   w.document.close();
@@ -9682,7 +9857,7 @@ function sep_exportDailyPdf(){
   }
   const w=window.open('','_blank','width=1100,height=800');
   if(!w){alert('Permite popups.');return;}
-  w.document.write('<html><head><title>Relatório Análise Diária v3.0</title><style>'+sep_reportCss()+'</style></head><body>');
+  w.document.write('<html><head><title>Relatório Análise Diária v3.5</title><style>'+sep_reportCss()+'</style></head><body>');
   w.document.write(sep_buildDailyReportHtml(sep_dailyExportCtx));
   w.document.write('</body></html>');
   w.document.close();
@@ -10127,7 +10302,7 @@ function _iaBuildCtx(){
     Object.values(flights).forEach(function(f){
       if(!f||!f.rows||classifyFlight(f.rows)!=='dep')return;
       var firstT=Infinity;
-      for(var i=0;i<f.rows.length;i++){var t=rowEpoch(f.rows[i]);if(!isNaN(t)&&t<firstT)firstT=t;}
+      for(var i=0;i<(f.rows?f.rows.length:0);i++){var t=rowEpoch(f.rows[i]);if(!isNaN(t)&&t<firstT)firstT=t;}
       if(isFinite(firstT)&&firstT>0)depEpochs.push(firstT);
     });
     depEpochs.sort(function(a,b){return a-b;});
@@ -10586,7 +10761,7 @@ function _iaDownload(blob,filename){
 <div id="emailModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:99998;align-items:center;justify-content:center;">
   <div style="background:#0f1923;border:1px solid #2a3a4a;border-radius:10px;width:min(700px,95vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.9);">
     <div style="display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid #2a3a4a;flex-shrink:0;">
-      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v3.0</span>
+      <span style="font-size:16px;font-weight:700;color:#e2e8f0;">✉ Email de Novidades — v3.5</span>
       <button onclick="document.getElementById('emailModal').style.display='none'" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;">✕</button>
     </div>
     <div style="flex:1;overflow:auto;padding:16px 18px;">
@@ -10605,7 +10780,7 @@ function _iaDownload(blob,filename){
     <div style="background:linear-gradient(135deg,#1a2d45,#0f2744);padding:28px 32px 20px;text-align:center;border-bottom:1px solid #2a3a4a;">
       <div style="font-size:36px;margin-bottom:12px;">&#9992;</div>
       <div style="font-family:'Syne','Segoe UI',sans-serif;font-size:26px;font-weight:800;color:#ffffff;letter-spacing:2px;">NERD</div>
-      <div style="display:inline-block;background:rgba(99,102,241,0.25);border:1px solid rgba(99,102,241,0.6);color:#a78bfa;padding:2px 14px;border-radius:20px;font-size:12px;letter-spacing:2px;margin:6px 0 4px;">V3.0</div>
+      <div style="display:inline-block;background:rgba(99,102,241,0.25);border:1px solid rgba(99,102,241,0.6);color:#a78bfa;padding:2px 14px;border-radius:20px;font-size:12px;letter-spacing:2px;margin:6px 0 4px;">V3.5</div>
       <div style="font-size:11px;color:#7ee8fa;letter-spacing:3px;text-transform:uppercase;margin-top:4px;">NAV Portugal</div>
     </div>
     <div style="padding:28px 32px 32px;text-align:center;">
