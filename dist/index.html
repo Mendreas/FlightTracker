@@ -4392,7 +4392,7 @@ function runIasAppCompliance(){
           ptsData.push({point:pName,ias:null,limit:lim,deviation:null,absDeviation:null,dCpa:null,tod:'',date:'',_epoch:NaN});
         }
       }
-      const viol=ptsData.filter(x=>x.ias!=null&&Math.abs(x.deviation||0)>tol);
+      const viol=ptsData.filter(x=>x.ias!=null&&!/^THR/i.test(x.point||'')&&Math.abs(x.deviation||0)>tol);
       if(!viol.length)continue;
       const detected=ptsData.filter(x=>x.ias!=null).length;
       const first=ptsData.filter(x=>isFinite(x._epoch)).sort((a,b)=>a._epoch-b._epoch)[0];
@@ -4627,7 +4627,7 @@ function collectIasAppChartSamples(){
           ptsData.push({point:pName,ias:null,limit:lim,deviation:null,absDeviation:null,dCpa:null,tod:'',date:'',_epoch:NaN});
         }
       }
-      const viol=ptsData.filter(x=>x.ias!=null&&Math.abs(x.deviation||0)>tol);
+      const viol=ptsData.filter(x=>x.ias!=null&&!/^THR/i.test(x.point||'')&&Math.abs(x.deviation||0)>tol);
       const detected=ptsData.filter(x=>x.ias!=null).length;
       if(!detected)continue;
       const first=ptsData.filter(x=>isFinite(x._epoch)).sort((a,b)=>a._epoch-b._epoch)[0];
@@ -6910,7 +6910,7 @@ function openFlightModal(csn, color){
   hdr.innerHTML='<span style="display:inline-block;width:13px;height:13px;border-radius:3px;background:'+(color||'#888')+'"></span>'
     +'<span style="font-size:20px;font-weight:700;color:#e2e8f0;">'+csn+'</span>'
     +'<span id="fmType" style="font-size:11px;padding:2px 10px;border-radius:12px;margin-left:4px;"></span>'
-    +'<button onclick="closeFlightModal()" style="margin-left:auto;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>';
+    +'<button onclick="_exportFlightPDF(\''+csn+'\',\''+(color||'#3b82f6')+'\')" style="margin-left:auto;background:#1e3a5f;border:1px solid #2a5a8f;color:#7ee8fa;font-size:10px;font-weight:700;padding:5px 14px;border-radius:6px;cursor:pointer;letter-spacing:.5px;">&#128196; PDF</button>'    +'<button onclick="closeFlightModal()" style="margin-left:8px;background:none;border:none;color:#64748b;font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">✕</button>';
 
   // Body
   var body=document.createElement('div');
@@ -6927,6 +6927,147 @@ function openFlightModal(csn, color){
 
   setTimeout(function(){_fillFlightModal(csn,color);},0);
 }
+
+function _exportFlightPDF(csn,color){
+  const fl=flights[csn];
+  if(!fl||!fl.rows||!fl.rows.length){alert('Sem dados de voo para '+csn);return;}
+  const allRows=fl.rows;
+  // Usar o dia mais recente se houver vários
+  const dates=[...new Set(allRows.map(r=>r._date).filter(d=>d&&d!=='??'))].sort();
+  const mostRecent=dates[dates.length-1];
+  const rows=dates.length>1&&mostRecent?allRows.filter(r=>r._date===mostRecent):allRows;
+  const dateStr=mostRecent?fmtDate(String(mostRecent)):(dates.map(d=>fmtDate(String(d))).join(', ')||'—');
+  if(dates.length>1) console.log('[PDF] múltiplos dias, a usar mais recente:',mostRecent);
+  // Stats
+  const alts=rows.map(r=>parseFloat(getAlt(r))).filter(v=>isFinite(v));
+  const iasVals=rows.map(r=>parseFloat(gv(r,'iar','iara'))).filter(v=>isFinite(v)&&v>0);
+  const firstRow=rows[0],lastRow=rows[rows.length-1];
+  const altMax=alts.length?Math.max(...alts):null;
+  const altMin=alts.length?Math.min(...alts):null;
+  const iasMax=iasVals.length?Math.max(...iasVals):null;
+  const iasMed=iasVals.length?Math.round(iasVals.reduce((a,b)=>a+b,0)/iasVals.length):null;
+  // APP violations
+  const appRec=iasAppResults&&iasAppResults.records?iasAppResults.records.find(r=>r.csn===csn):null;
+  const tol=iasAppResults?iasAppResults.tol||0:0;
+  const appRwy=appRec?appRec.rwy:null;
+  const appPoints=appRec?(appRec.points||[]).filter(p=>p.ias!=null):[];
+  const appViols=appPoints.filter(p=>!/^THR/i.test(p.point||'')&&Math.abs(p.deviation||0)>tol);
+  // STAR violations
+  const starViols=iasResults&&iasResults.violations?iasResults.violations.filter(v=>v.csn===csn):[];
+  // Chart canvas → image
+  var chartImg='';
+  var cnv=document.getElementById('fmProfileChart');
+  if(cnv){try{chartImg=cnv.toDataURL('image/png');}catch(e){}}
+  // Narrative analysis
+  const analysis=_buildFlightAnalysis(csn,rows,appPoints,appViols,starViols,tol,dateStr,iasMax,iasMed);
+  const noViols=!appViols.length&&!starViols.length;
+  const clr=color||'#3b82f6';
+  // APP table
+  var appHtml='';
+  if(appPoints.length){
+    appHtml='<h2 style="color:#0284c7;border-left:4px solid #0284c7;padding-left:8px;margin:16px 0 6px;">Velocidades na Aproxima\xe7\xe3o (APP)</h2>'
+    +'<table><thead><tr><th>Pista</th><th>Waypoint</th><th>IAS</th><th>Limite</th><th>Desvio</th><th>Avalia\xe7\xe3o</th></tr></thead><tbody>';
+    for(var i=0;i<appPoints.length;i++){
+      var p=appPoints[i];
+      var bad=Math.abs(p.deviation||0)>tol;
+      var devStr=p.deviation!=null?(p.deviation>0?'+':'')+p.deviation+'kt':'—';
+      var rs=bad?'background:#fef2f2;':(i%2===1?'background:#f8fafc;':'');
+      var eval_=bad?(p.deviation>0?'<span style="color:#dc2626;font-weight:700;">⚠ Acima</span>':'<span style="color:#2563eb;font-weight:700;">▼ Abaixo</span>'):'<span style="color:#16a34a;font-weight:700;">✔ OK</span>';
+      appHtml+='<tr style="'+rs+'"><td>'+(appRwy?'RWY '+appRwy:'—')+'</td><td><b>'+(p.point||'—')+'</b></td><td><b>'+(p.ias||'—')+'kt</b></td><td>'+(p.limit||'—')+'kt</td><td style="color:'+(bad?(p.deviation>0?'#dc2626':'#2563eb'):'#16a34a')+';font-weight:700;">'+devStr+'</td><td>'+eval_+'</td></tr>';
+    }
+    appHtml+='</tbody></table>';
+  }
+  // STAR table
+  var starHtml='';
+  if(starViols.length){
+    starHtml='<h2 style="color:#d97706;border-left:4px solid #d97706;padding-left:8px;margin:16px 0 6px;">Viola\xe7\xf5es STAR</h2>'
+    +'<table><thead><tr><th>Hora</th><th>Data</th><th>Waypoint</th><th>IAS</th><th>Limite</th><th>Excesso</th></tr></thead><tbody>';
+    for(var j=0;j<starViols.length;j++){
+      var v=starViols[j];
+      var rs2=j%2?'background:#f8fafc;':'';
+      starHtml+='<tr style="'+rs2+'"><td>'+String(v.tod||'').substring(0,8)+'</td><td>'+fmtDate(String(v.date||''))+'</td>'
+      +'<td><b style="color:#d97706;">'+(v.wp||'—')+'</b></td><td><b style="color:#dc2626;">'+(v.ias||'—')+'kt</b></td>'
+      +'<td>'+(v.limit||'—')+'kt</td><td style="color:#dc2626;font-weight:700;">+'+(((v.ias||0)-(v.limit||0)))+'kt</td></tr>';
+    }
+    starHtml+='</tbody></table>';
+  }
+  // Open print window
+  var w=window.open('','_blank','width=1000,height=820');
+  if(!w){alert('Activa popups para este site e tenta novamente.');return;}
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relat\xf3rio '+csn+'</title><style>'
+  +'@page{size:A4 portrait;margin:12mm}'
+  +'body{font-family:Segoe UI,Arial,sans-serif;color:#172033;margin:0;font-size:10pt;line-height:1.4;}'
+  +'h1{font-size:18pt;margin:0 0 4px;color:#0f2744;}'
+  +'h2{font-size:11pt;margin:16px 0 6px;color:#0f2744;}'
+  +'table{width:100%;border-collapse:collapse;font-size:9pt;margin-bottom:12px;}'
+  +'th{background:#0f2744;color:#fff;padding:6px 8px;text-align:left;font-size:8pt;letter-spacing:.5px;}'
+  +'td{padding:5px 8px;border-bottom:1px solid #e2e8f0;}'
+  +'.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 14px;}'
+  +'.sb{background:#f0f4f8;border:1px solid #cbd5e1;border-radius:6px;padding:8px;text-align:center;}'
+  +'.sl{font-size:7pt;color:#64748b;letter-spacing:1px;text-transform:uppercase;}'
+  +'.sv{font-size:13pt;font-weight:700;color:#0f2744;margin-top:3px;}'
+  +'.an{background:#f8fafc;border-left:4px solid '+clr+';padding:10px 14px;font-size:9.5pt;line-height:1.7;margin:12px 0;border-radius:0 4px 4px 0;}'
+  +'.ok{color:#16a34a;font-weight:700;}.warn{color:#dc2626;font-weight:700;}'
+  +'.hb{display:flex;align-items:center;gap:10px;border-bottom:3px solid '+clr+';padding-bottom:8px;margin-bottom:12px;}'
+  +'.cd{width:14px;height:14px;border-radius:3px;background:'+clr+';flex-shrink:0;}'
+  +'.badge{display:inline-block;padding:3px 12px;border-radius:12px;font-size:8.5pt;font-weight:700;}'
+  +'.ft{margin-top:20px;font-size:7.5pt;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;}'
+  +'img.chart{width:100%;border-radius:6px;margin:8px 0 14px;border:1px solid #e2e8f0;}'
+  +'</style></head><body>'
+  +'<div class="hb"><div class="cd"></div>'
+  +'<div><h1>'+csn+'</h1><div style="font-size:8pt;color:#64748b;">Relat\xf3rio de Voo · Flight Track Viewer v3.5 · NAV Portugal · '+dateStr+'</div></div>'
+  +'<div style="margin-left:auto;">'+(noViols?'<span class="badge" style="background:#dcfce7;color:#16a34a;">✔ Sem viola\xe7\xf5es</span>':'<span class="badge" style="background:#fef2f2;color:#dc2626;">⚠ '+(appViols.length?appViols.length+' viol. APP ':'')+(starViols.length?starViols.length+' viol. STAR':'')+'</span>')+'</div></div>'
+  +'<div class="sg">'
+  +'<div class="sb"><div class="sl">Data</div><div class="sv" style="font-size:9pt;">'+dateStr+'</div></div>'
+  +'<div class="sb"><div class="sl">Pontos</div><div class="sv">'+rows.length.toLocaleString()+'</div></div>'
+  +'<div class="sb"><div class="sl">Alt m\xe1x</div><div class="sv">'+(altMax!=null?altMax.toLocaleString()+' ft':'—')+'</div></div>'
+  +'<div class="sb"><div class="sl">Alt m\xedn</div><div class="sv">'+(altMin!=null?altMin.toLocaleString()+' ft':'—')+'</div></div>'
+  +'<div class="sb"><div class="sl">IAS m\xe1x</div><div class="sv">'+(iasMax!=null?iasMax+' kt':'—')+'</div></div>'
+  +'<div class="sb"><div class="sl">IAS m\xe9d</div><div class="sv">'+(iasMed!=null?iasMed+' kt':'—')+'</div></div>'
+  +'<div class="sb"><div class="sl">In\xedcio</div><div class="sv" style="font-size:11pt;">'+(firstRow?String(firstRow.tod||'').substring(0,8):'—')+'</div></div>'
+  +'<div class="sb"><div class="sl">Fim</div><div class="sv" style="font-size:11pt;">'+(lastRow?String(lastRow.tod||'').substring(0,8):'—')+'</div></div>'
+  +'</div>'
+  +'<div class="an">'+analysis+'</div>'
+  +(chartImg?'<h2>Perfil IAS / Altitude</h2><img class="chart" src="'+chartImg+'">':'')
+  +appHtml+starHtml
+  +(!appPoints.length&&!starViols.length?'<p style="color:#64748b;font-style:italic;">Sem dados de viola\xe7\xf5es registados para este voo.</p>':'')
+  +'<div class="ft">Flight Track Viewer v3.5 · NAV Portugal · Gerado em '+new Date().toLocaleString('pt-PT')+'</div>'
+  +'<sc'+'ript>window.onload=function(){window.print();}</sc'+'ript></body></html>';
+  w.document.write(html);w.document.close();w.focus();
+}
+
+function _buildFlightAnalysis(csn,rows,appPoints,appViols,starViols,tol,dateStr,iasMax,iasMed){
+  var p=[];
+  p.push('<b>'+csn+'</b> — an\xe1lise de velocidades para '+dateStr+'.');
+  if(iasMax) p.push('Velocidade m\xe1xima registada: <b>'+iasMax+' kt</b>. M\xe9dia: <b>'+iasMed+' kt</b>.');
+  if(appPoints.length){
+    var wps=appPoints.map(function(x){return x.name;}).filter(Boolean);
+    p.push('Na fase de <b>aproxima\xe7\xe3o</b>, foram avaliados '+appPoints.length+' ponto(s): '+wps.join(', ')+'.');
+    if(appViols.length){
+      var above=appViols.filter(function(x){return (x.deviation||0)>0;});
+      var below=appViols.filter(function(x){return (x.deviation||0)<0;});
+      var worst=appViols.reduce(function(a,b){return Math.abs(b.deviation||0)>Math.abs(a.deviation||0)?b:a;},appViols[0]);
+      if(above.length) p.push('<span class="warn">⚠ '+above.length+' ponto(s) acima do limite</span>: '+above.map(function(x){return '<b>'+x.name+'</b> ('+x.ias+'kt, lim. '+x.limit+'kt, <b>+'+(x.deviation)+'kt</b>)';}).join('; ')+'.');
+      if(below.length) p.push('<span style="color:#2563eb;font-weight:700;">▼ '+below.length+' ponto(s) abaixo do limite</span>: '+below.map(function(x){return '<b>'+x.name+'</b> ('+x.ias+'kt, lim. '+x.limit+'kt, <b>'+(x.deviation)+'kt</b>)';}).join('; ')+'.');
+      p.push('Desvio m\xe1ximo: <b>'+(worst.point||'?')+'</b> com <b>'+((worst.deviation>0?'+':'')+worst.deviation)+'kt</b> (lim. '+worst.limit+'kt).');
+    }else{
+      p.push('<span class="ok">✔ Todos os pontos de aproxima\xe7\xe3o dentro do limite (toler\xe2ncia \xb1'+tol+'kt).</span>');
+    }
+  }else{
+    p.push('Sem dados de velocidade de aproxima\xe7\xe3o dispon\xedveis.');
+  }
+  if(starViols.length){
+    var wps2=[...new Set(starViols.map(function(v){return v.wp;}))];
+    var maxEx=Math.max.apply(null,starViols.map(function(v){return (v.ias||0)-(v.limit||0);}));
+    p.push('Na fase <b>STAR</b>: <span class="warn">'+starViols.length+' viola\xe7\xe3o(es)</span> em '+wps2.length+' waypoint(s) — <b>'+wps2.join(', ')+'</b>. Excesso m\xe1ximo: <b>+'+maxEx+'kt</b>.');
+  }else{
+    p.push('<span class="ok">✔ Sem viola\xe7\xf5es de velocidade na fase STAR.</span>');
+  }
+  var noViols=!appViols.length&&!starViols.length;
+  p.push('<b>Conclus\xe3o:</b> '+(noViols?'<span class="ok">Voo sem viola\xe7\xf5es de velocidade detectadas.</span>':'<span class="warn">Registadas '+(appViols.length+starViols.length)+' viola\xe7\xe3o(es). Recomenda-se revis\xe3o do perfil de desacelera\xe7\xe3o.</span>'));
+  return p.join(' ');
+}
+
 
 function closeFlightModal(){
   var m=document.getElementById('flightModal');
@@ -7091,7 +7232,7 @@ function runOperAnalysis(){
   const tol=(iasAppResults&&iasAppResults.tol)||0;
   for(const rec of(iasAppResults&&iasAppResults.records)||[]){
     const op=_operPrefix(rec.csn);
-    if(map[op]){const v=(rec.points||[]).filter(p=>Math.abs(p.deviation||0)>tol).length;map[op].appViols+=v;}
+    if(map[op]){const v=(rec.points||[]).filter(p=>!/^THR/i.test(p.point||'')&&Math.abs(p.deviation||0)>tol).length;map[op].appViols+=v;}
   }
   _operResults=Object.values(map).map(r=>{const tF=r.arr+r.dep+(r.lvl||0);const tV=(r.starViols||0)+(r.appViols||0);return{...r,rotAvg:r.rotN>0?Math.round(r.rotSum/r.rotN):null,medViols:tF>0?tV/tF:null};});
   const oe=$('anaOperEmpty'),oc=$('anaOperContent');
@@ -7325,7 +7466,7 @@ function _computeAlerts(){
     _alerts.push({icon:'⚡',color:'#fbbf24',msg:`${sv.length} violação(ões) IAS STAR em ${nf} voo(s)`,detail:''});}
   // IAS APP violations
   const tol=(iasAppResults&&iasAppResults.tol)||0;
-  const av=(iasAppResults&&iasAppResults.records||[]).filter(r=>(r.points||[]).some(p=>Math.abs(p.deviation||0)>tol));
+  const av=(iasAppResults&&iasAppResults.records||[]).filter(r=>(r.points||[]).some(p=>!/^THR/i.test(p.point||'')&&Math.abs(p.deviation||0)>tol));
   if(av.length)_alerts.push({icon:'🛬',color:'#f87171',
     msg:`${av.length} voo(s) com violações IAS na aproximação`,
     detail:av.slice(0,3).map(r=>r.csn).join(', ')+(av.length>3?'…':'')});
@@ -7335,18 +7476,103 @@ function _renderAlerts(){
   const el=$('alertsPanel');if(!el)return;
   if(!_alerts.length){el.style.display='none';return;}
   el.style.display='';
-  el.innerHTML=_alerts.map((a,i)=>
-    `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-left:3px solid ${a.color};border-radius:3px;margin-bottom:4px;background:rgba(0,0,0,0.15);">
-      <span style="font-size:13px;flex-shrink:0;">${a.icon}</span>
-      <div style="flex:1;"><div style="font-size:11px;font-weight:600;color:${a.color};">${a.msg}</div>${a.detail?`<div style="font-size:10px;color:#64748b;margin-top:1px;">${a.detail}</div>`:''}</div>
-      <button onclick="this.closest('[style]').remove();if(!document.getElementById('alertsPanel').querySelector('[style]'))document.getElementById('alertsPanel').style.display='none';" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:14px;padding:0;line-height:1;flex-shrink:0;">×</button>
-    </div>`
-  ).join('')+`<div style="text-align:right;margin-top:2px;"><button onclick="$('alertsPanel').style.display='none'" style="background:none;border:none;color:#475569;cursor:pointer;font-size:10px;text-decoration:underline;">dispensar todos</button></div>`;
+  el.innerHTML=_alerts.map((a,i)=>{
+    // Fundo claro (tint 15% da cor do alerta) + texto escuro para legibilidade
+    var hex=a.color.replace('#','');
+    var r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+    var bg='rgba('+r+','+g+','+b+',0.12)';
+    return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-left:4px solid ${a.color};border-radius:4px;margin-bottom:4px;background:${bg};">
+      <span style="font-size:14px;flex-shrink:0;">${a.icon}</span>
+      <div style="flex:1;">
+        <div style="font-size:11px;font-weight:700;color:#1e293b;">${a.msg}</div>
+        ${a.detail?`<div style="font-size:10px;color:#475569;margin-top:2px;">${a.detail}</div>`:''}
+      </div>
+      <button onclick="this.closest('div[style]').remove();if(!document.getElementById('alertsPanel').querySelector('div[style]'))document.getElementById('alertsPanel').style.display='none';" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:15px;padding:0 2px;line-height:1;flex-shrink:0;">×</button>
+    </div>`;
+  }).join('')+`<div style="text-align:right;margin-top:2px;"><button onclick="$('alertsPanel').style.display='none'" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:10px;text-decoration:underline;">dispensar todos</button></div>`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
 // v3.5 — EMAIL DE NOVIDADES (editável)
 // ═══════════════════════════════════════════════════════════════════════════
+function _openEmailModal(){
+  const m=$('emailModal');if(!m)return;
+  m.style.display='flex';
+  const prev=$('emailPreview');
+  if(prev){
+    const iframe=document.createElement('iframe');
+    iframe.style.cssText='width:100%;height:480px;border:none;border-radius:6px;background:#fff;';
+    iframe.srcdoc=_emailHtml();
+    // Permite editar o conteúdo da prévia directamente (WYSIWYG)
+    iframe.addEventListener('load',()=>{try{iframe.contentDocument.designMode='on';}catch(e){}});
+    prev.innerHTML='';prev.appendChild(iframe);
+    _emailIframe=iframe;
+  }
+}
+// Lê o corpo do email a partir da prévia (com edições do utilizador), ou o template original
+function _emailBodyHtml(){
+  try{
+    if(_emailIframe&&_emailIframe.contentDocument&&_emailIframe.contentDocument.documentElement){
+      return '<!DOCTYPE html>'+_emailIframe.contentDocument.documentElement.outerHTML;
+    }
+  }catch(e){}
+  return _emailHtml();
+}
+function _emailVal(id,fallback){const el=$(id);const v=el&&el.value!=null?el.value.trim():'';return v||fallback;}
+async function _sendEmailOutlook(){
+  const subject=_emailVal('emailSubject','Flight Track Viewer v3.0 — Novas funcionalidades');
+  const htmlBody=_emailBodyHtml();
+  // Build RFC 2822 .eml with HTML body so Outlook renders it properly.
+  // X-Unsent: 1 -> faz o Outlook abrir como RASCUNHO por enviar (botao "Enviar"),
+  // em vez de mensagem recebida (que so permite Responder/Reencaminhar).
+  // To/CC ficam vazios de proposito: sao preenchidos no proprio cliente de email.
+  let eml='X-Unsent: 1\r\nMIME-Version: 1.0\r\n';
+  eml+='Subject: '+subject+'\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'+htmlBody;
+  if(window.__TAURI__&&window.__TAURI__.fs&&window.__TAURI__.path){
+    try{
+      const tmpDir=await window.__TAURI__.path.tempDir();
+      const sep=(tmpDir.endsWith('/')||tmpDir.endsWith('\\')?'':'/');
+      const emlPath=tmpDir+sep+'FlightTracker_v3.0_novidades.eml';
+      await window.__TAURI__.fs.writeTextFile(emlPath,eml);
+      await window.__TAURI__.shell.open(emlPath);
+      return;
+    }catch(e){console.warn('EML Tauri falhou:',e);}
+  }
+  // Fallback: download .eml via browser blob
+  const blob=new Blob([eml],{type:'message/rfc822'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='FlightTracker_v3.0_novidades.eml';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+}
+function _downloadEmailHtml(){
+  const html=_emailBodyHtml();
+  const blob=new Blob([html],{type:'text/html'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='FlightTracker_v3.0_novidades.html';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+}
+
+
+function sep_setSelectOptions(id, values, labelFn){
+  const el=$(id);if(!el)return;
+  const cur=el.value;
+  el.innerHTML='<option value="">Todas</option>';
+  values.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=labelFn?labelFn(v):v;el.appendChild(o);});
+  if([...el.options].some(o=>o.value===cur))el.value=cur;
+}
+function sep_dayMonthKey(d){return d?d.slice(0,7):'';}
+function sep_dateNoon(d){return new Date(d+'T12:00:00');}
+function sep_dayBlockOfHour(h){const n=Number(h);if(!Number.isFinite(n))return '';const s=Math.floor(n/4)*4;return `${String(s).padStart(2,'0')}-${String(s+4).padStart(2,'0')}`;}
+
+// Funções auxiliares portadas da v19 (não existem no FT original)
+function companyFromCallsign(csn){const s=String(csn||'').trim().toUpperCase();if(!s)return 'SEM CSN';const m=s.match(/^([A-Z]{2,4})(?=\d)/);if(m)return m[1];const m2=s.match(/^([A-Z]{2,4})/);return m2?m2[1]:s.slice(0,4);}
+function sep_companyFromCallsign(csn){return companyFromCallsign(csn);}
+function sep_cmp(a,b){const na=parseFloat(String(a).replace(',','.')),nb=parseFloat(String(b).replace(',','.'));if(Number.isFinite(na)&&Number.isFinite(nb))return na-nb;return String(a).localeCompare(String(b),'pt');}
+
 function _emailHtml(){
   return `<!DOCTYPE html><html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
