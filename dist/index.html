@@ -1478,9 +1478,22 @@ function isLegVisible(leg){
 
 // ---------- map ----------
 const map=L.map('map',{zoomControl:true,preferCanvas:true}).setView([39.5,-8.5],7);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-  attribution:'&copy; OpenStreetMap &copy; CARTO',subdomains:'abcd',maxZoom:19
-}).addTo(map);
+// Mapas base SEM chave de API (a CARTO passou a exigir chave e mostra "API KEY REQUIRED")
+const _tlOSM=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors',maxZoom:19});
+const _tlEsriStreet=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles &copy; Esri',maxZoom:19});
+const _tlEsriSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Tiles &copy; Esri',maxZoom:19});
+_tlOSM.addTo(map);
+L.control.layers({'Ruas (OSM)':_tlOSM,'Ruas (Esri)':_tlEsriStreet,'Sat\u00e9lite (Esri)':_tlEsriSat},null,{position:'topright'}).addTo(map);
+// Se o OSM falhar por completo (rede/proxy), muda sozinho para o Esri
+let _tlOk=0,_tlErr=0,_tlFallback=false;
+_tlOSM.on('tileload',()=>{_tlOk++;});
+_tlOSM.on('tileerror',()=>{
+  _tlErr++;
+  if(!_tlFallback&&_tlOk===0&&_tlErr>=6){
+    _tlFallback=true;
+    map.removeLayer(_tlOSM);_tlEsriStreet.addTo(map);
+  }
+});
 
 function togglePointsOnMap(){
   showPointsOnMap=!showPointsOnMap;
