@@ -416,6 +416,16 @@ class Database:
                ON nm.csn = a.csn AND nm.date = a.date
         WHERE a.n >= {MIN_POINTS_FLIGHT}
         """)
+        # Sem NMIR nesse dia: 2) tipo mais recente do mesmo callsign; 3) mesmo endereço Mode S (= mesma aeronave)
+        self.con.execute("""
+        UPDATE flights SET actype = nm.actype, wtc = nm.wtc
+        FROM (SELECT csn, arg_max(actype, date) actype, arg_max(wtc, date) wtc FROM nmir WHERE actype IS NOT NULL GROUP BY csn) nm
+        WHERE flights.actype IS NULL AND nm.csn = flights.csn""")
+        self.con.execute("""
+        UPDATE flights SET actype = m.actype, wtc = m.wtc
+        FROM (SELECT modes, any_value(actype) actype, any_value(wtc) wtc FROM flights
+              WHERE actype IS NOT NULL AND modes IS NOT NULL AND modes <> '' GROUP BY modes) m
+        WHERE flights.actype IS NULL AND flights.modes IS NOT NULL AND flights.modes <> '' AND m.modes = flights.modes""")
 
     # ----------------------------------------------------------------- queries
     def summary(self) -> dict:
