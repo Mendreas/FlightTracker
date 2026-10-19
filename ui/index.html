@@ -30,13 +30,18 @@
     <button class="btn" id="btnNmir" title="Importar Excel NMIR (tipos de aeronave)">📊 NMIR…</button>
     <button class="btn ghost" id="btnFolder" title="Abrir a pasta onde está a base de dados">🗄</button>
     <button class="btn ghost" id="btnTheme" title="Tema claro / escuro">🌙</button>
+    <button class="btn ghost" id="btnAbout" title="Sobre a aplicação">ⓘ</button>
   </div>
 </header>
 
-<div id="progress" class="progress hidden">
-  <div class="bar"><div id="progressBar"></div></div>
-  <div id="progressTxt">A importar…</div>
-</div>
+<div id="progress" class="progress hidden"><div id="progressBar"></div></div>
+<div id="progressTxt" class="progress-txt hidden"></div>
+
+<div id="about" class="modal hidden"><div class="about-box">
+  <div class="about-top"><div class="about-plane">✈</div><div class="about-name">NERD</div><span class="about-ver">v<span id="aboutVer"></span></span><div class="about-org">NAV PORTUGAL</div></div>
+  <div class="about-bot"><div class="about-t">NAV Exceptional, Remarkable Developers</div><div class="about-s">Because every great department needs a few NERDs.</div>
+  <div class="about-i">FlightTracker — análise de trajetórias radar · GOPLIS</div><button class="btn primary" id="aboutClose">FECHAR</button></div>
+</div></div>
 
 <main id="main">
   <aside id="sidebar">

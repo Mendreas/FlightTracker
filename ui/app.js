@@ -314,12 +314,12 @@ function drawProfile(rows, f) {
 
 /* ------------------------------------------------------------- Import */
 window.onImportProgress = (done, total, name) => {
-  $('progress').classList.remove('hidden');
+  $('progress').classList.remove('hidden'); $('progressTxt').classList.remove('hidden');
   $('progressBar').style.width = total ? (done / total * 100).toFixed(1) + '%' : '100%';
-  $('progressTxt').textContent = (done ? `A importar ${done} / ${total} — ${name}` : name) + ' · podes continuar a usar a app entretanto';
+  $('progressTxt').textContent = (done ? `A importar ${done} / ${total} — ${name}` : name) + ' · podes continuar a usar a app';
 };
 window.onImportDone = async r => {
-  $('progress').classList.add('hidden');
+  $('progress').classList.add('hidden'); $('progressTxt').classList.add('hidden');
   if (!r.ok) { toast('Erro na importação: ' + r.error, 'err'); status('Erro na importação', 'err'); return; }
   const d = r.data;
   let msg = d.new === 0 ? `Nada de novo: os ${d.found} ficheiros já estavam importados.`
@@ -336,7 +336,7 @@ async function pollImport() {
     const st = await call('import_status');
     if (st.result) { window.onImportDone(st.result); return; }
     if (st.importing) { window.onImportProgress(st.done, st.total, st.name); pollT = setTimeout(pollImport, 800); return; }
-    $('progress').classList.add('hidden');
+    $('progress').classList.add('hidden'); $('progressTxt').classList.add('hidden');
   } catch (e) { pollT = setTimeout(pollImport, 2000); }
 }
 async function importFolder(useLast) {
@@ -344,7 +344,7 @@ async function importFolder(useLast) {
     let folder = null;
     if (!useLast) { folder = await call('choose_folder'); if (!folder) return; }
     const f = await call('import_folder', folder);
-    $('progress').classList.remove('hidden'); $('progressBar').style.width = '0%';
+    $('progress').classList.remove('hidden'); $('progressTxt').classList.remove('hidden'); $('progressBar').style.width = '0%';
     $('progressTxt').textContent = 'A procurar ficheiros CSV em ' + f + ' …';
     pollImport();
   } catch (e) { toast(e.message, 'err'); }
@@ -405,6 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btnNmir').onclick = async () => { try { const n = await call('import_nmir'); if (n != null) { toast(`${fmt(n)} registo(s) NMIR adicionados.`, 'ok'); await refreshState(); applyFilter(); } } catch (e) { toast(e.message, 'err'); } };
   $('btnFolder').onclick = () => call('open_data_folder').catch(e => toast(e.message, 'err'));
   applyTheme(document.documentElement.dataset.theme || 'dark');
+  $('btnAbout').onclick = () => { $('aboutVer').textContent = ($('ver').textContent || '').replace(/^v/, ''); $('about').classList.remove('hidden'); };
+  $('aboutClose').onclick = () => $('about').classList.add('hidden');
+  $('about').onclick = e => { if (e.target === $('about')) $('about').classList.add('hidden'); };
   $('btnTheme').onclick = () => applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
   $('btnApply').onclick = applyFilter;
   $('inpCsn').oninput = () => { applyClsView(); renderFlightList(); drawTracks(); };
