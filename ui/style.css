@@ -50,7 +50,7 @@ a:hover{text-decoration:underline}
 /* ---------- progress (não tapa a interface) ---------- */
 .progress{position:absolute;top:0;left:0;right:0;height:4px;z-index:50;background:rgba(127,127,127,.25);pointer-events:none}
 .progress div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#7cc4ff);transition:width .3s}
-.progress-txt{position:fixed;right:14px;bottom:14px;z-index:60;max-width:520px;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:8px 12px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.35);pointer-events:none;opacity:.95}
+.progress-txt{position:fixed;right:14px;bottom:34px;z-index:1500;max-width:520px;background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:8px;padding:8px 12px;font-size:12px;box-shadow:0 6px 20px rgba(0,0,0,.35);pointer-events:none;opacity:.95}
 /* ---------- about ---------- */
 .about-box{width:min(600px,92vw);border-radius:14px;overflow:hidden;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.5);font-family:Consolas,"Courier New",monospace;text-align:center}
 .about-top{background:linear-gradient(160deg,#0f2a4a,#1a3f6e);color:#fff;padding:36px 20px 28px}

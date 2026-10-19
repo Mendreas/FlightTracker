@@ -340,7 +340,7 @@ window.onImportDone = async r => {
   if (d.errors) msg += `\n${d.errors} com erro:\n` + d.error_list.join('\n');
   toast(msg, d.errors ? 'err' : 'ok');
   await refreshState(); await loadFilters();
-  if (d.new > 0 && !state.days.size) { selectLastDay(); applyFilter(); } else if (d.new > 0) renderFilters();
+  if (d.new > 0) { renderFilters(); if (!state.days.size) selectLastDay(); applyFilter(); }   // a tabela de movimentos foi reconstruída: recarrega o dia
 };
 let pollT = null;
 async function pollImport() {

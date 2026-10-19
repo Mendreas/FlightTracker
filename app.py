@@ -167,7 +167,7 @@ class Api:
         def run():
             try:
                 logging.info("Início da importação de %s", folder)
-                res = self.db.import_folder(folder, progress, lock=self._lock)
+                res = self.db.import_folder(folder, progress)   # cursor próprio: não bloqueia a interface
                 logging.info("Importação concluída: %s", res)
                 self._import_state["result"] = {"ok": True, "data": res}
             except Exception as e:  # noqa: BLE001

@@ -14,8 +14,10 @@ Tabelas:
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Callable, Iterable
@@ -59,9 +61,27 @@ class Database:
     def __init__(self, db_path: str | os.PathLike):
         self.path = str(db_path)
         Path(self.path).parent.mkdir(parents=True, exist_ok=True)
-        self.con = duckdb.connect(self.path)
-        self.con.execute("PRAGMA threads=%d" % max(2, (os.cpu_count() or 4)))
+        self._main = duckdb.connect(self.path)
+        self._main.execute("PRAGMA threads=%d" % max(2, (os.cpu_count() or 4)))
+        self._tls = threading.local()
         self._init_schema()
+
+    @property
+    def con(self):
+        """Ligação principal; uma thread que chamou use_own_connection() usa um cursor próprio
+        (o DuckDB serve leituras e escritas concorrentes de cursores diferentes — a importação
+        deixa de bloquear as consultas da interface)."""
+        return getattr(self._tls, "con", None) or self._main
+
+    def use_own_connection(self):
+        self._tls.con = self._main.cursor()
+
+    def release_own_connection(self):
+        c = getattr(self._tls, "con", None)
+        if c is not None:
+            try: c.close()
+            except Exception: pass
+            self._tls.con = None
 
     # ------------------------------------------------------------------ schema
     def _init_schema(self):
@@ -310,6 +330,13 @@ class Database:
         import contextlib
         guard = (lambda: lock) if lock is not None else contextlib.nullcontext
         t0 = time.time()
+        self.use_own_connection()
+        try:
+            return self._import_folder(folder, progress, batch_size, guard, t0)
+        finally:
+            self.release_own_connection()
+
+    def _import_folder(self, folder, progress, batch_size, guard, t0) -> dict:
         with guard():
             todo, total_found = self.pending_files(folder)
         self._log(f"== importar {folder}: {len(todo)} novos de {total_found} (scan {time.time()-t0:.1f}s)")
@@ -530,9 +557,12 @@ class Database:
     def cache_put(self, items: list[tuple[str, int, str]]):
         if items:
             keys = [i[0] for i in items]; fids = [i[1] for i in items]; vals = [i[2] for i in items]
-            self.con.execute(
-                "INSERT OR REPLACE INTO analysis_cache(key, flight_id, value) "
-                "SELECT * FROM (SELECT unnest(?::VARCHAR[]) k, unnest(?::INTEGER[]) f, unnest(?::VARCHAR[]) v)", [keys, fids, vals])
+            try:
+                self.con.execute(
+                    "INSERT OR REPLACE INTO analysis_cache(key, flight_id, value) "
+                    "SELECT * FROM (SELECT unnest(?::VARCHAR[]) k, unnest(?::INTEGER[]) f, unnest(?::VARCHAR[]) v)", [keys, fids, vals])
+            except Exception as e:  # conflito com uma importação a decorrer: a cache é só uma otimização
+                logging.warning("cache_put ignorado: %s", e)
 
     def cache_clear(self):
         self.con.execute("DELETE FROM analysis_cache")
