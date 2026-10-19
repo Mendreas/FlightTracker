@@ -58,6 +58,11 @@ def resource_path(*parts) -> Path:
     return base.joinpath(*parts)
 
 
+# Ordem das colunas nos CSV do CNS (usada quando o ficheiro vem sem linha de cabeçalho)
+CNS_DEFAULT_COLUMNS = ("latitude", "longitude", "tod", "trknr", "modes", "modea", "csn", "modec", "x", "y", "baroh",
+                       "vx", "vy", "roc", "ts", "tas", "gspadd", "iar", "mac", "gspa", "tasa", "iara", "maca", "rectime")
+
+
 class Database:
     def __init__(self, db_path: str | os.PathLike):
         self.path = str(db_path)
@@ -178,7 +183,9 @@ class Database:
 
     @staticmethod
     def _read_header(path: str):
-        """Lê só a 1ª linha: devolve (colunas_minúsculas, encoding)."""
+        """Lê só a 1ª linha: devolve (colunas_minúsculas, encoding, separador, tem_cabeçalho).
+        Alguns CSV do CNS vêm sem linha de cabeçalho (a 1ª linha já é um plot): nesse caso
+        assume-se a ordem de colunas habitual do CNS."""
         raw = open(path, "rb").readline()
         enc = "utf-8"
         try:
@@ -187,6 +194,16 @@ class Database:
             line, enc = raw.decode("latin-1"), "latin-1"
         line = line.rstrip("\r\n")
         sep = ";" if line.count(";") >= line.count(",") else ","
+        fields = [f.strip().strip('"') for f in line.split(sep)]
+        try:
+            float(fields[0].replace(",", "."))
+            is_data = True
+        except (ValueError, IndexError):
+            is_data = False
+        if is_data:
+            if len(fields) == len(CNS_DEFAULT_COLUMNS):
+                return list(CNS_DEFAULT_COLUMNS), enc, sep, False
+            raise RuntimeError(f"sem cabeçalho e com {len(fields)} colunas (esperava {len(CNS_DEFAULT_COLUMNS)})")
         cols, seen = [], set()
         for c in line.split(sep):
             c = c.strip().strip('"').lower() or "col"
@@ -194,7 +211,7 @@ class Database:
             while c in seen:            # cabeçalhos repetidos -> col, col_2, ...
                 k += 1; c = f"{base}_{k}"
             seen.add(c); cols.append(c)
-        return cols, enc, sep
+        return cols, enc, sep, True
 
     @staticmethod
     def _pick(cols: list[str], key: str):
@@ -254,13 +271,13 @@ class Database:
         groups: dict[tuple, list[tuple[str, str]]] = {}
         for p in paths:
             try:
-                cols, enc, sep = self._read_header(p)
-                groups.setdefault((tuple(cols), enc, sep), []).append(p)
+                cols, enc, sep, has_header = self._read_header(p)
+                groups.setdefault((tuple(cols), enc, sep, has_header), []).append(p)
             except Exception as e:  # noqa: BLE001
                 errors.append(f"{os.path.basename(p)}: {e}")
         c = self.con
         total_rows = 0
-        for (cols, enc, sep), plist in groups.items():
+        for (cols, enc, sep, has_header), plist in groups.items():
             coltypes = {c: "VARCHAR" for c in cols}
             try:
                 inner, select, where = self._build_select(list(cols))
@@ -282,10 +299,10 @@ class Database:
                     INSERT INTO points
                     SELECT {select} FROM (
                         SELECT {inner}
-                        FROM read_csv(?, delim=?, header=true, columns=?, auto_detect=false, ignore_errors=true,
+                        FROM read_csv(?, delim=?, header=?, columns=?, auto_detect=false, ignore_errors=true,
                                       null_padding=true, filename=true, encoding=?) r
                         JOIN pending t ON t.path = r.filename
-                    ) WHERE {where}""", [plist, sep, coltypes, enc])
+                    ) WHERE {where}""", [plist, sep, has_header, coltypes, enc])
             except Exception as e:  # noqa: BLE001
                 errors.extend(f"{os.path.basename(p)}: {e}" for p in plist)
                 continue
