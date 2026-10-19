@@ -12,7 +12,7 @@ const Analyses = (() => {
   const sec = v => v == null ? '—' : fmt(Math.round(v));
   const rwyBadge = r => `<span class="badge" style="background:${r === '02' || r === '17' || r === '10' || r === '05' ? '#3b9cff' : '#c77dff'}">RWY ${esc(r)}</span>`;
   const csnLink = (csn, fid) => `<a href="#" class="csn-link" data-fid="${fid}"><b>${esc(csn)}</b></a>`;
-  const wireCsn = root => root.querySelectorAll('.csn-link').forEach(a => a.onclick = ev => { ev.preventDefault(); FP.showTab('map'); FP.selectFlight(+a.dataset.fid, true); });
+  const wireCsn = root => root.querySelectorAll('.csn-link').forEach(a => a.onclick = ev => { ev.preventDefault(); FP.focusFlight(+a.dataset.fid); });
   const sepCls = (s, thr) => s < 120 ? 'sep-r' : s < thr ? 'sep-o' : 'sep-g';
   const seqPill = q => `<span class="pill-seq ${q === 'AD…A' ? 'ADxA' : q}">${esc(q)}</span>`;
   let modalEl;

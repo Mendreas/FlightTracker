@@ -238,13 +238,26 @@ function renderTable() {
     tr.innerHTML = `<td>${f.date}</td><td><b>${f.csn}</b></td><td>${f.actype || ''}</td><td>${f.wtc || ''}</td>` +
       `<td><span class="badge ${f.cls}">${f.cls.toUpperCase()}</span></td><td>${f.tod_first}</td><td>${f.tod_last}</td>` +
       `<td>${fmt(f.alt_first)}</td><td>${fmt(f.alt_last)}</td><td>${fmt(f.alt_max)}</td><td>${f.n}</td><td>${f.blocks}</td>`;
-    tr.onclick = () => { showTab('map'); selectFlight(f.flight_id, true); };
+    tr.onclick = () => focusFlight(f.flight_id);
     frag.appendChild(tr);
   }
   tb.appendChild(frag);
 }
 
 /* ------------------------------------------------------------- Detail */
+/* Vindo de outra aba (Tabela, Final, Vel. APP, …): mostra SÓ este voo no mapa, com detalhe e zoom. */
+async function focusFlight(id) {
+  if (!state.byId.has(id)) { toast('Esse movimento não está nos filtros atuais.', 'err'); return; }
+  showTab('map');
+  state.flights.forEach(f => state.hidden.add(f.flight_id));
+  state.hidden.delete(id);
+  state.selected = id;
+  drawTracks(); renderFlightList();
+  const l = state.layers.get(id); if (l) { l.bringToFront(); map.fitBounds(l.getBounds().pad(0.2)); }
+  const f = state.byId.get(id);
+  try { const d = await call('flight_detail', id); openDetail(f, d.points, d); } catch (e) { toast(e.message, 'err'); }
+  const card = $('flList').querySelector(`[data-id="${id}"]`); if (card) card.scrollIntoView({ block: 'nearest' });
+}
 async function selectFlight(id, zoom) {
   state.selected = (state.selected === id) ? null : id;
   renderFlightList();
@@ -398,7 +411,7 @@ function applyTheme(t) {
   const b = $('btnTheme'); if (b) b.textContent = t === 'light' ? '☀' : '🌙';
 }
 (function () { let t = 'dark'; try { t = localStorage.getItem('fp.theme') || 'dark'; } catch (e) {} document.documentElement.dataset.theme = t; })();
-window.FP = { state, call, toast, status, showTab, selectFlight, get map() { return map; }, get overlay() { return overlayGroup; }, THR, AIRPORT_CENTER, fmt };
+window.FP = { state, call, toast, status, showTab, selectFlight, focusFlight, get map() { return map; }, get overlay() { return overlayGroup; }, THR, AIRPORT_CENTER, fmt };
 document.addEventListener('DOMContentLoaded', () => {
   $('btnImport').onclick = () => importFolder(false);
   $('btnReimport').onclick = () => importFolder(true);
