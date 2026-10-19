@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import sys
 import threading
 import time
@@ -609,6 +610,7 @@ class Database:
         (data e WTC opcionais). Devolve o nº de registos novos."""
         from openpyxl import load_workbook
         from datetime import date, datetime
+        from .geo import wtc_from_type
         wb = load_workbook(path, read_only=True, data_only=True)
         rows_out = []
         for ws in wb.worksheets:
@@ -629,7 +631,7 @@ class Database:
                 return None
             i_csn = find("callsign", "call sign", "csn", "aircraft id")
             i_type = find("aircraft type", "actype", "ac type", "type")
-            i_date = find("date", "data", "dof")
+            i_date = find("lobd", "eobd", "date", "data", "dof", "lobt", "eobt")   # LOBD = dia do voo (NMIR)
             i_wtc = find("wtc", "wake")
             if i_csn is None or i_type is None:
                 continue
@@ -645,18 +647,26 @@ class Database:
                     if isinstance(v, (datetime, date)):
                         d = v.strftime("%y%m%d")
                     else:
-                        s2 = "".join(ch for ch in str(v) if ch.isdigit())
-                        if len(s2) == 8:      # yyyymmdd
-                            d = s2[2:]
-                        elif len(s2) == 6:
-                            d = s2
+                        sv = str(v).strip()
+                        m = re.match(r"(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})", sv)      # dd/mm/yyyy
+                        if m:
+                            d = f"{int(m.group(3)) % 100:02d}{int(m.group(2)):02d}{int(m.group(1)):02d}"
+                        else:
+                            s2 = "".join(ch for ch in sv if ch.isdigit())
+                            if len(s2) >= 8 and s2[:2] == "20":      # yyyymmdd[hhmm]
+                                d = s2[2:8]
+                            elif len(s2) == 6:
+                                d = s2
                 wtc = row[i_wtc] if i_wtc is not None and i_wtc < len(row) else None
-                rows_out.append((str(csn).strip().upper(), d, str(typ).strip().upper(),
-                                 str(wtc).strip().upper() if wtc else None))
+                typ_s = str(typ).strip().upper()
+                rows_out.append((str(csn).strip().upper(), d, typ_s,
+                                 str(wtc).strip().upper() if wtc else (wtc_from_type(typ_s) or None)))
         if not rows_out:
             raise RuntimeError("Excel sem colunas reconhecidas (callsign / aircraft type).")
         before = self.con.execute("SELECT count(*) FROM nmir").fetchone()[0]
-        self.con.executemany("INSERT INTO nmir VALUES (?,?,?,?)", rows_out)
+        cols = list(zip(*rows_out))
+        self.con.execute("INSERT INTO nmir SELECT * FROM (SELECT unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]))",
+                         [list(cols[0]), list(cols[1]), list(cols[2]), list(cols[3])])
         self.con.execute("CREATE OR REPLACE TABLE nmir AS SELECT DISTINCT * FROM nmir")
         self.rebuild_flights()
         return self.con.execute("SELECT count(*) FROM nmir").fetchone()[0] - before
