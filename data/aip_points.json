@@ -1,0 +1,1269 @@
+[
+ {
+  "name": "ESUTI",
+  "lat": 37.859908,
+  "lon": -10.430214,
+  "type": "aip",
+  "desc": "IAF LPPT"
+ },
+ {
+  "name": "UNPOT",
+  "lat": 38.179342,
+  "lon": -10,
+  "type": "aip",
+  "desc": "Waypoint ARR LPPT"
+ },
+ {
+  "name": "CASLU",
+  "lat": 38.540014,
+  "lon": -9.809978,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "NATID",
+  "lat": 38.881672,
+  "lon": -9.54775,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "MAZUK",
+  "lat": 38.593839,
+  "lon": -9.554028,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "ERNIL",
+  "lat": 38.498111,
+  "lon": -9.529731,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "RELKU",
+  "lat": 38.416922,
+  "lon": -9.460778,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "ZEFFI",
+  "lat": 38.362583,
+  "lon": -9.357719,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "NEVUD",
+  "lat": 38.567692,
+  "lon": -9.313608,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "ODLIX",
+  "lat": 38.678922,
+  "lon": -9.317083,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "EKLID",
+  "lat": 39.142372,
+  "lon": -9.263636,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "ROTBU",
+  "lat": 39.196375,
+  "lon": -9.159175,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "LERLI",
+  "lat": 39.215033,
+  "lon": -9.036011,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "FADEF",
+  "lat": 39.195472,
+  "lon": -8.913075,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "COCUN",
+  "lat": 39.026533,
+  "lon": -9.0686,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "UPKAT",
+  "lat": 38.9664,
+  "lon": -9.036681,
+  "type": "aip",
+  "desc": "CIF/Holding LPPT"
+ },
+ {
+  "name": "PESEX",
+  "lat": 38.592339,
+  "lon": -9.236858,
+  "type": "aip",
+  "desc": "FAF RWY 02/20 LPPT"
+ },
+ {
+  "name": "NETVO",
+  "lat": 38.64,
+  "lon": -9.211389,
+  "type": "aip",
+  "desc": "STAR/APP RWY 02 LPPT"
+ },
+ {
+  "name": "OKNIB",
+  "lat": 38.702222,
+  "lon": -9.178611,
+  "type": "aip",
+  "desc": "FAF interm RWY 02 LPPT"
+ },
+ {
+  "name": "TOPVI",
+  "lat": 38.918611,
+  "lon": -9.0625,
+  "type": "aip",
+  "desc": "STAR/APP RWY 20 LPPT"
+ },
+ {
+  "name": "ROKOB",
+  "lat": 38.853056,
+  "lon": -9.0975,
+  "type": "aip",
+  "desc": "FAF interm RWY 20 LPPT"
+ },
+ {
+  "name": "DME20",
+  "lat": 38.789167,
+  "lon": -9.13025,
+  "type": "aip",
+  "desc": "GP/DME ILB CH32X RWY 20 LPPT"
+ },
+ {
+  "name": "DME02",
+  "lat": 38.769361,
+  "lon": -9.143833,
+  "type": "aip",
+  "desc": "GP/DME ILI CH28X RWY 02 LPPT"
+ },
+ {
+  "name": "YETSI",
+  "lat": 38.321531,
+  "lon": -8.895339,
+  "type": "aip",
+  "desc": "Waypoint STAR RWY02 LPPT"
+ },
+ {
+  "name": "ORTUG",
+  "lat": 38.403972,
+  "lon": -8.996081,
+  "type": "aip",
+  "desc": "Waypoint STAR RWY02 LPPT"
+ },
+ {
+  "name": "ZACRA",
+  "lat": 38.346553,
+  "lon": -9.106456,
+  "type": "aip",
+  "desc": "Waypoint STAR RWY02 LPPT"
+ },
+ {
+  "name": "INLIB",
+  "lat": 38.326622,
+  "lon": -9.236239,
+  "type": "aip",
+  "desc": "Waypoint STAR RWY02 LPPT"
+ },
+ {
+  "name": "MIGTO",
+  "lat": 38.347183,
+  "lon": -9.365861,
+  "type": "aip",
+  "desc": "Waypoint STAR RWY02 LPPT"
+ },
+ {
+  "name": "ULTIT",
+  "lat": 38.532278,
+  "lon": -9.204903,
+  "type": "aip",
+  "desc": "Waypoint STAR RWY02 LPPT"
+ },
+ {
+  "name": "INBOM",
+  "lat": 40.001919,
+  "lon": -8.302003,
+  "type": "aip",
+  "desc": "IAF/DEP LPPT"
+ },
+ {
+  "name": "LAZET",
+  "lat": 38.923944,
+  "lon": -10.671011,
+  "type": "aip",
+  "desc": "Holding LPPT"
+ },
+ {
+  "name": "LUVUP",
+  "lat": 37.720342,
+  "lon": -10.168589,
+  "type": "aip",
+  "desc": "IAF LPPT"
+ },
+ {
+  "name": "PULPO",
+  "lat": 39.043769,
+  "lon": -7.651956,
+  "type": "aip",
+  "desc": "Holding LPPT"
+ },
+ {
+  "name": "VATZI",
+  "lat": 37.597808,
+  "lon": -8.863081,
+  "type": "aip",
+  "desc": "Holding LPPT"
+ },
+ {
+  "name": "XAMAX",
+  "lat": 40.0311,
+  "lon": -8.536206,
+  "type": "aip",
+  "desc": "Holding LPPT"
+ },
+ {
+  "name": "RULOX",
+  "lat": 38.9,
+  "lon": -10,
+  "type": "aip",
+  "desc": "Waypoint ARR LPPT"
+ },
+ {
+  "name": "ESEBI",
+  "lat": 39.403189,
+  "lon": -8.666467,
+  "type": "aip",
+  "desc": "IAF LPPT (ATC req.)"
+ },
+ {
+  "name": "GANSU",
+  "lat": 38,
+  "lon": -9.81755,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "LUXUT",
+  "lat": 37.999797,
+  "lon": -9.026939,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "EXONA",
+  "lat": 38.904414,
+  "lon": -8.016667,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "ITAVIT",
+  "lat": 38.961519,
+  "lon": -8.562219,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "DEKKI",
+  "lat": 38.963058,
+  "lon": -8.695667,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "ROMEP",
+  "lat": 39.065364,
+  "lon": -8.720614,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "EVPAP",
+  "lat": 39.152403,
+  "lon": -8.794006,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "FUSSI",
+  "lat": 39.210842,
+  "lon": -8.90475,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "ARNIT",
+  "lat": 38.990722,
+  "lon": -8.959336,
+  "type": "aip",
+  "desc": "Waypoint STAR LPPT"
+ },
+ {
+  "name": "ESPICHEL",
+  "lat": 38.424167,
+  "lon": -9.185556,
+  "type": "aip",
+  "desc": "DVOR/DME ESP"
+ },
+ {
+  "name": "LISBOA",
+  "lat": 38.887778,
+  "lon": -9.162778,
+  "type": "aip",
+  "desc": "DVOR/DME LIS"
+ },
+ {
+  "name": "FATIMA",
+  "lat": 39.665556,
+  "lon": -8.492778,
+  "type": "aip",
+  "desc": "DVOR/DME FTM"
+ },
+ {
+  "name": "PORTO",
+  "lat": 41.273056,
+  "lon": -8.687778,
+  "type": "aip",
+  "desc": "DVOR/DME PRT"
+ },
+ {
+  "name": "FARO",
+  "lat": 37.013611,
+  "lon": -7.975,
+  "type": "aip",
+  "desc": "DVOR/DME VFA"
+ },
+ {
+  "name": "NISA",
+  "lat": 39.564722,
+  "lon": -7.914722,
+  "type": "aip",
+  "desc": "DVOR/DME NSA"
+ },
+ {
+  "name": "VISEU",
+  "lat": 40.723333,
+  "lon": -7.885833,
+  "type": "aip",
+  "desc": "DVOR/DME VIS"
+ },
+ {
+  "name": "THR02",
+  "lat": 38.766428,
+  "lon": -9.143903,
+  "type": "aip",
+  "desc": "Threshold RWY 02 LPPT"
+ },
+ {
+  "name": "THR20",
+  "lat": 38.792331,
+  "lon": -9.130047,
+  "type": "aip",
+  "desc": "Threshold RWY 20 LPPT"
+ },
+ {
+  "name": "NAKOS",
+  "lat": 38,
+  "lon": -9.334444,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "GANSU",
+  "lat": 38,
+  "lon": -9.8175,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "LIGRA",
+  "lat": 38,
+  "lon": -9.590833,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "MAGUM",
+  "lat": 39.1675,
+  "lon": -8.3925,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "SOTEX",
+  "lat": 38.292778,
+  "lon": -8.22,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "BUSEN",
+  "lat": 38.545,
+  "lon": -10,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "ATECA",
+  "lat": 38.658333,
+  "lon": -8.6225,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "TAGUX",
+  "lat": 38.945556,
+  "lon": -7.914167,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "TROIA",
+  "lat": 38.073333,
+  "lon": -8.879167,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "ODEMI",
+  "lat": 37.4975,
+  "lon": -8.383889,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "ALAGU",
+  "lat": 38.088611,
+  "lon": -7.614444,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "ODPAK",
+  "lat": 38.128333,
+  "lon": -7.926667,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "DIGAL",
+  "lat": 39.740833,
+  "lon": -7.989722,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "ABETO",
+  "lat": 40.429722,
+  "lon": -8.056389,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "ELVAR",
+  "lat": 39.219444,
+  "lon": -7.223333,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "MOMAS",
+  "lat": 39.319167,
+  "lon": -8.016667,
+  "type": "aip",
+  "desc": "Waypoint ENR"
+ },
+ {
+  "name": "PT805",
+  "lat": 38.547325,
+  "lon": -8.564742,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT808",
+  "lat": 39.686619,
+  "lon": -8.350303,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT811",
+  "lat": 38.931233,
+  "lon": -8.269744,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT813",
+  "lat": 39.106664,
+  "lon": -8.231472,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT816",
+  "lat": 39.316008,
+  "lon": -9.440897,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT818",
+  "lat": 39.142406,
+  "lon": -9.439811,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT822",
+  "lat": 39.583492,
+  "lon": -8.524942,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT824",
+  "lat": 39.314414,
+  "lon": -8.735831,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT826",
+  "lat": 39.000992,
+  "lon": -9.093119,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT828",
+  "lat": 38.723706,
+  "lon": -9.241256,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT830",
+  "lat": 39.315744,
+  "lon": -9.088361,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT832",
+  "lat": 39.39925,
+  "lon": -9.118786,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT833",
+  "lat": 38.178781,
+  "lon": -9.102592,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT840",
+  "lat": 38.361992,
+  "lon": -9.114475,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT841",
+  "lat": 38.491725,
+  "lon": -9.549339,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT842",
+  "lat": 38.343303,
+  "lon": -9.236172,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT843",
+  "lat": 38.405133,
+  "lon": -9.475778,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT850",
+  "lat": 39.059106,
+  "lon": -8.740447,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT851",
+  "lat": 39.211806,
+  "lon": -9.167314,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT852",
+  "lat": 39.140692,
+  "lon": -8.809264,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT853",
+  "lat": 39.231714,
+  "lon": -9.035911,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT814",
+  "lat": 39.399447,
+  "lon": -9.441422,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT810",
+  "lat": 39.758353,
+  "lon": -8.513492,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "PT812",
+  "lat": 39.398158,
+  "lon": -8.796156,
+  "type": "aip",
+  "desc": "PT waypoint ARR LPPT"
+ },
+ {
+  "name": "ABLEG",
+  "lat": 40.722778,
+  "lon": -8.431111,
+  "type": "aip",
+  "desc": "FRA LPPR"
+ },
+ {
+  "name": "ASMOV",
+  "lat": 40.969444,
+  "lon": -9.346944,
+  "type": "aip",
+  "desc": "FRA LPPR"
+ },
+ {
+  "name": "ASPOR",
+  "lat": 41.815278,
+  "lon": -8.081111,
+  "type": "aip",
+  "desc": "FRA LPPR"
+ },
+ {
+  "name": "ADNOV",
+  "lat": 41.518333,
+  "lon": -8.753056,
+  "type": "aip",
+  "desc": "Holding LPPR"
+ },
+ {
+  "name": "BELDU",
+  "lat": 41.358611,
+  "lon": -7.777222,
+  "type": "aip",
+  "desc": "FRA DEP LPPR"
+ },
+ {
+  "name": "DIVUT",
+  "lat": 41.023889,
+  "lon": -8.325833,
+  "type": "aip",
+  "desc": "Holding LPPR"
+ },
+ {
+  "name": "ELGIX",
+  "lat": 41.521111,
+  "lon": -7.673056,
+  "type": "aip",
+  "desc": "FRA ARR LPPR"
+ },
+ {
+  "name": "INKIT",
+  "lat": 41.180278,
+  "lon": -7.890833,
+  "type": "aip",
+  "desc": "FRA ARR LPPR"
+ },
+ {
+  "name": "MANIK",
+  "lat": 40.691944,
+  "lon": -8.616111,
+  "type": "aip",
+  "desc": "FRA DEP LPPR"
+ },
+ {
+  "name": "MALIS",
+  "lat": 41.855556,
+  "lon": -7.604722,
+  "type": "aip",
+  "desc": "PORTO TMA"
+ },
+ {
+  "name": "MAPOR",
+  "lat": 41.614167,
+  "lon": -8.058333,
+  "type": "aip",
+  "desc": "FRA LPPR"
+ },
+ {
+  "name": "OTREG",
+  "lat": 41.273056,
+  "lon": -8.687778,
+  "type": "aip",
+  "desc": "FRA LPPR"
+ },
+ {
+  "name": "PESUL",
+  "lat": 40.881944,
+  "lon": -8.115,
+  "type": "aip",
+  "desc": "FRA ARR/DEP LPPR"
+ },
+ {
+  "name": "RETMO",
+  "lat": 41.222222,
+  "lon": -9.013889,
+  "type": "aip",
+  "desc": "Holding LPPR"
+ },
+ {
+  "name": "UBANI",
+  "lat": 41.557778,
+  "lon": -9.239444,
+  "type": "aip",
+  "desc": "FRA ARR/DEP LPPR"
+ },
+ {
+  "name": "UDRUB",
+  "lat": 41.424167,
+  "lon": -8.7275,
+  "type": "aip",
+  "desc": "FRA LPPR"
+ },
+ {
+  "name": "ULVAX",
+  "lat": 41.004167,
+  "lon": -7.834444,
+  "type": "aip",
+  "desc": "Holding LPPR"
+ },
+ {
+  "name": "VASIP",
+  "lat": 41.555,
+  "lon": -8.376111,
+  "type": "aip",
+  "desc": "Holding LPPR"
+ },
+ {
+  "name": "XAPIM",
+  "lat": 41.078056,
+  "lon": -8.636667,
+  "type": "aip",
+  "desc": "FRA LPPR"
+ },
+ {
+  "name": "GENRO",
+  "lat": 37.193056,
+  "lon": -7.614722,
+  "type": "aip",
+  "desc": "FRA ARR LPFR"
+ },
+ {
+  "name": "GIMAL",
+  "lat": 36.764444,
+  "lon": -8.005833,
+  "type": "aip",
+  "desc": "FRA ARR/DEP LPFR"
+ },
+ {
+  "name": "IXOLI",
+  "lat": 36.976389,
+  "lon": -8.701667,
+  "type": "aip",
+  "desc": "FRA ARR/DEP LPFR"
+ },
+ {
+  "name": "MARIM",
+  "lat": 37.416667,
+  "lon": -7.841111,
+  "type": "aip",
+  "desc": "FRA ARR LPFR"
+ },
+ {
+  "name": "OKARI",
+  "lat": 36.448611,
+  "lon": -8.159167,
+  "type": "aip",
+  "desc": "FRA DEP LPFR"
+ },
+ {
+  "name": "TUPIX",
+  "lat": 37.076111,
+  "lon": -7.383333,
+  "type": "aip",
+  "desc": "FRA ARR/DEP LPFR"
+ },
+ {
+  "name": "USALU",
+  "lat": 37.222222,
+  "lon": -8.300278,
+  "type": "aip",
+  "desc": "FRA ARR LPFR"
+ },
+ {
+  "name": "XAPAS",
+  "lat": 37.597222,
+  "lon": -7.95,
+  "type": "aip",
+  "desc": "FRA DEP LPFR"
+ },
+ {
+  "name": "THR10",
+  "lat": 37.017222,
+  "lon": -7.985614,
+  "type": "aip",
+  "desc": "THR RWY 10 LPFR"
+ },
+ {
+  "name": "THR28",
+  "lat": 37.01345,
+  "lon": -7.959042,
+  "type": "aip",
+  "desc": "THR RWY 28 LPFR"
+ },
+ {
+  "name": "VFA",
+  "lat": 37.013611,
+  "lon": -7.975,
+  "type": "aip",
+  "desc": "DVOR/DME 112.8 LPFR"
+ },
+ {
+  "name": "RUWIB",
+  "lat": 37.057083,
+  "lon": -8.269222,
+  "type": "aip",
+  "desc": "IF ILS/RNP 10 LPFR"
+ },
+ {
+  "name": "FR910",
+  "lat": 37.043778,
+  "lon": -8.174,
+  "type": "aip",
+  "desc": "FAP ILS RWY 10 LPFR"
+ },
+ {
+  "name": "FR728",
+  "lat": 36.997,
+  "lon": -7.842167,
+  "type": "aip",
+  "desc": "MATF ILS RWY 10 LPFR"
+ },
+ {
+  "name": "FR609",
+  "lat": 36.930917,
+  "lon": -8.346694,
+  "type": "aip",
+  "desc": "RCF RNP 10 LPFR"
+ },
+ {
+  "name": "GEBTI",
+  "lat": 36.972778,
+  "lon": -7.675306,
+  "type": "aip",
+  "desc": "IF ILS/RNP 28 LPFR"
+ },
+ {
+  "name": "FR928",
+  "lat": 36.986472,
+  "lon": -7.770333,
+  "type": "aip",
+  "desc": "FAP ILS RWY 28 LPFR"
+ },
+ {
+  "name": "FR710",
+  "lat": 37.033972,
+  "lon": -8.102472,
+  "type": "aip",
+  "desc": "MATF ILS RWY 28 LPFR"
+ },
+ {
+  "name": "FR604",
+  "lat": 36.867333,
+  "lon": -7.686833,
+  "type": "aip",
+  "desc": "RCF RNP 28 LPFR"
+ },
+ {
+  "name": "BIMBO",
+  "lat": 31.421389,
+  "lon": -16.032778,
+  "type": "aip",
+  "desc": "FRA ARR LPMA"
+ },
+ {
+  "name": "DEGUN",
+  "lat": 33.418611,
+  "lon": -15.658333,
+  "type": "aip",
+  "desc": "FRA DEP LPMA"
+ },
+ {
+  "name": "EKNOT",
+  "lat": 32.176389,
+  "lon": -16.295833,
+  "type": "aip",
+  "desc": "FRA ARR LPMA"
+ },
+ {
+  "name": "FUSUL",
+  "lat": 32.601389,
+  "lon": -16.661944,
+  "type": "aip",
+  "desc": "Holding LPMA"
+ },
+ {
+  "name": "GALOZ",
+  "lat": 33.033611,
+  "lon": -17.420556,
+  "type": "aip",
+  "desc": "FRA DEP LPMA"
+ },
+ {
+  "name": "GOSGA",
+  "lat": 32.082222,
+  "lon": -16.631111,
+  "type": "aip",
+  "desc": "FRA DEP LPMA"
+ },
+ {
+  "name": "IBBAN",
+  "lat": 33.343056,
+  "lon": -17.142222,
+  "type": "aip",
+  "desc": "FRA ARR LPMA"
+ },
+ {
+  "name": "IRKID",
+  "lat": 33.925,
+  "lon": -18.069167,
+  "type": "aip",
+  "desc": "FRA DEP LPMA"
+ },
+ {
+  "name": "KICAS",
+  "lat": 33.750556,
+  "lon": -16.473333,
+  "type": "aip",
+  "desc": "FRA ARR LPMA"
+ },
+ {
+  "name": "LAPPA",
+  "lat": 33.295833,
+  "lon": -16.358611,
+  "type": "aip",
+  "desc": "FRA DEP LPMA"
+ },
+ {
+  "name": "LIDRO",
+  "lat": 33.6675,
+  "lon": -15.949722,
+  "type": "aip",
+  "desc": "FRA ARR LPMA"
+ },
+ {
+  "name": "NIDUL",
+  "lat": 32.365278,
+  "lon": -17.353056,
+  "type": "aip",
+  "desc": "FRA ARR/DEP LPMA"
+ },
+ {
+  "name": "ORTIS",
+  "lat": 31.406944,
+  "lon": -16.556944,
+  "type": "aip",
+  "desc": "FRA DEP LPMA"
+ },
+ {
+  "name": "PILIM",
+  "lat": 32.854167,
+  "lon": -16.591389,
+  "type": "aip",
+  "desc": "FRA DEP LPMA"
+ },
+ {
+  "name": "RAKUN",
+  "lat": 33.556944,
+  "lon": -15.781389,
+  "type": "aip",
+  "desc": "FRA ARR LPMA"
+ },
+ {
+  "name": "THR05",
+  "lat": 32.689932,
+  "lon": -16.783751,
+  "type": "aip",
+  "desc": "THR RWY 05 LPMA"
+ },
+ {
+  "name": "THR23",
+  "lat": 32.705841,
+  "lon": -16.76515,
+  "type": "aip",
+  "desc": "THR RWY 23 LPMA"
+ },
+ {
+  "name": "FUN",
+  "lat": 32.747222,
+  "lon": -16.705556,
+  "type": "aip",
+  "desc": "DVOR/DME 112.2 LPMA"
+ },
+ {
+  "name": "MONEC",
+  "lat": 32.456369,
+  "lon": -16.830389,
+  "type": "aip",
+  "desc": "IAF/Hold LPMA"
+ },
+ {
+  "name": "ABUSU",
+  "lat": 32.866944,
+  "lon": -16.635556,
+  "type": "aip",
+  "desc": "FAF DVOR LPMA"
+ },
+ {
+  "name": "GELO",
+  "lat": 32.664558,
+  "lon": -16.803336,
+  "type": "aip",
+  "desc": "Visual Fix RWY 05 LPMA"
+ },
+ {
+  "name": "MA563",
+  "lat": 32.79938,
+  "lon": -16.636633,
+  "type": "aip",
+  "desc": "IF RNP 05-a LPMA"
+ },
+ {
+  "name": "MA564",
+  "lat": 32.772003,
+  "lon": -16.659286,
+  "type": "aip",
+  "desc": "FAF RNP 05-a LPMA"
+ },
+ {
+  "name": "MA565",
+  "lat": 32.736403,
+  "lon": -16.688708,
+  "type": "aip",
+  "desc": "APP RNP 05 LPMA"
+ },
+ {
+  "name": "MA566",
+  "lat": 32.682993,
+  "lon": -16.732808,
+  "type": "aip",
+  "desc": "MAPT RNP 05-a LPMA"
+ },
+ {
+  "name": "MA412",
+  "lat": 32.701422,
+  "lon": -16.603542,
+  "type": "aip",
+  "desc": "Fix RNP 05-a LPMA"
+ },
+ {
+  "name": "MA410",
+  "lat": 32.807068,
+  "lon": -16.646557,
+  "type": "aip",
+  "desc": "IF RNP 23 LPMA"
+ },
+ {
+  "name": "MA408",
+  "lat": 32.771466,
+  "lon": -16.688354,
+  "type": "aip",
+  "desc": "FAP RNP 23 LPMA"
+ },
+ {
+  "name": "MA561",
+  "lat": 32.808964,
+  "lon": -16.639436,
+  "type": "aip",
+  "desc": "FAF RNP 23-b LPMA"
+ },
+ {
+  "name": "MA562",
+  "lat": 32.747169,
+  "lon": -16.705453,
+  "type": "aip",
+  "desc": "MAPT RNP 23-b LPMA"
+ },
+ {
+  "name": "THR17",
+  "lat": 41.260681,
+  "lon": -8.684561,
+  "type": "aip",
+  "desc": "THR RWY 17 LPPR"
+ },
+ {
+  "name": "THR35",
+  "lat": 41.233886,
+  "lon": -8.677536,
+  "type": "aip",
+  "desc": "THR RWY 35 LPPR"
+ },
+ {
+  "name": "PRT",
+  "lat": 41.272944,
+  "lon": -8.687778,
+  "type": "aip",
+  "desc": "DVOR/DME 114.1 LPPR"
+ },
+ {
+  "name": "ADNOV",
+  "lat": 41.518244,
+  "lon": -8.753164,
+  "type": "aip",
+  "desc": "IAF RWY 17 LPPR"
+ },
+ {
+  "name": "RETMO",
+  "lat": 41.228908,
+  "lon": -9.013808,
+  "type": "aip",
+  "desc": "Hold LPPR"
+ },
+ {
+  "name": "AKULU",
+  "lat": 40.984044,
+  "lon": -8.611819,
+  "type": "aip",
+  "desc": "IAF RWY 35 LPPR"
+ },
+ {
+  "name": "PR741",
+  "lat": 41.452894,
+  "lon": -8.735161,
+  "type": "aip",
+  "desc": "IF RNP 17 LPPR"
+ },
+ {
+  "name": "PR742",
+  "lat": 41.384278,
+  "lon": -8.717044,
+  "type": "aip",
+  "desc": "FAF RNP Y 17 LPPR"
+ },
+ {
+  "name": "PR743",
+  "lat": 41.371458,
+  "lon": -8.713669,
+  "type": "aip",
+  "desc": "FAF RNP Z 17 LPPR"
+ },
+ {
+  "name": "PR744",
+  "lat": 41.211589,
+  "lon": -8.671669,
+  "type": "aip",
+  "desc": "MATF RNP 17 LPPR"
+ },
+ {
+  "name": "PR541",
+  "lat": 41.061011,
+  "lon": -8.632356,
+  "type": "aip",
+  "desc": "IF RNP 35 LPPR"
+ },
+ {
+  "name": "PR542",
+  "lat": 41.093897,
+  "lon": -8.640931,
+  "type": "aip",
+  "desc": "FAF RNP 35 LPPR"
+ },
+ {
+  "name": "PR543",
+  "lat": 41.233886,
+  "lon": -8.677536,
+  "type": "aip",
+  "desc": "MAPT RNP 35 LPPR"
+ },
+ {
+  "name": "PR544",
+  "lat": 41.315678,
+  "lon": -8.698997,
+  "type": "aip",
+  "desc": "MATF RNP 35 LPPR"
+ },
+ {
+  "name": "ABLEG",
+  "lat": 40.722658,
+  "lon": -8.431169,
+  "type": "aip",
+  "desc": "STAR Fix LPPR"
+ },
+ {
+  "name": "VASIP",
+  "lat": 41.554978,
+  "lon": -8.376133,
+  "type": "aip",
+  "desc": "STAR Fix LPPR"
+ },
+ {
+  "name": "PR650",
+  "lat": 41.550383,
+  "lon": -8.441872,
+  "type": "aip",
+  "desc": "STAR Fix LPPR"
+ },
+ {
+  "name": "PR612",
+  "lat": 41.537558,
+  "lon": -8.622525,
+  "type": "aip",
+  "desc": "STAR Fix LPPR"
+ }
+]

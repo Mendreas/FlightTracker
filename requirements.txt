@@ -1,0 +1,5 @@
+duckdb>=1.1
+pywebview>=5.0
+openpyxl>=3.1
+python-pptx>=1.0
+pyinstaller>=6.0

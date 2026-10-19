@@ -1,0 +1,122 @@
+{
+ "APP_02": [
+  "PESEX",
+  "NETVO",
+  "OKNIB",
+  "THR02"
+ ],
+ "APP_20": [
+  "UPKAT",
+  "TOPVI",
+  "ROKOB",
+  "THR20"
+ ],
+ "STAR02": [
+  "ESUTI",
+  "INBOM",
+  "LAZET",
+  "LUVUP",
+  "PULPO",
+  "VATZI",
+  "XAMAX",
+  "CASLU",
+  "MAZUK",
+  "ERNIL",
+  "RELKU",
+  "ZEFFI",
+  "NEVUD",
+  "PESEX",
+  "GANSU",
+  "YETSI",
+  "ORTUG",
+  "ZACRA",
+  "INLIB",
+  "MIGTO",
+  "ULTIT"
+ ],
+ "STAR20": [
+  "ESEBI",
+  "ESUTI",
+  "INBOM",
+  "LAZET",
+  "LUVUP",
+  "PULPO",
+  "VATZI",
+  "XAMAX",
+  "ITAVIT",
+  "DEKKI",
+  "ROMEP",
+  "EVPAP",
+  "FUSSI",
+  "ARNIT",
+  "UPKAT",
+  "PT813",
+  "PT811",
+  "PT818",
+  "EKLID",
+  "ROTBU",
+  "LERLI",
+  "FADEF",
+  "COCUN"
+ ],
+ "LPMA_APP_05": [
+  "PILIM",
+  "MONEC",
+  "ABUSU",
+  "MA563",
+  "MA564",
+  "MA565",
+  "MA566",
+  "THR05"
+ ],
+ "LPMA_APP_23": [
+  "PILIM",
+  "MONEC",
+  "MA410",
+  "MA561",
+  "MA562",
+  "THR23"
+ ],
+ "LPPR_APP_17": [
+  "ADNOV",
+  "PR741",
+  "PR742",
+  "THR17",
+  "PR744",
+  "RETMO"
+ ],
+ "LPPR_APP_35": [
+  "AKULU",
+  "PR541",
+  "PR542",
+  "THR35",
+  "PR544",
+  "RETMO"
+ ],
+ "LPPR_STAR17": [
+  "ABLEG",
+  "VASIP",
+  "PR650",
+  "PR612",
+  "ADNOV"
+ ],
+ "LPPR_STAR35": [
+  "ABLEG",
+  "AKULU",
+  "VASIP"
+ ],
+ "LPFR_APP_10": [
+  "RUWIB",
+  "FR910",
+  "THR10",
+  "FR728",
+  "GIMAL"
+ ],
+ "LPFR_APP_28": [
+  "GEBTI",
+  "FR928",
+  "THR28",
+  "FR710",
+  "GIMAL"
+ ]
+}

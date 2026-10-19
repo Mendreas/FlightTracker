@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<title>FlightTracker</title>
+<link rel="stylesheet" href="vendor/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">
+    <span class="logo">✈</span>
+    <div>
+      <div class="ttl">FlightTracker <span id="ver" class="ver"></span></div>
+      <div class="sub">NAV Portugal · GOPLIS · análise de trajetórias radar</div>
+    </div>
+  </div>
+  <div class="dbinfo" id="dbinfo">
+    <span class="pill"><b id="dbFiles">0</b> ficheiros</span>
+    <span class="pill"><b id="dbRows">0</b> plots</span>
+    <span class="pill"><b id="dbFlights">0</b> movimentos</span>
+    <span class="pill muted" id="dbSize"></span>
+  </div>
+  <div class="aptsel"><span class="mini">Aeroporto:</span>
+    <select id="selAirportTop" class="inp" title="Muda a vista para este aeroporto — os dados dos outros mantêm-se carregados"></select></div>
+  <div class="actions">
+    <button class="btn primary" id="btnImport" title="Escolher uma pasta com CSV do CNS (subpastas incluídas)">📂 Importar pasta…</button>
+    <button class="btn" id="btnReimport" title="Procura ficheiros novos na última pasta importada">🔄 Atualizar</button>
+    <button class="btn" id="btnNmir" title="Importar Excel NMIR (tipos de aeronave)">📊 NMIR…</button>
+    <button class="btn ghost" id="btnFolder" title="Abrir a pasta onde está a base de dados">🗄</button>
+    <button class="btn ghost" id="btnTheme" title="Tema claro / escuro">🌙</button>
+  </div>
+</header>
+
+<div id="progress" class="progress hidden">
+  <div class="bar"><div id="progressBar"></div></div>
+  <div id="progressTxt">A importar…</div>
+</div>
+
+<main id="main">
+  <aside id="sidebar">
+    <section class="box">
+      <div class="box-h">Filtro de datas</div>
+      <div class="lbl">Mês disponível</div>
+      <select id="selMonth" class="inp"></select>
+      <div class="lbl">Dias disponíveis</div>
+      <div class="cal-head"><span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span></div>
+      <div id="calGrid" class="cal"></div>
+      <div class="lbl">Dias da semana</div>
+      <div id="wdBtns" class="chips"></div>
+      <div class="lbl">Blocos horários</div>
+      <div id="blockChips" class="chips"></div>
+      <div class="grid2b">
+        <button class="btn sm" id="daysAll">TODOS DIAS</button><button class="btn sm" id="blocksAll">TODOS BLOCOS</button>
+        <button class="btn sm" id="daysNone">NENHUM DIA</button><button class="btn sm" id="blocksNone">NENHUM BLOCO</button>
+      </div>
+      <button class="btn primary wide" id="btnApply">▶ APLICAR FILTRO</button>
+    </section>
+    <section class="box">
+      <input id="inpCsn" class="inp" placeholder="🔍 TAP, KLM, BAW...">
+      <div class="grid4b" id="clsBtns">
+        <button class="tog on" data-v="">TODOS</button><button class="tog" data-v="arr">▼ ARR</button><button class="tog" data-v="dep">▲ DEP</button><button class="tog" data-v="lvl">— NÍVEL</button>
+      </div>
+    </section>
+    <section class="box grow">
+      <div class="box-h">Voos <span class="mini" id="flCount"></span></div>
+      <div id="flList" class="fllist"><div class="empty">Importa uma pasta, escolhe mês e dias e aplica o filtro.</div></div>
+      <div class="grid2b"><button class="btn sm" id="flShowAll">TODOS</button><button class="btn sm" id="flHideAll">NENHUM</button></div>
+    </section>
+  </aside>
+
+  <section id="content">
+    <nav class="tabs">
+      <button class="tab active" data-tab="map">🗺 Mapa</button>
+      <button class="tab" data-tab="tbl">☰ Tabela</button>
+      <button class="tab" data-tab="final">🛬 Final</button>
+      <button class="tab" data-tab="star">⚡ Vel. STAR</button>
+      <button class="tab" data-tab="app">🛬 Vel. APP</button>
+      <button class="tab" data-tab="ana">📈 Análise Op.</button>
+      <button class="tab" data-tab="kpi">📊 KPIs</button>
+      <button class="tab" data-tab="pts">📍 Pontos</button>
+      <button class="tab" data-tab="ia">🤖 Análise IA</button>
+      <button class="tab" data-tab="pref">⚙</button>
+      <span class="tabs-right" id="mapTools">
+        <label class="chk"><input type="checkbox" id="chkPoints" checked> Pontos AIP</label>
+        <select id="selGroup" class="inp tiny"></select>
+        <label class="chk"><input type="checkbox" id="chkColorCls" checked> Cor por classe</label>
+        <label class="chk"><input type="checkbox" id="chkTiles" checked> Mapa de fundo</label>
+        <select id="selBase" class="inp tiny"><option value="osm">OSM escuro</option><option value="ruas">Ruas</option><option value="sat">Satélite</option></select>
+      </span>
+    </nav>
+
+    <!-- MAPA -->
+    <div id="tab-map" class="tabpane active">
+      <div id="map"></div>
+      <div id="legend" class="legend">
+        <span><i style="background:#3b9cff"></i>Chegada</span><span><i style="background:#ff9b2f"></i>Partida</span><span><i style="background:#8a93a6"></i>Sobrevoo</span>
+      </div>
+    </div>
+
+    <!-- TABELA -->
+    <div id="tab-tbl" class="tabpane">
+      <div class="toolbar"><span id="tblInfo" class="muted"></span><span class="spacer"></span><button class="btn" id="btnExport">⬇ CSV</button></div>
+      <div class="scroll"><table id="flTable" class="sortable"><thead><tr>
+        <th data-k="date">Data</th><th data-k="csn">Callsign</th><th data-k="actype">Tipo</th><th data-k="wtc">WTC</th><th data-k="cls">Classe</th>
+        <th data-k="tod_first">Início</th><th data-k="tod_last">Fim</th><th data-k="alt_first">Alt ini</th><th data-k="alt_last">Alt fim</th>
+        <th data-k="alt_max">Alt máx</th><th data-k="n">Plots</th><th data-k="blocks">Blocos</th></tr></thead><tbody></tbody></table></div>
+    </div>
+
+    <!-- FINAL -->
+    <div id="tab-final" class="tabpane">
+      <div class="toolbar">
+        <label>Pista <select id="finRwy" class="inp tiny"><option value="BOTH">Ambas</option></select></label>
+        <label>FAF <input id="finFaf" class="inp num" type="number" value="7" min="3" max="15" step="0.5"> NM</label>
+        <label>Corredor ± <input id="finCorr" class="inp num" type="number" value="2" min="0.5" max="5" step="0.5"> NM</label>
+        <label title="Máxima altitude ao cruzar THR para considerar aterragem">Alt THR ≤ <input id="finAlt" class="inp num" type="number" value="1000" min="500" max="3000" step="100"> ft</label>
+        <button class="btn primary" id="finRun">▶ Analisar</button>
+        <label class="chk"><input type="checkbox" id="finOverlay"> Corredor no mapa</label>
+        <span class="spacer"></span><span id="finCount" class="muted"></span>
+        <button class="btn" id="finExport">⬇ Excel</button>
+      </div>
+      <div class="scroll" id="finBody"><div class="empty">Configura parâmetros e clica Analisar</div></div>
+    </div>
+
+    <!-- VELOCIDADES STAR -->
+    <div id="tab-star" class="tabpane">
+      <div class="toolbar">
+        <label>Raio CPA <input id="starRadius" class="inp num" type="number" value="1" min="0.1" max="10" step="0.1"> NM</label>
+        <label title="Margem acima do limite antes de considerar violação">Tolerância + <input id="starTol" class="inp num" type="number" value="0" min="0" max="30" step="1"> kt</label>
+        <button class="btn primary" id="starRun">▶ Analisar</button>
+        <button class="btn" id="starManage">⚙ Gerir limites</button>
+        <span class="spacer"></span><span id="starCount" class="muted"></span>
+        <button class="btn" id="starExport">⬇ Excel</button>
+      </div>
+      <div class="scroll" id="starBody"><div class="empty">Clica Analisar para avaliar o cumprimento de IAS nos pontos STAR</div></div>
+    </div>
+
+    <!-- VELOCIDADES APP -->
+    <div id="tab-app" class="tabpane">
+      <div class="subtabs"><button class="subtab active" data-sub="app1">Violações por voo e pontos</button><button class="subtab" data-sub="app2">Violações por distância (escala da final 12 NM → THR)</button></div>
+      <div id="sub-app1" class="subpane active">
+        <div class="toolbar">
+          <span id="appRwyBtns" class="btngroup"></span>
+          <label>Raio CPA <input id="appRadius" class="inp num" type="number" value="1" min="0.1" max="10" step="0.1"> NM</label>
+          <label>Tolerância ± <input id="appTol" class="inp num" type="number" value="0" min="0" max="30" step="1"> kt</label>
+          <button class="btn primary" id="appRun">▶ Analisar</button>
+          <button class="btn" id="appCharts">📊 Gráficos</button>
+          <span class="spacer"></span><span id="appCount" class="muted"></span>
+          <button class="btn" id="appPptx">⬇ PPTX</button><button class="btn" id="appExport">⬇ Excel</button>
+        </div>
+        <div class="scroll" id="appBody"><div class="empty">Clica Analisar para ver violações IAS nas aproximações</div></div>
+      </div>
+      <div id="sub-app2" class="subpane">
+        <div class="toolbar">
+          <span class="btngroup" id="adRwyBtns"></span>
+          <label>Buffer ± <input id="adBuffer" class="inp num" type="number" value="4" min="0" max="20" step="1"> kt</label>
+          <button class="btn primary" id="adRun">▶ Analisar</button>
+          <span class="spacer"></span><span id="adCount" class="muted"></span>
+          <button class="btn" id="adExport">⬇ Excel</button>
+        </div>
+        <div class="scale-wrap"><div class="mini" style="margin-bottom:4px">ESCALA DA FINAL — selecciona pontos de análise (12 NM → THR)</div>
+          <div id="adScale" class="scale"></div><div id="adSegs" class="segs"></div></div>
+        <div class="scroll" id="adBody"><div class="empty">Selecciona a pista, os pontos da escala e clica Analisar</div></div>
+      </div>
+    </div>
+
+    <!-- ANÁLISE OP -->
+    <div id="tab-ana" class="tabpane">
+      <div class="subtabs">
+        <button class="subtab active" data-sub="fast">Separação entre chegadas (FAST)</button>
+        <button class="subtab" data-sub="dados">Análise de Dados</button>
+        <button class="subtab" data-sub="diaria">Análise Diária</button>
+        <button class="subtab" data-sub="rrms">RRMS</button>
+        <button class="subtab" data-sub="rot">ROT</button>
+      </div>
+      <div id="sub-fast" class="subpane active">
+        <div class="toolbar">
+          <label>Separação THR <input id="fastThr" class="inp num" type="number" value="160" min="30" max="300" step="10"> s</label>
+          <span class="btngroup" id="fastMode"><button class="tog on" data-v="all">Todos</button><button class="tog" data-v="lt">&lt; Abaixo</button><button class="tog" data-v="range">↔ Entre limite e 240s</button></span>
+          <button class="tog" id="fastInter">A/C intercalar</button>
+          <span class="btngroup" id="fastRwy"><button class="tog" data-v="02">RWY02</button><button class="tog" data-v="20">RWY20</button></span>
+          <span class="spacer"></span><span id="fastCount" class="muted"></span>
+          <button class="btn" id="fastExport">⬇ Excel</button>
+        </div>
+        <div class="split"><div class="scroll" id="fastBody"><div class="empty">Corre a Final primeiro (automático)</div></div><div id="fastDetail" class="detailpane"><div class="empty">Selecciona um par para ver o detalhe</div></div></div>
+      </div>
+      <div id="sub-dados" class="subpane">
+        <div class="toolbar wrap">
+          <label>Limite crítico <select id="sdLimit" class="inp tiny"><option>240</option><option>200</option><option selected>165</option><option>140</option><option>120</option></select> s</label>
+          <label>Data <select id="sdDate" class="inp tiny"><option value="all">Todas</option></select></label>
+          <label>Hora <select id="sdHour" class="inp tiny"><option value="all">Todas</option></select></label>
+          <label>Pista <select id="sdRwy" class="inp tiny"><option value="all">Todas</option></select></label>
+          <label>Tipo <select id="sdTipo" class="inp tiny"><option value="all">Tudo</option><option value="withDep">Com DEP entre aterragens</option><option value="noDep">Sem DEP no meio</option></select></label>
+          <label>Sequência <select id="sdSeq" class="inp tiny"><option value="all">Todas</option></select></label>
+          <label>Seguidor no DEP até <select id="sdDepNm" class="inp tiny"><option value="all">Qualquer</option><option>3</option><option>4</option><option>5</option><option>6</option></select> NM</label>
+          <label>Mostrar <select id="sdCrit" class="inp tiny"><option value="all">Todos os pares</option><option value="crit">Só abaixo do limite</option></select></label>
+          <button class="btn primary" id="sdRun">Atualizar análise</button>
+          <button class="btn" id="sdExport">⬇ Excel</button><button class="btn" id="sdPdf">📄 Relatório PDF</button>
+        </div>
+        <div class="scroll" id="sdBody"><div class="empty">Clica Atualizar análise</div></div>
+      </div>
+      <div id="sub-diaria" class="subpane">
+        <div class="toolbar"><span class="muted">Usa os dias e blocos seleccionados no painel esquerdo · limite crítico da Análise de Dados</span><span class="spacer"></span>
+          <button class="btn primary" id="dyRun">🔄 Actualizar análise diária</button><button class="btn" id="dyExport">⬇ Excel</button><button class="btn" id="dyPdf">📄 Relatório PDF</button></div>
+        <div class="scroll" id="dyBody"><div class="empty">Clica Actualizar</div></div>
+      </div>
+      <div id="sub-rrms" class="subpane">
+        <div class="toolbar wrap">
+          <label>Categoria rasto <select id="rrCat" class="inp tiny"><option value="MH">M + H</option><option value="M">M</option><option value="H">H</option><option value="all">Todas</option></select></label>
+          <label>Estatísticas <select id="rrGrp" class="inp tiny"><option value="rwy">Por pista</option><option value="gnd">Ar / Solo</option><option value="hour">Por hora</option><option value="cat">Por categoria</option><option value="actype">Por tipo A/C</option><option value="comp">Por companhia</option><option value="top10csn">Top 10 callsigns</option></select></label>
+          <label>Gráfico <select id="rrMetric" class="inp tiny"><option value="alt">Altitude</option><option value="ias">IAS</option></select></label>
+          <label>Pista <select id="rrRwy" class="inp tiny"><option value="all">Ambas</option><option value="02">RWY 02</option><option value="20">RWY 20</option></select></label>
+          <button class="btn primary" id="rrRun">▶ Analisar</button><span class="spacer"></span><span id="rrCount" class="muted"></span>
+          <button class="btn" id="rrExport">⬇ Excel</button><button class="btn" id="rrPdf">📄 PDF</button>
+        </div>
+        <div class="scroll" id="rrBody"><div class="empty">RRMS — passagens no ponto 2400 m (TWY U6 / TWY P) · só LPPT · DEP e sobrevoos</div></div>
+      </div>
+      <div id="sub-rot" class="subpane">
+        <div class="toolbar"><label>Pista <select id="rotRwy" class="inp tiny"><option value="all">Todas</option></select></label><button class="btn primary" id="rotRun">▶ Analisar</button><span class="spacer"></span><span id="rotCount" class="muted"></span><button class="btn" id="rotExport">⬇ Excel</button></div>
+        <div class="scroll" id="rotBody"><div class="empty">Tempo de ocupação de pista — do cruzamento da THR à última amostra na pista</div></div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div id="tab-kpi" class="tabpane">
+      <div class="toolbar"><button class="btn primary" id="kpiRun">⟳ Actualizar</button><span class="spacer"></span><span id="kpiNote" class="muted"></span><button class="btn" id="kpiExport">⬇ Excel</button><button class="btn" id="kpiReport">📄 Relatório</button></div>
+      <div class="scroll" id="kpiBody"><div class="empty">Clica Actualizar</div></div>
+    </div>
+
+    <!-- PONTOS -->
+    <div id="tab-pts" class="tabpane">
+      <div class="subtabs"><button class="subtab active" data-sub="pt">Passagens num ponto</button><button class="subtab" data-sub="seq">Sequência</button><button class="subtab" data-sub="ptman">Pontos personalizados</button></div>
+      <div id="sub-pt" class="subpane">
+        <div class="toolbar wrap">
+          <label>Ponto <select id="ptSel" class="inp"></select></label>
+          <label>Raio <input id="ptRadius" class="inp num" type="number" value="1" min="0.1" max="50" step="0.1"> NM</label>
+          <label>IAS <select id="ptOp" class="inp tiny"><option value="any">Qualquer</option><option value="lt">&lt;</option><option value="le">≤</option><option value="eq">= ±</option><option value="ge">≥</option><option value="gt">&gt;</option><option value="between">entre</option></select>
+            <input id="ptV1" class="inp num" type="number" placeholder="kt"><input id="ptV2" class="inp num hidden" type="number" placeholder="kt"><input id="ptTol" class="inp num hidden" type="number" value="2" title="tolerância"></label>
+          <button class="btn primary" id="ptRun">▶ Pesquisar</button><span class="spacer"></span><span id="ptCount" class="muted"></span><button class="btn" id="ptExport">⬇ Excel</button>
+        </div>
+        <div class="scroll" id="ptBody"><div class="empty">Selecciona um ponto e clica Pesquisar</div></div>
+      </div>
+      <div id="sub-seq" class="subpane">
+        <div class="toolbar"><label>Ponto <select id="seqSel" class="inp"></select></label><label>Dist. máx <input id="seqRadius" class="inp num" type="number" value="1" min="0.1" max="50" step="0.1"> NM</label>
+          <button class="btn primary" id="seqRun">▶ Pesquisar</button><span class="spacer"></span><span id="seqCount" class="muted"></span><button class="btn" id="seqExport">⬇ Excel</button></div>
+        <div class="scroll" id="seqBody"><div class="empty">Selecciona um ponto e distância máxima</div></div>
+      </div>
+      <div id="sub-ptman" class="subpane">
+        <div class="toolbar wrap"><input id="upName" class="inp small" placeholder="Nome (ex: FF36)"><input id="upLat" class="inp small" placeholder="Lat decimal"><input id="upLon" class="inp small" placeholder="Lon decimal"><input id="upDesc" class="inp small" placeholder="Descrição">
+          <button class="btn primary" id="upAdd">+ Adicionar</button><span class="spacer"></span><button class="btn" id="upImport">↑ points.json</button><button class="btn" id="upExport">↓ points.json</button></div>
+        <div class="scroll" id="upBody"></div>
+      </div>
+    </div>
+
+    <!-- IA -->
+    <div id="tab-ia" class="tabpane">
+      <div class="toolbar"><span id="iaStatus" class="muted"></span><label>Modelo <select id="iaModel" class="inp tiny"></select></label><span class="spacer"></span>
+        <button class="btn" id="iaCtx">👁 Contexto</button><button class="btn" id="iaClear">🗑</button><button class="btn" id="iaExportHtml">⬇ HTML</button><button class="btn" id="iaExportXls">⬇ Excel</button></div>
+      <div class="scroll" id="iaBody"><div class="empty">Faz uma pergunta sobre os dados filtrados. O modelo recebe o resumo das análises (Final, FAST, STAR, APP, ROT, Pontos).</div></div>
+      <div class="toolbar"><input id="iaQ" class="inp" placeholder="Ex: Quais as horas com mais pares abaixo de 160 s? Que companhias têm mais violações de IAS?"><button class="btn primary" id="iaSend">ENVIAR</button></div>
+    </div>
+
+    <!-- PREFERÊNCIAS -->
+    <div id="tab-pref" class="tabpane">
+      <div class="scroll" id="prefBody">
+        <section class="card"><h3>Análise IA — fornecedor e chave</h3>
+          <div class="row wrap"><label>Fornecedor <select id="prProv" class="inp tiny"></select></label><label>Modelo <select id="prModel" class="inp tiny"></select></label>
+            <label>Chave API <input id="prKey" class="inp" type="password" placeholder="(mantém a guardada)"></label><label id="prAzureWrap" class="hidden">Endpoint Azure <input id="prAzure" class="inp"></label>
+            <button class="btn primary" id="prSave">Guardar</button></div>
+          <p class="mini">A chave fica guardada apenas na base de dados local deste computador.</p></section>
+        <section class="card"><h3>Base de dados</h3><p id="prDb" class="mini"></p>
+          <button class="btn" id="prRemoveMissing">🧹 Remover ficheiros que já não existem no disco</button></section>
+        <section class="card"><h3>Sobre</h3><p class="mini">FlightTracker 4.0 — reescrita em Python/DuckDB (versões 1–3 eram uma app HTML de ficheiro único). Os CSV são lidos uma vez e guardados tipados; as análises são consultas sobre essa base.</p></section>
+      </div>
+    </div>
+
+    <footer id="status"><span class="dot" id="sDot"></span><span id="sTxt">Pronto.</span><span class="right" id="sTime"></span></footer>
+  </section>
+
+  <aside id="detail" class="hidden">
+    <div class="d-head"><div><div class="d-csn" id="dCsn">—</div><div class="d-sub" id="dSub"></div></div>
+      <button class="btn" id="dReport" title="Relatório de voo (imprimível)">📄</button><button class="btn ghost" id="dClose">✕</button></div>
+    <div class="d-kpis" id="dKpis"></div>
+    <canvas id="dChart" width="360" height="150"></canvas>
+    <div id="dViol" class="d-viol"></div>
+    <div class="d-tblwrap"><table class="d-tbl" id="dTbl"><thead><tr><th>TOD</th><th>Alt ft</th><th>IAS</th><th>GS</th><th>ROC</th><th>Dist THR</th></tr></thead><tbody></tbody></table></div>
+  </aside>
+</main>
+
+<div id="modal" class="modal hidden"><div class="modal-box"><div class="modal-h"><span id="modalTitle"></span><button class="btn ghost" id="modalClose">✕</button></div><div id="modalBody" class="modal-b"></div></div></div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="vendor/leaflet.js"></script>
+<script src="charts.js"></script>
+<script src="app.js"></script>
+<script src="analyses.js"></script>
+</body>
+</html>
