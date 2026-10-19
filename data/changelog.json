@@ -1,0 +1,61 @@
+[
+  {
+    "version": "4.0.0",
+    "date": "2026-10-19",
+    "title": "Reescrita em Python + DuckDB",
+    "summary": "A versão 4.0 do FlightTracker é uma aplicação nova: os CSV do CNS são importados uma única vez para uma base de dados local e todas as consultas e análises passam a demorar milissegundos, mesmo com meses de dados carregados.",
+    "sections": [
+      {
+        "title": "Velocidade",
+        "items": [
+          "Importação única dos CSV para uma base DuckDB local (%LOCALAPPDATA%\\FlightTracker); ficheiros já importados são ignorados, alterados são substituídos.",
+          "Escolher dias, blocos, callsigns e aeroportos passa a ser uma consulta SQL — milissegundos, em vez de voltar a ler os ficheiros.",
+          "Importação em segundo plano com barra de progresso discreta: a app continua utilizável enquanto importa.",
+          "Botão Atualizar: procura só os ficheiros novos na última pasta importada."
+        ]
+      },
+      {
+        "title": "Interface",
+        "items": [
+          "Calendário por mês com contagem de ficheiros por dia, dias da semana e blocos horários, como na versão 3.",
+          "Ao escolher um dia carregam-se todos os aeroportos; o seletor Aeroporto centra o mapa e muda a vista sem perder os dados dos outros.",
+          "Tema escuro e claro (botão no canto superior direito).",
+          "Janela nativa (WebView2) com motor de dados em processo separado; se a janela não abrir, a app corre no navegador predefinido."
+        ]
+      },
+      {
+        "title": "Análises (todas as da versão 3, recalculadas)",
+        "items": [
+          "Final: deteção de aterragens com FAF virtual, corredor e altitude THR; eixo de aproximação calculado entre as soleiras (corrige o desvio lateral de ~1,2 NM da versão anterior).",
+          "FAST: pares de chegadas AA / ADA / ADDA / AD…A, separações e detalhe da final.",
+          "Velocidades STAR e APP: violações de IAS por ponto, por operador e na escala da final 12 NM → THR; histogramas e PPTX.",
+          "Análise de Dados, Análise Diária, KPIs, RRMS (TWY U6 / P) e ROT.",
+          "Pontos e Sequência: passagens num ponto com filtro de IAS e distância à frente/atrás.",
+          "Exportação para Excel em todas as abas, relatórios imprimíveis e Análise IA (Claude, OpenAI, Mistral, Azure, Groq)."
+        ]
+      },
+      {
+        "title": "Correções",
+        "items": [
+          "Erro \"float division by zero\" na Final quando há plots coincidentes.",
+          "Funcionamento atrás de proxy empresarial (ligação local direta).",
+          "Tipos de aeronave: base NMIR incluída (46 060 registos) com importação de Excel NMIR novos."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "3.5",
+    "date": "2026-08",
+    "title": "Pasta Inteligente",
+    "summary": "Última versão da app HTML (Tauri): ligação direta a uma pasta do disco (File System Access API), melhorias na análise de violações na final e correções de arranque.",
+    "sections": []
+  },
+  {
+    "version": "3.0",
+    "date": "2026-07",
+    "title": "Análise IA e relatórios",
+    "summary": "Análise com IA integrada, relatórios PPTX/impressos e KPIs.",
+    "sections": []
+  }
+]

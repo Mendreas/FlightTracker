@@ -43,11 +43,23 @@ As especificações detalhadas dos algoritmos portados da app antiga estão em `
 2. Na pasta do projeto: `python -m pip install -r requirements.txt`
 3. `python app.py`
 
-## Gerar o executável
+## Instalar / distribuir
 
-* Localmente: duplo clique em `build_windows.bat` → pasta `dist\FlightTracker\` (correr o `FlightTracker.exe` lá dentro; para dar a um colega copia-se a pasta inteira)
-* Automático: cada *push* para `main` gera o `.exe` no GitHub Actions
-  (separador *Actions* → último run → *Artifacts* → `FlightTracker-windows`).
+Cada *push* para `main` gera automaticamente (GitHub Actions → *Build Windows exe*):
+
+| O quê | Onde |
+|---|---|
+| Instalador Windows (`FlightTracker-Setup.exe`, instala em `%LOCALAPPDATA%\Programs\FlightTracker`, sem direitos de administrador) | [Release *latest*](https://github.com/Mendreas/FlightTracker/releases/latest) — link fixo `releases/download/latest/FlightTracker-Setup.exe` |
+| DMG macOS (`FlightTracker-macOS.dmg`) | idem — `releases/download/latest/FlightTracker-macOS.dmg` |
+| Pasta portátil (zip, sem instalar) | idem — `FlightTracker-windows-portable.zip` |
+| Release com o número da versão (`v4.0.0`, …) | [Releases](https://github.com/Mendreas/FlightTracker/releases) — fica o histórico |
+
+A versão vem de `VERSION` em `app.py`; o histórico de alterações está em `data/changelog.json` e aparece na app em
+**Preferências → Histórico de versões**, onde o botão **✉ Email de novidades** abre no Outlook um rascunho formatado
+com as novidades e os links de download. Para lançar uma versão nova: atualizar `VERSION`, acrescentar a entrada no
+`changelog.json` e fazer *push*.
+
+Localmente: duplo clique em `build_windows.bat` → pasta `dist\FlightTracker\` (correr o `FlightTracker.exe` lá dentro).
 
 ## Se o .exe não abrir noutro PC
 

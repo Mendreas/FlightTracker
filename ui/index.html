@@ -37,6 +37,12 @@
 <div id="progress" class="progress hidden"><div id="progressBar"></div></div>
 <div id="progressTxt" class="progress-txt hidden"></div>
 
+<div id="newsModal" class="modal hidden"><div class="modal-box news-box">
+  <div class="modal-h"><span>✉ Email de novidades — <span id="newsVer"></span></span><button class="btn ghost" id="newsClose">✕</button></div>
+  <div class="news-tools"><button class="btn primary" id="newsOpen">📧 Abrir no email</button><button class="btn" id="newsSave">⬇ Guardar HTML</button>
+    <span class="mini">Abre um rascunho no cliente de e-mail predefinido (Outlook) com o conteúdo abaixo — os destinatários preenchem-se lá, antes de enviar.</span></div>
+  <iframe id="newsFrame" class="news-frame"></iframe>
+</div></div>
 <div id="about" class="modal hidden"><div class="about-box">
   <div class="about-top"><div class="about-plane">✈</div><div class="about-name">NERD</div><span class="about-ver">v<span id="aboutVer"></span></span><div class="about-org">NAV PORTUGAL</div></div>
   <div class="about-bot"><div class="about-t">NAV Exceptional, Remarkable Developers</div><div class="about-s">Because every great department needs a few NERDs.</div>
@@ -276,7 +282,10 @@
           <p class="mini">A chave fica guardada apenas na base de dados local deste computador.</p></section>
         <section class="card"><h3>Base de dados</h3><p id="prDb" class="mini"></p>
           <button class="btn" id="prRemoveMissing">🧹 Remover ficheiros que já não existem no disco</button></section>
-        <section class="card"><h3>Sobre</h3><p class="mini">FlightTracker 4.0 — reescrita em Python/DuckDB (versões 1–3 eram uma app HTML de ficheiro único). Os CSV são lidos uma vez e guardados tipados; as análises são consultas sobre essa base.</p></section>
+        <section class="card"><h3>Histórico de versões</h3>
+          <p class="mini">Novidades de cada versão. O botão <b>✉ Email de novidades</b> abre no Outlook um rascunho já formatado com as alterações e os links de download (Windows e macOS) — só falta pôr os destinatários.</p>
+          <div id="prChangelog"></div></section>
+        <section class="card"><h3>Sobre</h3><p class="mini">FlightTracker 4.0 — reescrita em Python/DuckDB (versões 1–3 eram uma app HTML de ficheiro único). Os CSV são lidos uma vez e guardados tipados; as análises são consultas sobre essa base. <a href="#" id="prAbout">Sobre a aplicação…</a></p></section>
       </div>
     </div>
 

@@ -565,6 +565,29 @@ const Analyses = (() => {
     // Preferências
     $('prProv').onchange = () => { const pv = iaCfg.providers[$('prProv').value]; $('prModel').innerHTML = pv.models.map(([id, lb]) => `<option value="${id}">${esc(lb)}</option>`).join(''); $('prAzureWrap').classList.toggle('hidden', $('prProv').value !== 'azure'); };
     $('prSave').onclick = async () => { try { await call('ia_settings_set', $('prProv').value, $('prKey').value || null, $('prModel').value, $('prAzure').value); $('prKey').value = ''; toast('Definições guardadas.', 'ok'); loadIa(); } catch (e) { toast(e.message, 'err'); } };
+    // ---- histórico de versões / e-mail de novidades
+    let newsVersion = null;
+    async function loadChangelog() {
+      try {
+        const r = await call('changelog');
+        $('prChangelog').innerHTML = r.versions.map(v => `<div class="ver-row"><div class="ver-head"><span class="ver-tag">v${esc(v.version)}</span><span class="ver-title">${esc(v.title)}</span><span class="ver-date">${esc(v.date || '')}</span>
+          <button class="btn sm" data-news="${esc(v.version)}">✉ Email de novidades</button></div><div class="ver-sum">${esc(v.summary || '')}</div>
+          ${(v.sections || []).map(s => `<div class="ver-sec"><b>${esc(s.title)}</b><ul>${s.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>`).join('');
+        $('prChangelog').querySelectorAll('[data-news]').forEach(b => b.onclick = () => openNews(b.dataset.news));
+      } catch (e) { $('prChangelog').innerHTML = `<p class="mini">${esc(e.message)}</p>`; }
+    }
+    async function openNews(v) {
+      try {
+        const r = await call('news_preview', v); newsVersion = v;
+        $('newsVer').textContent = 'v' + v; $('newsFrame').srcdoc = r.html; $('newsModal').classList.remove('hidden');
+      } catch (e) { toast(e.message, 'err'); }
+    }
+    const closeNews = () => $('newsModal').classList.add('hidden');
+    $('newsClose').onclick = closeNews; $('newsModal').onclick = e => { if (e.target === $('newsModal')) closeNews(); };
+    $('newsOpen').onclick = async () => { try { const p = await call('news_email', newsVersion); toast('Rascunho aberto no cliente de e-mail (' + p + ').', 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    $('newsSave').onclick = async () => { try { const p = await call('news_save_html', newsVersion); if (p) toast('Guardado em ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    $('prAbout').onclick = e => { e.preventDefault(); $('btnAbout').click(); };
+    loadChangelog();
     $('prRemoveMissing').onclick = async () => { try { const n = await call('remove_missing'); toast(`${n} ficheiro(s) removidos da base.`, 'ok'); } catch (e) { toast(e.message, 'err'); } };
     setTimeout(() => { loadPoints().catch(() => {}); loadIa().catch(() => {}); }, 800);
   });

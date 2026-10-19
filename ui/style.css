@@ -221,3 +221,19 @@ tr.rowsel{background:var(--sel)!important}tr.clk{cursor:pointer}
 .apt.on{background:var(--sel);border-color:var(--accent);color:#fff}.apt b{color:var(--txt)}
 .apt.nodata{opacity:.45}.apt i{font-style:normal;font-size:9px}
 .aptsel{display:flex;align-items:center;gap:6px;margin-left:12px}.aptsel .inp{width:auto;min-width:170px;padding:5px 8px;font-weight:600}
+
+/* ---------- histórico de versões / e-mail ---------- */
+.ver-row{border-top:1px solid var(--line);padding:10px 0}
+.ver-row:first-child{border-top:0}
+.ver-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ver-tag{background:var(--accent);color:#fff;border-radius:12px;padding:2px 10px;font-weight:700;font-size:12px}
+.ver-title{font-weight:700}
+.ver-date{color:var(--muted);font-size:11px}
+.ver-head .btn{margin-left:auto}
+.ver-sum{font-size:12px;margin:6px 0 4px}
+.ver-sec{font-size:12px;margin:4px 0 0 4px}
+.ver-sec b{display:block;margin-top:6px;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.ver-sec ul{margin:2px 0 0;padding-left:18px}
+.news-box{width:min(900px,94vw);height:92vh}
+.news-tools{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.news-frame{flex:1;border:0;background:#eef2f7;width:100%}

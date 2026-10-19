@@ -40,7 +40,7 @@ def setup_logging(folder: Path):
 
 
 def data_dir() -> Path:
-    """Pasta onde fica a base de dados: %LOCALAPPDATA%\\FlightTracker (Windows) ou ~/.flighttracker."""
+    """Pasta onde fica a base de dados: %LOCALAPPDATA%\\FlightTracker (Windows), ~/Library/Application Support/FlightTracker (macOS) ou ~/.flighttracker."""
     override = os.environ.get("FLIGHTPLOTTER_DATA")
     if override:
         p = Path(override)
@@ -53,6 +53,8 @@ def data_dir() -> Path:
                 old.rename(p)
             except OSError:
                 p = old
+    elif sys.platform == "darwin":
+        p = Path.home() / "Library" / "Application Support" / "FlightTracker"
     else:
         p = Path.home() / ".flighttracker"
     p.mkdir(parents=True, exist_ok=True)
@@ -357,7 +359,10 @@ class Api:
             return {"ok": False, "error": str(e)}
 
     def open_data_folder(self):
-        p = str(data_dir())
+        return self._open_path(str(data_dir()))
+
+    @staticmethod
+    def _open_path(p: str):
         try:
             if os.name == "nt":
                 os.startfile(p)  # type: ignore[attr-defined]
@@ -368,6 +373,42 @@ class Api:
             return {"ok": True, "data": p}
         except Exception as e:  # noqa: BLE001
             return {"ok": False, "error": str(e)}
+
+    # ---- histórico de versões / e-mail de novidades
+    def changelog(self):
+        from core import news
+        try:
+            return {"ok": True, "data": {"versions": news.changelog(), "links": {"win": news.LINK_WIN, "mac": news.LINK_MAC, "all": news.LINK_ALL}}}
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+
+    def news_preview(self, version=None):
+        from core import news
+        try:
+            e = news.entry(version)
+            return {"ok": True, "data": {"subject": news.email_subject(e), "html": news.email_html(e)}}
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+
+    def news_email(self, version=None):
+        """Gera o .eml (rascunho) e abre-o no cliente de e-mail predefinido (Outlook)."""
+        from core import news
+        try:
+            p = news.write_eml(news.entry(version), data_dir() / "novidades")
+            return self._open_path(str(p))
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+
+    def news_save_html(self, version=None):
+        from core import news
+        def f():
+            e = news.entry(version)
+            res = self.window.create_file_dialog(SAVE_DIALOG, save_filename=f"FlightTracker_{e['version']}_novidades.html", file_types=("HTML (*.html)",))
+            if not res: return None
+            path = res[0] if isinstance(res, (list, tuple)) else res
+            Path(path).write_text(news.email_html(e), encoding="utf-8")
+            return path
+        return self._safe(f)
 
 
 def _free_port() -> int:
