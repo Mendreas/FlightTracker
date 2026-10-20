@@ -43,6 +43,12 @@ As especificações detalhadas dos algoritmos portados da app antiga estão em `
 2. Na pasta do projeto: `python -m pip install -r requirements.txt`
 3. `python app.py`
 
+## Ramos
+
+* `main` — versão madura. Só aqui se geram o instalador e as releases que os colegas descarregam.
+* `dev` — desenvolvimento. Cada *push* gera artefactos (Actions → *Artifacts*) para testar, sem mexer nas releases.
+  Quando uma versão está pronta: subir `VERSION` em `app.py`, acrescentar ao `data/changelog.json`, e fundir `dev` em `main`.
+
 ## Instalar / distribuir
 
 Cada *push* para `main` gera automaticamente (GitHub Actions → *Build Windows exe*):

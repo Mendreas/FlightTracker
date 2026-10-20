@@ -1,8 +1,10 @@
 name: Build Windows exe
 
+# main = versão madura (gera instalador + releases "latest" e vX.Y.Z, que os colegas descarregam)
+# dev  = desenvolvimento (gera só artefactos para testar; NÃO toca nas releases)
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   workflow_dispatch:
 
 permissions:
@@ -54,6 +56,7 @@ jobs:
           name: FlightTracker-Setup
           path: dist/FlightTracker-Setup-*.exe
       - name: Limpar da release "latest" os instaladores das versões 1–3 (ficam nas releases próprias)
+        if: github.ref == 'refs/heads/main'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -62,6 +65,7 @@ jobs:
             gh api -X DELETE repos/${{ github.repository }}/releases/assets/$id && echo "removido $id"
           done
       - name: Release "latest" (links fixos usados no e-mail de novidades)
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
@@ -74,6 +78,7 @@ jobs:
             dist/FlightTracker-windows-portable.zip
           make_latest: true
       - name: Release da versão ${{ env.V }}
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.V }}
@@ -110,11 +115,13 @@ jobs:
           name: FlightTracker-macOS
           path: dist/FlightTracker-*-macOS.dmg
       - name: Release "latest" (macOS)
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           files: dist/FlightTracker-macOS.dmg
       - name: Release da versão ${{ env.V }} (macOS)
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.V }}
