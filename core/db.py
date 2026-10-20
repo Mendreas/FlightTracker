@@ -118,6 +118,8 @@ class Database:
             csn VARCHAR, date VARCHAR, actype VARCHAR, wtc VARCHAR, adep VARCHAR, ades VARCHAR)""")
         for col in ("adep", "ades"):   # bases criadas por versões anteriores
             c.execute(f"ALTER TABLE nmir ADD COLUMN IF NOT EXISTS {col} VARCHAR")
+        for col in ("etot", "ctot", "atot", "eta", "ata", "atfm_delay"):
+            c.execute(f"ALTER TABLE nmir ADD COLUMN IF NOT EXISTS {col} DOUBLE")
         c.execute("CREATE TABLE IF NOT EXISTS meta(key VARCHAR PRIMARY KEY, value VARCHAR)")
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
@@ -149,7 +151,7 @@ class Database:
         if c.execute("SELECT count(*) FROM nmir").fetchone()[0] == 0:
             seed = resource_path("data", "nmir_seed.csv")
             if seed.exists():
-                c.execute("INSERT INTO nmir SELECT csn, date, actype, wtc, NULL, NULL FROM read_csv(?, header=true, all_varchar=true)",
+                c.execute("INSERT INTO nmir SELECT csn, date, actype, wtc, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL FROM read_csv(?, header=true, all_varchar=true)",
                           [str(seed)])
 
     def fix_airports(self) -> int:
@@ -700,7 +702,7 @@ class Database:
         """Importa um Excel NMIR (EUROCONTROL) com openpyxl: precisa de colunas com callsign e tipo
         (data e WTC opcionais). Devolve o nº de registos novos."""
         from openpyxl import load_workbook
-        from datetime import date, datetime
+        from datetime import date, datetime, timezone
         from .geo import wtc_from_type
         wb = load_workbook(path, read_only=True, data_only=True)
         rows_out = []
@@ -727,6 +729,22 @@ class Database:
             i_adep = find("adep", "departure"); i_ades = find("ades", "destination")
             if i_ades is not None and "diverted" in header[i_ades]:
                 i_ades = next((i for i, h in enumerate(header) if h == "ades"), i_ades)
+            exact = lambda name: next((i for i, h in enumerate(header) if h == name), None)
+            i_etot, i_ctot, i_atot, i_eta, i_ata = exact("etot"), exact("ctot"), exact("atot"), exact("eta"), exact("ata")
+            i_dly = find("atfm delay", "atfm_delay")
+            def ts(i):
+                if i is None or i >= len(row) or row[i] in (None, ""):
+                    return None
+                v = row[i]
+                if isinstance(v, (datetime, date)):
+                    return v.replace(tzinfo=timezone.utc).timestamp() if isinstance(v, datetime) else None
+                try:
+                    return datetime.strptime(str(v).strip()[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
+                except ValueError:
+                    try:
+                        return datetime.strptime(str(v).strip()[:16], "%d/%m/%Y %H:%M").replace(tzinfo=timezone.utc).timestamp()
+                    except ValueError:
+                        return None
             if i_csn is None or i_type is None:
                 continue
             for row in it:
@@ -754,18 +772,25 @@ class Database:
                 wtc = row[i_wtc] if i_wtc is not None and i_wtc < len(row) else None
                 typ_s = str(typ).strip().upper()
                 cell = lambda i: (str(row[i]).strip().upper() or None) if i is not None and i < len(row) and row[i] else None
+                dly = None
+                if i_dly is not None and i_dly < len(row) and row[i_dly] not in (None, ""):
+                    try: dly = float(str(row[i_dly]).replace(",", "."))
+                    except ValueError: dly = None
                 rows_out.append((str(csn).strip().upper(), d, typ_s,
-                                 str(wtc).strip().upper() if wtc else (wtc_from_type(typ_s) or None), cell(i_adep), cell(i_ades)))
+                                 str(wtc).strip().upper() if wtc else (wtc_from_type(typ_s) or None), cell(i_adep), cell(i_ades),
+                                 ts(i_etot), ts(i_ctot), ts(i_atot), ts(i_eta), ts(i_ata), dly))
         if not rows_out:
             raise RuntimeError("Excel sem colunas reconhecidas (callsign / aircraft type).")
         before = self.con.execute("SELECT count(*) FROM (SELECT DISTINCT csn, date FROM nmir)").fetchone()[0]
         cols = list(zip(*rows_out))
-        self.con.execute("INSERT INTO nmir SELECT * FROM (SELECT unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]))",
+        self.con.execute("INSERT INTO nmir SELECT * FROM (SELECT unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), "
+                         "unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]))",
                          [list(c) for c in cols])
         # a mesma (csn, data) pode já existir sem ADEP/ADES (base inicial): fica a versão mais completa
         self.con.execute("""CREATE OR REPLACE TABLE nmir AS
             SELECT csn, date, arg_max(actype, coalesce(adep,'')||coalesce(ades,'')) actype,
-                   arg_max(wtc, coalesce(adep,'')||coalesce(ades,'')) wtc, max(adep) adep, max(ades) ades
+                   arg_max(wtc, coalesce(adep,'')||coalesce(ades,'')) wtc, max(adep) adep, max(ades) ades,
+                   max(etot) etot, max(ctot) ctot, max(atot) atot, max(eta) eta, max(ata) ata, max(atfm_delay) atfm_delay
             FROM nmir GROUP BY csn, date""")
         if rebuild:
             self.rebuild_flights()
@@ -883,7 +908,7 @@ class Database:
                              [actype, wtc, csn, date, cls] + ([airport] if airport else []))
             old = self.con.execute("SELECT adep, ades FROM nmir WHERE csn=? AND date=? LIMIT 1", [csn, date]).fetchone()
             self.con.execute("DELETE FROM nmir WHERE csn=? AND date=?", [csn, date])
-            self.con.execute("INSERT INTO nmir VALUES (?,?,?,?,?,?)", [csn, date, actype, wtc, old[0] if old else None, old[1] if old else None])
+            self.con.execute("INSERT INTO nmir (csn, date, actype, wtc, adep, ades) VALUES (?,?,?,?,?,?)", [csn, date, actype, wtc, old[0] if old else None, old[1] if old else None])
         if apt:
             field = "adep" if cls == "arr" else "ades"
             if self.con.execute("SELECT 1 FROM nmir WHERE csn=? AND date=?", [csn, date]).fetchone():
@@ -923,6 +948,61 @@ class Database:
                 "SELECT csn, date, cls, actype, wtc, apt, note, verified, ts FROM corrections WHERE date IN (SELECT unnest(?::VARCHAR[]))", [dates]).fetchall():
             out[(csn, date, cls)] = {"actype": actype, "wtc": wtc, "apt": apt, "note": note, "verified": verified, "ts": str(ts)}
         return out
+
+    # ----------------------------------------------------------------- painel diário / qualidade de dados
+    def daily_series(self, airport: str, d0: str, d1: str) -> list[dict]:
+        """Uma linha por dia (yymmdd) entre d0 e d1 com os indicadores de todas as fontes."""
+        q = """
+        WITH days AS (SELECT DISTINCT date FROM (SELECT date FROM flights WHERE airport=? UNION ALL SELECT date FROM ground WHERE airport=? UNION ALL SELECT date FROM nmir WHERE adep=? OR ades=?) WHERE date BETWEEN ? AND ?),
+        r AS (SELECT f.date, count(*) FILTER (cls='arr') arr, count(*) FILTER (cls='dep') dep, count(*) FILTER (cls='lvl') lvl, count(*) n,
+                     any_value(b.blocks) blocks
+              FROM flights f LEFT JOIN (SELECT date, count(DISTINCT block) blocks FROM files WHERE airport=? GROUP BY date) b USING(date)
+              WHERE f.airport=? GROUP BY f.date),
+        g AS (SELECT date, count(*) FILTER (mt='DEPARTURE') g_dep, count(*) FILTER (mt<>'DEPARTURE') g_arr, count(*) FILTER (ga) ga,
+                     median(rwy_vac - aldt) FILTER (mt<>'DEPARTURE' AND rwy_vac>aldt AND rwy_vac-aldt<1800) rot_arr,
+                     median(atot - rwy_ent) FILTER (mt='DEPARTURE' AND atot>rwy_ent AND atot-rwy_ent<1800) rot_dep,
+                     median(atot - aobt) FILTER (mt='DEPARTURE' AND atot>aobt AND atot-aobt<7200) taxi_out,
+                     median(aibt - rwy_vac) FILTER (mt<>'DEPARTURE' AND aibt>rwy_vac AND aibt-rwy_vac<7200) taxi_in,
+                     sum(atfm_delay) atfm_min, count(*) FILTER (atfm_delay>0) atfm_n
+              FROM ground WHERE airport=? GROUP BY date),
+        n AS (SELECT date, count(*) FILTER (adep=?) n_dep, count(*) FILTER (ades=?) n_arr,
+                     count(*) FILTER (adep=? AND atot IS NOT NULL AND etot IS NOT NULL) p_n,
+                     count(*) FILTER (adep=? AND atot IS NOT NULL AND etot IS NOT NULL AND atot - coalesce(ctot, etot) <= 900) p_ok,
+                     sum(atfm_delay) FILTER (adep=?) n_atfm
+              FROM nmir WHERE adep=? OR ades=? GROUP BY date),
+        o AS (SELECT strftime(to_timestamp(min(t)), '%y%m%d') date, count(DISTINCT flight_id) o_n FROM opdi_events WHERE airport=? GROUP BY flight_id)
+        SELECT d.date, coalesce(r.arr,0) arr, coalesce(r.dep,0) dep, coalesce(r.lvl,0) lvl, coalesce(r.n,0) n, coalesce(r.blocks,0) blocks,
+               coalesce(g.g_dep,0) g_dep, coalesce(g.g_arr,0) g_arr, coalesce(g.ga,0) ga, g.rot_arr, g.rot_dep, g.taxi_out, g.taxi_in, g.atfm_min, coalesce(g.atfm_n,0) atfm_n,
+               coalesce(n.n_dep,0) n_dep, coalesce(n.n_arr,0) n_arr, coalesce(n.p_n,0) p_n, coalesce(n.p_ok,0) p_ok, n.n_atfm,
+               (SELECT count(*) FROM o WHERE o.date = d.date) o_n
+        FROM days d LEFT JOIN r USING(date) LEFT JOIN g USING(date) LEFT JOIN n USING(date) ORDER BY d.date"""
+        a = airport
+        cur = self.con.execute(q, [a, a, a, a, d0, d1, a, a, a, a, a, a, a, a, a, a, a])
+        names = [c[0] for c in cur.description]
+        return [dict(zip(names, r)) for r in cur.fetchall()]
+
+    def nmir_departures(self, airport: str, dates: list[str]) -> list[dict]:
+        if not dates:
+            return []
+        cur = self.con.execute("SELECT csn, date, actype, wtc, adep, ades, etot, ctot, atot, eta, ata, atfm_delay FROM nmir WHERE adep=? AND date IN (SELECT unnest(?::VARCHAR[]))", [airport, dates])
+        names = [c[0] for c in cur.description]
+        return [dict(zip(names, r)) for r in cur.fetchall()]
+
+    def ground_reference(self, airport: str) -> list[dict]:
+        """Toda a população da torre (para referências não-impedidas), só os campos necessários."""
+        cur = self.con.execute("""SELECT mt, rwy, stand_d, stand_a, atot, aldt,
+                                         CASE WHEN mt='DEPARTURE' THEN atot - aobt ELSE aibt - rwy_vac END taxi_s
+                                  FROM ground WHERE airport=?""", [airport])
+        names = [c[0] for c in cur.description]
+        return [dict(zip(names, r)) for r in cur.fetchall()]
+
+    def top_lists(self, airport: str, d0: str, d1: str) -> dict:
+        ops = self.con.execute("""SELECT regexp_extract(csn, '^[A-Z]{3}') op, count(*) n FROM flights WHERE airport=? AND date BETWEEN ? AND ? AND cls IN ('arr','dep')
+                                  AND regexp_matches(csn, '^[A-Z]{3}[0-9]') GROUP BY 1 ORDER BY 2 DESC LIMIT 10""", [airport, d0, d1]).fetchall()
+        typ = self.con.execute("SELECT coalesce(actype,'?') t, count(*) n FROM flights WHERE airport=? AND date BETWEEN ? AND ? AND cls IN ('arr','dep') GROUP BY 1 ORDER BY 2 DESC LIMIT 10", [airport, d0, d1]).fetchall()
+        apts = self.con.execute("""SELECT apt, count(*) n FROM (SELECT CASE WHEN adep=? THEN ades ELSE adep END apt FROM nmir WHERE (adep=? OR ades=?) AND date BETWEEN ? AND ?)
+                                   WHERE apt IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10""", [airport, airport, airport, d0, d1]).fetchall()
+        return {"operators": [list(r) for r in ops], "types": [list(r) for r in typ], "airports": [list(r) for r in apts]}
 
     def ground_summary(self) -> dict:
         r = self.con.execute("SELECT count(*), min(date), max(date), count(DISTINCT date) FROM ground").fetchone()

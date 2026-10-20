@@ -262,3 +262,6 @@ tr.gd-row.sel td{background:var(--sel)}
 .src{display:inline-block;width:16px;text-align:center;font-size:10px;font-weight:700;border-radius:3px;margin-right:2px;background:var(--line);color:var(--muted)}
 .src.on{background:var(--accent);color:#fff}
 .flag{display:inline-block;background:var(--errbg);color:var(--err);border-radius:4px;padding:1px 6px;font-size:11px;margin:1px 2px 1px 0;white-space:nowrap}
+.dq{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--err);vertical-align:middle;margin-right:4px}.dq.ok{background:var(--ok)}.dq.warn{background:var(--warn)}
+.card.pru{border-left:4px solid var(--accent)}
+.gd-ac.radar .lbl{color:#dbeafe}.gd-ac .alt{color:#ffd166;margin-left:3px;font-size:10px}

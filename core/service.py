@@ -28,7 +28,7 @@ class Service:
         self.final = None; self.final_params = None; self.pairs = None; self.deps = None; self.movs = None
         self.star = None; self.app = None; self.app_dist = None; self.rrms = None; self.rot = None
         self.point_rows = None; self.point_name = None; self.seq = None
-        self.ground = None; self.cross = None
+        self.ground = None; self.cross = None; self.pru = None
 
     # ------------------------------------------------------------- filtro
     def set_filter(self, dates, blocks, csn="", cls="", airport=None):
@@ -185,6 +185,45 @@ class Service:
     def export_excel(self, path: str, kind: str, extra: dict | None = None):
         extra = extra or {}
         sheets = []
+        if kind == "panel":
+            d0, d1 = extra.get("d0"), extra.get("d1")
+            rows = self.db.daily_series(self.airport, d0, d1)
+            sheets.append(("Painel diário", ["DIA", "RADAR mov.", "RADAR ARR", "RADAR DEP", "RADAR blocos", "TORRE ARR", "TORRE DEP", "GO-AROUNDS", "ROT ARR (s)", "ROT DEP (s)", "TAXI-OUT (s)", "TAXI-IN (s)", "ATFM (min)", "ATFM voos", "NMIR DEP", "NMIR ARR", "PONT. n", "PONT. ok", "OPDI voos"],
+                           [[fmt_date(r["date"]), r["n"], r["arr"], r["dep"], r["blocks"], r["g_arr"], r["g_dep"], r["ga"], r["rot_arr"] or "", r["rot_dep"] or "", r["taxi_out"] or "", r["taxi_in"] or "", r["atfm_min"] or "", r["atfm_n"], r["n_dep"], r["n_arr"], r["p_n"], r["p_ok"], r["o_n"]] for r in rows]))
+            top = self.db.top_lists(self.airport, d0, d1)
+            sheets.append(("Top 10", ["GRUPO", "CHAVE", "MOVIMENTOS"], [["Operador", k, n] for k, n in top["operators"]] + [["Tipo", k, n] for k, n in top["types"]] + [["Aeroporto", k, n] for k, n in top["airports"]]))
+            return reports.write_excel(path, sheets)
+        if kind == "pru":
+            d = self.pru or self.pru_kpis()
+            rows = []
+            def add(sec, k, v, note=""):
+                rows.append([sec, k, "" if v is None else (round(v, 2) if isinstance(v, float) else v), note])
+            t = d.get("throughput") or {}
+            for k in ("source", "n", "days", "per_day", "peak_hour_mov", "peak_roll60", "capacity", "util_peak", "hours_over_capacity", "ga", "ga_rate"):
+                add("Throughput", k, t.get(k))
+            x = d.get("taxi") or {}
+            for kind2 in ("taxi_out", "taxi_in"):
+                for k in ("n", "mean", "median", "p80", "max", "mean_min"):
+                    add(kind2, k, (x.get(kind2) or {}).get(k), "segundos (mean_min em minutos)")
+            a = d.get("asma") or {}
+            for k in ("n", "ring_nm", "mean", "median", "p80", "max", "mean_min"):
+                add("ASMA", k, a.get(k))
+            f = d.get("atfm") or {}
+            for k in ("n", "ok", "pct", "early", "dev_mean", "dev_median", "dev_p80"):
+                add("Pontualidade (NMIR)", k, (f.get("otp") or {}).get(k))
+            for src in ("atfm_nmir", "atfm_torre"):
+                for k, v in (f.get(src) or {}).items():
+                    if not isinstance(v, (list, dict)):
+                        add(src, k, v)
+            c = d.get("cdo") or {}
+            for k in ("n", "cdo", "pct", "levels_mean"):
+                add("CDO (OPDI)", k, c.get(k))
+            sheets.append(("KPIs PRU", ["SECÇÃO", "INDICADOR", "VALOR", "NOTA"], rows))
+            if x:
+                sheets.append(("Taxi por stand", ["TIPO", "STAND", "N", "ADICIONAL MÉDIO (s)"], [[k, r["key"], r["n"], round(r["mean"])] for k in ("taxi_out", "taxi_in") for r in (x.get(k) or {}).get("by_stand", [])]))
+            if a.get("worst"):
+                sheets.append(("ASMA voos", ["DATA", "VOO", "RWY", "TRÂNSITO (s)", "ADICIONAL (s)"], [[fmt_date(r["date"]), r["csn"], r["rwy"], round(r["t"]), round(r["add"])] for r in a["worst"]]))
+            return reports.write_excel(path, sheets)
         if kind == "cross":
             res = self.cross or self.crosscheck()
             hm = lambda t: time.strftime("%H:%M:%S", time.gmtime(t)) if t else ""
@@ -364,6 +403,8 @@ class Service:
             html = reports.report_rrms(rr, shown, cat, "Ambas" if rwy == "all" else f"RWY {rwy}")
         elif kind == "ia":
             html = reports.report_ia(self.ia_history, ia.PROVIDERS.get(self.ia_settings()["provider"], {}).get("name", ""))
+        elif kind in ("mensal", "custom"):
+            html = self.compose_report(extra)
         else:
             raise ValueError("Relatório desconhecido")
         out_dir = os.path.join(tempfile.gettempdir(), "flighttracker_relatorios"); os.makedirs(out_dir, exist_ok=True)
@@ -438,6 +479,82 @@ class Service:
 
     def ground_raw(self, gid: int):
         return self.db.ground_raw(int(gid))
+
+    # ------------------------------------------------------------- relatórios compostos (mensal / personalizados)
+    REPORT_SECTIONS = {
+        "pru": "KPIs PRU (throughput, taxi adicional, ASMA, pontualidade, ATFM, CDO)",
+        "painel": "Evolução diária (movimentos, ROT, taxi, pontualidade, top 10)",
+        "solo": "Ocupação de pista e taxi (A-SMGCS)",
+        "kpis": "KPIs operacionais do radar (aproximações, separações, IAS STAR)",
+        "dados": "Análise de dados (FAST, separações, narrativa)",
+        "diaria": "Análise diária",
+        "rrms": "RRMS",
+        "cross": "Cruzamento de fontes (cobertura e discrepâncias)",
+    }
+
+    def compose_report(self, extra: dict) -> str:
+        secs = extra.get("sections") or ["pru", "painel", "solo", "kpis", "cross"]
+        title = extra.get("title") or f"Relatório mensal — {self.airport}"
+        dates = sorted(self.dates)
+        d0, d1 = (extra.get("d0") or (dates[0] if dates else None)), (extra.get("d1") or (dates[-1] if dates else None))
+        sub = f"{self.airport} · {fmt_date(d0) if d0 else '?'} → {fmt_date(d1) if d1 else '?'} · {len(dates)} dia(s) no filtro"
+        parts = []
+        for s in secs:
+            try:
+                if s == "pru":
+                    parts.append(reports.section_pru(self.pru or self.pru_kpis()))
+                elif s == "painel" and d0 and d1:
+                    pn = self.panel(d0, d1, extra.get("r0"), extra.get("r1"))
+                    parts.append(reports.section_panel(pn))
+                elif s == "solo":
+                    g = self.ground_list()
+                    parts.append(reports.section_ground(g.get("stats")))
+                elif s == "kpis":
+                    parts.append(reports.body_of(reports.report_kpis(self.kpis(), self.airport)))
+                elif s == "dados":
+                    parts.append(reports.body_of(reports.report_data_analysis(self.data_analysis(), self.airport)))
+                elif s == "diaria":
+                    parts.append(reports.body_of(reports.report_daily(self.daily(165), self.airport, self.blocks)))
+                elif s == "rrms":
+                    rr = self.rrms or self.run_rrms()
+                    parts.append(reports.body_of(reports.report_rrms(rr, [h for h in rr["hits"] if h["cat"] in "MH"], "MH", "Ambas")))
+                elif s == "cross":
+                    cr = self.cross or self.crosscheck(); c = cr["coverage"]
+                    parts.append("<h2>Cruzamento de fontes</h2>" + reports.kpi_grid([("Movimentos (união)", c["total"]), ("Radar", c["radar"]), ("Torre", c["torre"]), ("OPDI", c["opdi"]), ("Radar ∩ Torre", c["r_t"]), ("Torre ∩ OPDI", c["t_o"]), ("Com NMIR", c["nmir"]), ("Discrepâncias", c["with_flags"]), ("Só torre", c["only_torre"]), ("Só OPDI", c["only_opdi"])]) +
+                                 reports.table(["Data", "Voo", "Mov.", "Fontes", "Discrepâncias"], [[fmt_date(r["date"]), r["csn"], r["cls"].upper(), r["src"], "; ".join(f for f in r["flags"] if not f.startswith("sem "))] for r in cr["rows"] if r["n_flags"]], limit=200))
+            except Exception as e:  # noqa: BLE001 — uma secção falhada não impede o relatório
+                parts.append(f"<h2>{reports.esc(self.REPORT_SECTIONS.get(s, s))}</h2><p class='note'>Sem dados: {reports.esc(str(e))}</p>")
+        return reports.report_composed(title, sub, parts)
+
+    def custom_reports(self) -> list[dict]:
+        raw = self.db.setting_get("custom_reports")
+        return json.loads(raw) if raw else []
+
+    def custom_reports_set(self, lst: list[dict]):
+        self.db.setting_set("custom_reports", json.dumps(lst, ensure_ascii=False))
+        return lst
+
+    # ------------------------------------------------------------- KPIs PRU / painel diário
+    def pru_kpis(self):
+        from .analysis import pru
+        ground = self.db.ground_list(self.airport, self.dates)
+        opdi = self.db.opdi_flights(self.airport, self.dates)
+        nmir_rows = self.db.nmir_departures(self.airport, self.dates)
+        cap = self.db.setting_get(f"capacity_{self.airport}")
+        res = pru.compute(self.db, self.airport, self.flights, ground, opdi, nmir_rows, int(cap) if cap else None, self.db.ground_reference(self.airport))
+        self.pru = res
+        return res
+
+    def set_capacity(self, airport: str, cap: int):
+        self.db.setting_set(f"capacity_{airport}", str(int(cap)))
+        return int(cap)
+
+    def panel(self, d0: str, d1: str, r0: str | None = None, r1: str | None = None):
+        """Série diária para o painel: período principal e, opcionalmente, período de referência."""
+        main = self.db.daily_series(self.airport, d0, d1)
+        ref = self.db.daily_series(self.airport, r0, r1) if r0 and r1 else []
+        return {"main": main, "ref": ref, "top": self.db.top_lists(self.airport, d0, d1),
+                "top_ref": self.db.top_lists(self.airport, r0, r1) if r0 and r1 else None, "airport": self.airport}
 
     # ------------------------------------------------------------- Cruzamento de fontes
     def crosscheck(self):

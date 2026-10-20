@@ -286,6 +286,24 @@ class Api:
     def crosscheck(self):
         return self._safe(self.svc.crosscheck)
 
+    def pru_kpis(self):
+        return self._safe(self.svc.pru_kpis)
+
+    def set_capacity(self, airport, cap):
+        return self._safe(self.svc.set_capacity, airport, cap)
+
+    def panel(self, d0, d1, r0=None, r1=None):
+        return self._safe(self.svc.panel, d0, d1, r0, r1)
+
+    def report_sections(self):
+        return {"ok": True, "data": self.svc.REPORT_SECTIONS}
+
+    def custom_reports(self):
+        return self._safe(self.svc.custom_reports)
+
+    def custom_reports_set(self, lst):
+        return self._safe(self.svc.custom_reports_set, lst)
+
     def correction_set(self, csn, date, cls, actype=None, wtc=None, apt=None, note=None, verified=False):
         return self._safe(self.svc.correction_set, csn, date, cls, actype, wtc, apt, note, verified)
 

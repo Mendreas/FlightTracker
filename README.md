@@ -30,7 +30,10 @@ A base fica em `%LOCALAPPDATA%\FlightTracker\` (botão 🗄 abre a pasta). Aí f
 | Vel. STAR | Conformidade de IAS nos pontos STAR (CPA por raio), limites editáveis, por waypoint e por operador |
 | Vel. APP | Violações por voo e pontos (PESEX/NETVO/OKNIB/THR02, UPKAT/TOPVI/ROKOB/THR20…), histogramas e PPTX; violações por distância na escala da final 12 NM→THR |
 | Análise Op. | FAST (pares de chegadas, AA/ADA/ADDA/AD…A, detalhe da final), Análise de Dados (KPIs, 11 gráficos, timeline, tabelas, relatório), Análise Diária (dias/semana, callsigns comuns, relatório), RRMS (ponto 2400 m TWY U6/P), ROT |
-| KPIs | Resumo operacional, aproximações, taxa de aterragem rolling 60 min, separações, CDO, IAS STAR, por hora/dia/operador, relatório |
+| KPIs | KPIs PRU/EUROCONTROL (throughput e capacidade, taxi adicional, ASMA, pontualidade, ATFM, CDO, go-arounds), resumo operacional, aproximações, separações, IAS STAR; relatório mensal e relatórios à medida |
+| Painel | Evolução diária de toda a base com referência (ano anterior…), comparação A/B, top 10, qualidade dos dados por dia |
+| Solo | Movimentos no solo (ficheiro da torre / A-SMGCS) sobre a rede OSM de LPPT, replay ar + solo, ROT e taxi |
+| Cruzamento | Radar × NMIR × torre × OPDI por movimento, discrepâncias, correções guardadas, Excel |
 | Pontos | Passagens num ponto com filtro de IAS, sequência num ponto (distância à frente/atrás), pontos personalizados (points.json) |
 | Análise IA | Chat com Claude / OpenAI / Mistral / Azure / Groq sobre o resumo das análises (chave guardada localmente) |
 

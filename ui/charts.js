@@ -139,5 +139,28 @@ const C = (() => {
   }
   const kcard = (label, value, sub = '', cls = '') => `<div class="kcard ${cls}"><b>${esc(value)}</b><span>${esc(label)}</span>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>`;
   const card = (title, body, note = '') => `<section class="card"><h3>${esc(title)}</h3>${note ? `<p class="note">${esc(note)}</p>` : ''}<div class="chart">${body}</div></section>`;
-  return { esc, fmt, bars, grouped, hbars, stackedHist, scatter, percentiles, profile, timeline, table, kcard, card, BLUE, RED, ORANGE, GREEN, GREY, YEL, PURPLE };
+  /* séries temporais: series=[{name, values:[num|null], color, dash, width}], labels=[str] */
+  function lines(series, labels, o = {}) {
+    const w = o.w || 900, h = o.h || 220, pad = { l: 40, r: 12, t: 16, b: 34 };
+    const all = series.flatMap(s => s.values.filter(v => v != null));
+    if (!all.length) return '<div class="hint">Sem dados.</div>';
+    const mx = Math.max(...all, o.max || 0) || 1, mn = o.min != null ? o.min : Math.min(0, ...all);
+    const n = Math.max(...series.map(s => s.values.length), labels.length), iw = w - pad.l - pad.r, ih = h - pad.t - pad.b;
+    const X = i => pad.l + (n > 1 ? i / (n - 1) * iw : iw / 2), Y = v => pad.t + ih * (1 - (v - mn) / (mx - mn || 1));
+    let s = `<svg viewBox="0 0 ${w} ${h}" class="chart-svg">`;
+    for (let i = 0; i <= 4; i++) { const v = mn + (mx - mn) * i / 4, y = Y(v); s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" class="ax"/><text x="${pad.l - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end" class="lbl">${fmt(v, o.dec || 0)}</text>`; }
+    const step = Math.ceil(n / 14);
+    labels.forEach((lb, i) => { if (i % step === 0 || i === n - 1) s += `<text x="${X(i).toFixed(1)}" y="${h - pad.b + 14}" text-anchor="middle" class="lbl">${esc(lb)}</text>`; });
+    for (const se of series) {
+      let d = '', pen = false;
+      se.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)} `; pen = true; });
+      s += `<path d="${d}" fill="none" stroke="${se.color || BLUE}" stroke-width="${se.width || 2}" ${se.dash ? 'stroke-dasharray="5 4"' : ''} opacity="${se.opacity || 1}"/>`;
+      if (o.dots && n <= 62) se.values.forEach((v, i) => { if (v != null) s += `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="2.5" fill="${se.color || BLUE}"><title>${esc(labels[i] || '')}: ${fmt(v, o.dec || 0)}</title></circle>`; });
+    }
+    if (o.band != null) { const y = Y(o.band); s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y.toFixed(1)}" y2="${y.toFixed(1)}" stroke="${RED}" stroke-dasharray="3 3"/><text x="${w - pad.r}" y="${(y - 3).toFixed(1)}" text-anchor="end" class="lbl" fill="${RED}">${esc(o.bandLabel || '')}</text>`; }
+    let lx = pad.l;
+    const legend = series.filter(x => x.name).map(x => { const g = `<g transform="translate(${lx},${pad.t - 6})">`; lx += 30 + x.name.length * 6.5; return g + `<line x1="0" x2="18" y1="0" y2="0" stroke="${x.color || BLUE}" stroke-width="3" ${x.dash ? 'stroke-dasharray="5 4"' : ''}/><text x="22" y="4" class="lbl">${esc(x.name)}</text></g>`; }).join('');
+    return s + legend + '</svg>';
+  }
+  return { esc, fmt, bars, lines, grouped, hbars, stackedHist, scatter, percentiles, profile, timeline, table, kcard, card, BLUE, RED, ORANGE, GREEN, GREY, YEL, PURPLE };
 })();

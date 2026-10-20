@@ -7,7 +7,7 @@ const Analyses = (() => {
   const toast = (m, k) => FP.toast(m, k);
   const busy = (el, msg = 'A calcular…') => { if (el) el.innerHTML = `<div class="empty">⏳ ${esc(msg)}</div>`; };
   const empty = (el, msg) => { if (el) el.innerHTML = `<div class="empty">${esc(msg)}</div>`; };
-  const R = { final: null, star: null, app: null, ad: null, fast: null, dados: null, diaria: null, rrms: null, rot: null, kpis: null, pt: null, seq: null };
+  const R = { pru: null, final: null, star: null, app: null, ad: null, fast: null, dados: null, diaria: null, rrms: null, rot: null, kpis: null, pt: null, seq: null };
   const hasFlights = () => FP.state.flights.length > 0;
   const sec = v => v == null ? '—' : fmt(Math.round(v));
   const rwyBadge = r => `<span class="badge rwy ${r === '02' || r === '17' || r === '10' || r === '05' ? 'a' : 'b'}">RWY ${esc(r)}</span>`;
@@ -395,6 +395,64 @@ const Analyses = (() => {
     const el = $('kpiBody'); if (!hasFlights()) { empty(el, 'Sem dados.'); return; }
     busy(el);
     try { if (!R.final) await runFinal(false); if (!R.star && FP.state.flights.length < 4000) await runStar(false); R.kpis = await call('kpis'); renderKpis(); } catch (e) { empty(el, 'Erro: ' + e.message); toast(e.message, 'err'); }
+    try { R.pru = await call('pru_kpis'); el.insertAdjacentHTML('afterbegin', renderPru(R.pru)); wirePru(); } catch (e) { toast('KPIs PRU: ' + e.message, 'err'); }
+  }
+  /* ---- relatórios personalizados (botões) */
+  let customReports = [];
+  async function loadCustomReports() {
+    try { customReports = await call('custom_reports') || []; } catch (e) { customReports = []; }
+    $('kpiCustomBtns').innerHTML = customReports.map((r, i) => `<button class="btn" data-cr="${i}" title="${esc((r.sections || []).join(', '))}">📄 ${esc(r.name)}</button>`).join(' ');
+    $('kpiCustomBtns').querySelectorAll('[data-cr]').forEach(b => b.onclick = () => { const r = customReports[+b.dataset.cr]; if (!hasFlights()) { toast('Aplica um filtro primeiro.', 'err'); return; } toast(`A gerar "${r.name}"…`, 'ok'); call('report', 'custom', { title: r.name, sections: r.sections }).catch(e => toast(e.message, 'err')); });
+  }
+  async function openReportBuilder() {
+    const secs = await call('report_sections');
+    $('modalTitle').textContent = 'Relatórios à medida';
+    $('modalBody').innerHTML = `<p class="hint">Escolhe as secções e o título. "Gerar agora" abre o relatório no navegador; "Guardar como botão" cria um botão permanente na barra dos KPIs (fica na base de dados).</p>
+      <label>Título <input id="rbTitle" class="inp" value="Relatório ${esc(FP.state.airport)}"></label>
+      <div class="chips" style="margin:10px 0">${Object.entries(secs).map(([k, v]) => `<label class="chk" style="width:100%"><input type="checkbox" class="rbSec" value="${k}" ${['pru', 'painel', 'solo'].includes(k) ? 'checked' : ''}> <b>${k}</b> — ${esc(v)}</label>`).join('')}</div>
+      <div class="row" style="gap:8px"><button class="btn primary" id="rbRun">📄 Gerar agora</button><button class="btn" id="rbSave">💾 Guardar como botão</button></div>
+      ${customReports.length ? '<h3 class="mini" style="margin-top:14px">Botões guardados</h3>' + customReports.map((r, i) => `<div class="row" style="gap:8px;margin:4px 0"><b>${esc(r.name)}</b><span class="muted">${esc(r.sections.join(', '))}</span><button class="btn sm rbDel" data-i="${i}">✕ remover</button></div>`).join('') : ''}`;
+    $('modal').classList.remove('hidden');
+    const picked = () => [...document.querySelectorAll('.rbSec:checked')].map(x => x.value);
+    $('rbRun').onclick = () => { if (!hasFlights()) { toast('Aplica um filtro primeiro.', 'err'); return; } toast('A gerar…', 'ok'); call('report', 'custom', { title: $('rbTitle').value, sections: picked() }).catch(e => toast(e.message, 'err')); };
+    $('rbSave').onclick = async () => { const s = picked(); if (!s.length) { toast('Escolhe pelo menos uma secção.', 'err'); return; } customReports.push({ name: $('rbTitle').value || 'Relatório', sections: s }); await call('custom_reports_set', customReports); toast('Botão criado.', 'ok'); $('modal').classList.add('hidden'); loadCustomReports(); };
+    document.querySelectorAll('.rbDel').forEach(b => b.onclick = async () => { customReports.splice(+b.dataset.i, 1); await call('custom_reports_set', customReports); loadCustomReports(); openReportBuilder(); });
+  }
+  /* ---- KPIs no estilo PRU / EUROCONTROL */
+  const m1 = v => v == null ? '—' : fmt(v, 1), s0 = v => v == null ? '—' : Math.round(v) + ' s', pc = v => v == null ? '—' : fmt(v, 1) + '%';
+  const tblKey = (list, keyLabel, cols) => C.table([{ k: 'key', label: keyLabel }, ...cols], list || []);
+  function renderPru(d) {
+    if (!d) return '';
+    const t = d.throughput, a = d.asma, x = d.taxi, f = d.atfm, c = d.cdo;
+    let h = `<div class="card pru"><h3>KPIs de aeroporto — estilo PRU / EUROCONTROL (${esc(d.airport)})</h3>
+      <p class="hint">Fontes: radar ${d.sources.radar} · torre ${d.sources.torre} · NMIR ${d.sources.nmir} · OPDI ${d.sources.opdi}. Definições em <i>ansperformance.eu</i>: tempo adicional = real − referência não-impedida (percentil 20 do grupo).</p>`;
+    h += '<div class="kgrid">';
+    if (t) h += C.kcard('Movimentos de pista', fmt(t.n), `${t.source} · ${fmt(t.per_day, 0)}/dia`) + C.kcard('Pico 60 min', `${t.peak_roll60} mov.`, t.peak_when ? `${FP.fmt ? '' : ''}${new Date(t.peak_when[1] * 1000).toISOString().slice(11, 16)} UTC · hora cheia máx. ${t.peak_hour_mov}` : '') +
+      C.kcard('Utilização no pico', pc(t.util_peak), `capacidade declarada ${t.capacity}/h · ${t.hours_over_capacity} h acima`, t.util_peak > 100 ? 'warn' : 'ok') +
+      C.kcard('Go-arounds', t.ga, t.ga_rate != null ? `${fmt(t.ga_rate, 1)} por 1 000 aterragens` : 'sem ficheiro da torre', t.ga ? 'warn' : '');
+    if (x) h += C.kcard('Taxi-out adicional', x.taxi_out.n ? `${m1(x.taxi_out.mean_min)} min` : '—', `média por partida · n=${x.taxi_out.n}`) + C.kcard('Taxi-in adicional', x.taxi_in.n ? `${m1(x.taxi_in.mean_min)} min` : '—', `média por chegada · n=${x.taxi_in.n}`);
+    if (a && a.n) h += C.kcard(`ASMA adicional (${a.ring_nm} NM)`, `${m1(a.mean_min)} min`, `média por chegada · n=${a.n} · trânsito mediano ${s0(a.transit.median)}`);
+    else if (a) h += C.kcard('ASMA adicional', '—', a.note || '');
+    if (f) h += C.kcard('Pontualidade partida (15 min)', pc(f.otp.pct), `NMIR · ATOT vs ETOT/CTOT · n=${f.otp.n}`, f.otp.pct != null && f.otp.pct < 80 ? 'warn' : '') +
+      C.kcard('Atraso ATFM (NMIR)', f.atfm_nmir.n_dep ? `${m1(f.atfm_nmir.per_dep)} min/partida` : '—', `${fmt(f.atfm_nmir.minutes)} min · ${f.atfm_nmir.delayed} atrasados · ${f.atfm_nmir.regulated} regulados`) +
+      C.kcard('Atraso ATFM (torre)', f.atfm_torre.n_dep ? `${m1(f.atfm_torre.per_dep)} min/partida` : '—', `${fmt(f.atfm_torre.minutes)} min · ${f.atfm_torre.delayed} atrasados`);
+    if (c && c.n) h += C.kcard('CDO (OPDI)', pc(c.pct), `${c.cdo}/${c.n} chegadas sem patamar < FL100 · média ${fmt(c.levels_mean, 1)} patamares`);
+    h += `<div class="kcard"><b><input id="pruCap" class="inp tiny" type="number" value="${d.capacity}" style="width:70px"> <button class="btn sm" id="pruCapSave">ok</button></b><span>capacidade declarada (mov./h)</span></div>`;
+    h += '</div><div class="grid2">';
+    if (t) h += C.card('Movimentos por hora (média diária, chegadas + partidas)', C.grouped ? C.bars(t.avg_by_hour.map(v => v[0] + v[1]), [...Array(24).keys()].map(i => String(i).padStart(2, '0')), { color: C.BLUE, dec: 0 }) : '');
+    if (x) h += C.card('Taxi-out adicional por stand (média, s)', tblKey(x.taxi_out.by_stand, 'Stand', [{ k: 'n', label: 'N' }, { k: 'mean', label: 'Adicional médio (s)', fmt: v => Math.round(v) }])) +
+      C.card('Taxi-in adicional por stand (média, s)', tblKey(x.taxi_in.by_stand, 'Stand', [{ k: 'n', label: 'N' }, { k: 'mean', label: 'Adicional médio (s)', fmt: v => Math.round(v) }]));
+    if (a && a.n) h += C.card(`ASMA por setor de entrada (anel ${a.ring_nm} NM)`, tblKey(a.by_sector, 'Setor', [{ k: 'n', label: 'N' }, { k: 'mean', label: 'Adicional médio (s)', fmt: v => Math.round(v) }, { k: 'ref', label: 'Ref. não-impedida (s)', fmt: v => v == null ? '—' : Math.round(v) }])) +
+      C.card('ASMA — chegadas com mais tempo adicional', C.table([{ k: 'csn', label: 'Voo', fmt: (v, r) => csnLink(v, r.flight_id) }, { k: 'rwy', label: 'RWY' }, { k: 't', label: 'Trânsito (s)', fmt: v => Math.round(v) }, { k: 'add', label: 'Adicional (s)', fmt: v => `<span class="sep-r">${Math.round(v)}</span>` }], a.worst));
+    if (f && f.otp.n) h += C.card('Desvio ATOT − (CTOT ou ETOT), min', C.bars(f.otp.hist.counts, f.otp.hist.labels, { color: C.ORANGE }));
+    if (f && f.atfm_torre.by_regulation.length) h += C.card('Atraso ATFM por regulação (torre)', tblKey(f.atfm_torre.by_regulation, 'Regulação', [{ k: 'n', label: 'Voos' }, { k: 'minutes', label: 'Minutos', fmt: v => Math.round(v) }]));
+    if (c && c.n) h += C.card('Patamares abaixo de FL100 por chegada (OPDI)', C.bars(c.hist.counts, c.hist.labels, { color: C.GREEN }));
+    return h + '</div></div>';
+  }
+  function wirePru() {
+    const b = $('pruCapSave'); if (!b) return;
+    b.onclick = async () => { try { await call('set_capacity', FP.state.airport, +$('pruCap').value); toast('Capacidade guardada.', 'ok'); R.pru = null; runKpis(); } catch (e) { toast(e.message, 'err'); } };
+    wireCsn($('kpiBody'));
   }
   function renderKpis() {
     const k = R.kpis, el = $('kpiBody'); if (!k) return;
@@ -522,6 +580,7 @@ const Analyses = (() => {
     prefetch();
   }
   function onTab(name) {
+    if (name === 'panel' && window.Ground) { Ground.onTabPanel(); return; }
     if (!hasFlights()) return;
     if (name === 'final' && !R.final && !P.final) runFinal(false);
     if (name === 'star' && !R.star && !P.star) runStar(false);
@@ -571,7 +630,9 @@ const Analyses = (() => {
     exportBtn('rrExport', 'rrms', null, () => 'RRMS_passagens.xlsx'); reportBtn('rrPdf', 'rrms', () => ({ cat: $('rrCat').value, rwy: $('rrRwy').value }));
     $('rotRun').onclick = runRot; $('rotRwy').onchange = () => R.rot && renderRot(); exportBtn('rotExport', 'rot');
     // KPIs
-    $('kpiRun').onclick = runKpis; exportBtn('kpiExport', 'kpis'); reportBtn('kpiReport', 'kpis');
+    $('kpiRun').onclick = runKpis; exportBtn('kpiExport', 'kpis'); exportBtn('kpiExportPru', 'pru'); reportBtn('kpiReport', 'kpis');
+    $('kpiMonthly').onclick = () => { if (!hasFlights()) { toast('Aplica um filtro (idealmente um mês inteiro) primeiro.', 'err'); return; } toast('A gerar o relatório mensal… abre no navegador quando estiver pronto.', 'ok'); call('report', 'mensal', {}).catch(e => toast(e.message, 'err')); };
+    $('kpiCustom').onclick = openReportBuilder; loadCustomReports();
     // Pontos
     $('ptRun').onclick = runPt; $('seqRun').onclick = runSeq; exportBtn('ptExport', 'pontos', () => ({ rows: R.pt ? R.pt.rows : [] })); exportBtn('seqExport', 'sequencia');
     $('ptOp').onchange = () => { const op = $('ptOp').value; $('ptV1').classList.toggle('hidden', op === 'any'); $('ptV2').classList.toggle('hidden', op !== 'between'); $('ptTol').classList.toggle('hidden', op !== 'eq'); };

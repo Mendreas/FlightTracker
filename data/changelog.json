@@ -6,6 +6,16 @@
     "summary": "Nova aba Solo com os movimentos no solo de Lisboa a partir do export operacional da torre (A-SMGCS): percurso stand ↔ pista reconstruído sobre a rede real de taxiways, animação do dia, tempos de ocupação de pista e de taxi.",
     "sections": [
       {
+        "title": "KPIs e painéis (estilo EUROCONTROL / PRU)",
+        "items": [
+          "Aba KPIs: secção de KPIs de aeroporto no estilo PRU — movimentos de pista e pico de 60 min com utilização da capacidade declarada (editável), go-arounds por 1 000 aterragens, taxi-out/taxi-in adicional (real − referência não-impedida por stand↔pista), ASMA adicional (anel de aproximação ajustado à cobertura radar, por setor de entrada), pontualidade à partida 15 min e atraso ATFM (NMIR e torre), CDO (OPDI). Excel PRU.",
+          "Aba Painel: evolução diária de toda a base (movimentos, chegadas/partidas, ROT, taxi, ATFM, pontualidade, go-arounds) com média móvel de 7 dias e período de referência (ano anterior, período anterior ou personalizado); comparação A vs B; top 10 operadores/tipos/aeroportos; cobertura e qualidade dos dados por dia com alertas.",
+          "Relatório mensal num clique (KPIs PRU + evolução diária + ROT/taxi + KPIs radar + cruzamento) e relatórios à medida: escolhe as secções, guarda como botão.",
+          "NMIR: importa também ETOT/CTOT/ATOT/ETA/ATA e atraso ATFM.",
+          "Solo: replay ar + solo — as trajetórias radar do dia animam-se no mesmo relógio; a chegada passa do radar para o percurso no solo ao aterrar e a partida o inverso."
+        ]
+      },
+      {
         "title": "Solo / taxi",
         "items": [
           "Importação do ficheiro da torre (ALL_LPPT_AAAA-MM-DD_…csv): AOBT/ATOT/ALDT/AIBT, entrada e saída de pista, ponto de espera, stands, sequência de taxiways, SID/STAR, go-arounds, ATFM.",

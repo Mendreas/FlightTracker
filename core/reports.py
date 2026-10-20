@@ -383,3 +383,103 @@ def report_ia(history: list[dict], provider_name: str) -> str:
                 body += f"<h3>{esc(g.get('titulo', 'Gráfico'))}</h3>" + table(["Item", "Valor"], [[d.get("nome"), d.get("valor")] for d in g["dados"]])
             body += "</div>"
     return wrap("Análise IA — FlightTracker", f"Exportado em {time.strftime('%d/%m/%Y %H:%M')}", body)
+
+
+# ---------------- secções reutilizáveis (relatório mensal / personalizado)
+def body_of(html: str) -> str:
+    """Extrai o corpo (sem cabeçalho/rodapé) de um relatório completo, para o reutilizar como secção."""
+    import re
+    m = re.search(r'<div class="sub">.*?</div>(.*)<footer>', html, re.S)
+    return m.group(1) if m else html
+
+
+def svg_lines(series: list[tuple[str, list, str]], labels: list[str], w=760, h=200, dec=0) -> str:
+    """series: [(nome, valores, cor)]"""
+    allv = [v for _, vals, _ in series for v in vals if v is not None]
+    if not allv:
+        return '<p class="note">Sem dados.</p>'
+    mx = max(allv) or 1; mn = min(0, min(allv)); n = max(len(vals) for _, vals, _ in series)
+    pl, pr, pt, pb = 40, 10, 16, 30
+    X = lambda i: pl + (i / (n - 1) * (w - pl - pr) if n > 1 else (w - pl - pr) / 2)
+    Y = lambda v: pt + (h - pt - pb) * (1 - (v - mn) / (mx - mn or 1))
+    out = [f'<svg viewBox="0 0 {w} {h}" width="{w}" height="{h}" xmlns="http://www.w3.org/2000/svg" style="font-family:Arial;font-size:9px">']
+    for i in range(5):
+        v = mn + (mx - mn) * i / 4; y = Y(v)
+        out.append(f'<line x1="{pl}" x2="{w - pr}" y1="{y:.1f}" y2="{y:.1f}" stroke="#e2e8f0"/><text x="{pl - 4}" y="{y + 3:.1f}" text-anchor="end" fill="#64748b">{v:.{dec}f}</text>')
+    step = max(1, n // 14)
+    for i, lb in enumerate(labels):
+        if i % step == 0 or i == n - 1:
+            out.append(f'<text x="{X(i):.1f}" y="{h - pb + 12}" text-anchor="middle" fill="#64748b">{esc(lb)}</text>')
+    for j, (name, vals, col) in enumerate(series):
+        d = ""; pen = False
+        for i, v in enumerate(vals):
+            if v is None: pen = False; continue
+            d += f"{'L' if pen else 'M'}{X(i):.1f} {Y(v):.1f} "; pen = True
+        out.append(f'<path d="{d}" fill="none" stroke="{col}" stroke-width="2"/>')
+        out.append(f'<line x1="{pl + j * 150}" x2="{pl + j * 150 + 18}" y1="{pt - 6}" y2="{pt - 6}" stroke="{col}" stroke-width="3"/><text x="{pl + j * 150 + 22}" y="{pt - 2}" fill="#334155">{esc(name)}</text>')
+    out.append("</svg>")
+    return "".join(out)
+
+
+def section_pru(d: dict) -> str:
+    if not d:
+        return ""
+    t, a, x, f, c = d.get("throughput"), d.get("asma"), d.get("taxi"), d.get("atfm"), d.get("cdo")
+    items = []
+    if t:
+        items += [("Movimentos de pista", f"{t['n']} ({t['source']})"), ("Pico 60 min", f"{t['peak_roll60']} mov."), ("Utilização no pico", f"{fnum(t['util_peak'])}% (cap. {t['capacity']}/h)"),
+                  ("Go-arounds", f"{t['ga']}" + (f" ({fnum(t['ga_rate'], 1)}/1000 aterr.)" if t.get("ga_rate") is not None else ""))]
+    if x:
+        items += [("Taxi-out adicional", f"{fnum(x['taxi_out'].get('mean_min'), 1)} min/partida"), ("Taxi-in adicional", f"{fnum(x['taxi_in'].get('mean_min'), 1)} min/chegada")]
+    if a and a.get("n"):
+        items += [(f"ASMA adicional ({a['ring_nm']} NM)", f"{fnum(a['mean_min'], 1)} min/chegada")]
+    if f:
+        items += [("Pontualidade partida 15 min", f"{fnum(f['otp']['pct'], 1)}% (n={f['otp']['n']})"), ("Atraso ATFM (NMIR)", f"{fnum(f['atfm_nmir']['per_dep'], 1)} min/partida · {fnum(f['atfm_nmir']['minutes'])} min"),
+                  ("Atraso ATFM (torre)", f"{fnum(f['atfm_torre']['per_dep'], 1)} min/partida · {fnum(f['atfm_torre']['minutes'])} min")]
+    if c and c.get("n"):
+        items += [("CDO (OPDI)", f"{fnum(c['pct'], 1)}% ({c['cdo']}/{c['n']})")]
+    body = "<h2>KPIs de aeroporto (estilo PRU / EUROCONTROL)</h2>" + kpi_grid(items)
+    if t:
+        body += "<h3>Movimentos por hora (média diária)</h3>" + svg_bars([round(v[0] + v[1], 1) for v in t["avg_by_hour"]], [f"{i:02d}" for i in range(24)])
+    if x and x["taxi_out"].get("by_stand"):
+        body += "<h3>Taxi-out adicional por stand</h3>" + table(["Stand", "N", "Adicional médio (s)"], [[r["key"], r["n"], round(r["mean"])] for r in x["taxi_out"]["by_stand"]])
+    if a and a.get("by_sector"):
+        body += "<h3>ASMA por setor de entrada</h3>" + table(["Setor", "N", "Adicional médio (s)", "Referência (s)"], [[r["key"], r["n"], round(r["mean"]), round(r["ref"]) if r.get("ref") else "—"] for r in a["by_sector"]])
+    if f and f["otp"]["n"]:
+        body += "<h3>Desvio ATOT − (CTOT/ETOT), min</h3>" + svg_bars(f["otp"]["hist"]["counts"], f["otp"]["hist"]["labels"], color="#d97706")
+    return body
+
+
+def section_panel(pn: dict, title="Evolução diária") -> str:
+    M = pn["main"]
+    if not M:
+        return ""
+    lab = [f"{r['date'][4:6]}/{r['date'][2:4]}" for r in M]
+    mov = [(r["g_dep"] + r["g_arr"]) or (r["arr"] + r["dep"]) or None for r in M]
+    R = pn.get("ref") or []
+    body = f"<h2>{esc(title)}</h2>"
+    body += "<h3>Movimentos por dia</h3>" + svg_lines([("movimentos", mov, "#2563eb")] + ([("referência", [(r["g_dep"] + r["g_arr"]) or (r["arr"] + r["dep"]) or None for r in R], "#94a3b8")] if R else []), lab)
+    body += "<h3>ROT mediano por dia (s)</h3>" + svg_lines([("chegadas", [r["rot_arr"] for r in M], "#2563eb"), ("partidas", [r["rot_dep"] for r in M], "#d97706")], lab)
+    body += "<h3>Taxi mediano por dia (min)</h3>" + svg_lines([("taxi-out", [r["taxi_out"] / 60 if r["taxi_out"] else None for r in M], "#d97706"), ("taxi-in", [r["taxi_in"] / 60 if r["taxi_in"] else None for r in M], "#2563eb")], lab, dec=1)
+    body += "<h3>Pontualidade à partida (%, NMIR) e atraso ATFM (min, torre)</h3>" + svg_lines([("OTP15 %", [r["p_ok"] / r["p_n"] * 100 if r["p_n"] else None for r in M], "#15803d")], lab) + \
+            svg_bars([r["atfm_min"] or 0 for r in M], lab, color="#dc2626")
+    top = pn.get("top") or {}
+    if top:
+        body += "<h3>Top 10</h3><div style=\"display:flex;gap:16px\">" + table(["Operador", "Mov."], [list(r) for r in top["operators"]]) + table(["Tipo", "Mov."], [list(r) for r in top["types"]]) + table(["Aeroporto", "Voos"], [list(r) for r in top["airports"]]) + "</div>"
+    return body
+
+
+def section_ground(gs: dict) -> str:
+    if not gs:
+        return ""
+    st = lambda o: f"{fnum(o['median'])} s (n={o['n']})" if o and o.get("n") else "—"
+    body = "<h2>Ocupação de pista e taxi (A-SMGCS)</h2>" + kpi_grid([("Chegadas", gs["n_arr"]), ("Partidas", gs["n_dep"]), ("Go-arounds", gs["ga"]), ("ROT chegada (mediana)", st(gs["rot_arr"])), ("ROT partida (mediana)", st(gs["rot_dep"])),
+                                                                     ("Taxi-in (mediana)", st(gs["taxi_in"])), ("Taxi-out (mediana)", st(gs["taxi_out"]))])
+    body += "<h3>ROT chegadas por saída de pista</h3>" + table(["Saída", "N", "Mediana (s)", "P90 (s)"], [[r["key"], r["n"], round(r["median"]), round(r["p90"])] for r in gs["rot_arr_by_ep"] if r["n"]])
+    body += "<h3>ROT partidas por ponto de espera</h3>" + table(["HP", "N", "Mediana (s)", "P90 (s)"], [[r["key"], r["n"], round(r["median"]), round(r["p90"])] for r in gs["rot_dep_by_hp"] if r["n"]])
+    body += "<h3>Distribuição ROT chegadas (s)</h3>" + svg_bars(gs["rot_arr_hist"]["counts"], gs["rot_arr_hist"]["labels"])
+    return body
+
+
+def report_composed(title: str, subtitle: str, sections: list[str]) -> str:
+    return wrap(title, subtitle, "".join(s for s in sections if s))

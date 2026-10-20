@@ -91,6 +91,7 @@
       <button class="tab" data-tab="app">🛬 Vel. APP</button>
       <button class="tab" data-tab="ana">📈 Análise Op.</button>
       <button class="tab" data-tab="kpi">📊 KPIs</button>
+      <button class="tab" data-tab="panel">📅 Painel</button>
       <button class="tab" data-tab="solo">🛫 Solo</button>
       <button class="tab" data-tab="cross">🔗 Cruzamento</button>
       <button class="tab" data-tab="pts">📍 Pontos</button>
@@ -238,8 +239,22 @@
 
     <!-- KPIs -->
     <div id="tab-kpi" class="tabpane">
-      <div class="toolbar"><button class="btn primary" id="kpiRun">⟳ Actualizar</button><span class="spacer"></span><span id="kpiNote" class="muted"></span><button class="btn" id="kpiExport">⬇ Excel</button><button class="btn" id="kpiReport">📄 Relatório</button></div>
+      <div class="toolbar"><button class="btn primary" id="kpiRun">⟳ Actualizar</button><span class="spacer"></span><span id="kpiNote" class="muted"></span><button class="btn" id="kpiExport">⬇ Excel</button><button class="btn" id="kpiExportPru" title="KPIs PRU em Excel">⬇ Excel PRU</button><button class="btn" id="kpiReport">📄 Relatório</button><button class="btn primary" id="kpiMonthly" title="Relatório composto: KPIs PRU, evolução diária, ROT/taxi, KPIs radar e cruzamento — abre no navegador (Imprimir → PDF)">📄 Relatório mensal</button><button class="btn" id="kpiCustom" title="Criar botões de relatório à medida">🧩 Relatórios…</button><span id="kpiCustomBtns"></span></div>
       <div class="scroll" id="kpiBody"><div class="empty">Clica Actualizar</div></div>
+    </div>
+
+    <!-- PAINEL DIÁRIO -->
+    <div id="tab-panel" class="tabpane">
+      <div class="toolbar wrap">
+        <label>Período <input type="date" id="pnFrom" class="inp tiny"> – <input type="date" id="pnTo" class="inp tiny"></label>
+        <label>Referência <select id="pnRef" class="inp tiny"><option value="none">nenhuma</option><option value="prev_month">período anterior (mesma duração)</option><option value="prev_year" selected>mesmo período do ano anterior</option><option value="custom">personalizada</option></select></label>
+        <span id="pnRefCustom" class="hidden"><input type="date" id="pnRefFrom" class="inp tiny"> – <input type="date" id="pnRefTo" class="inp tiny"></span>
+        <button class="btn primary" id="pnRun">⟳ Atualizar</button>
+        <label class="chk"><input type="checkbox" id="pnMa" checked> média móvel 7 dias</label>
+        <span class="spacer"></span><span id="pnInfo" class="muted"></span>
+        <button class="btn" id="pnExport">⬇ Excel</button>
+      </div>
+      <div class="scroll" id="pnBody"><div class="empty">Escolhe o período e clica Atualizar. O painel usa toda a base de dados (radar, torre, NMIR, OPDI), independentemente do filtro do calendário.</div></div>
     </div>
 
     <!-- SOLO / TAXI -->
@@ -255,6 +270,7 @@
         <label class="chk"><input type="checkbox" id="gdLabels"> Nomes</label>
         <label class="chk"><input type="checkbox" id="gdStands"> Stands</label>
         <label class="chk"><input type="checkbox" id="gdTrails" checked> Rasto</label>
+        <label class="chk" title="Mostra também as trajetórias radar do dia (ar) no mesmo relógio"><input type="checkbox" id="gdRadar" checked> Radar (ar)</label>
         <select id="gdBase" class="inp tiny"><option value="osm">OSM</option><option value="sat">Satélite</option><option value="none">Sem fundo</option></select>
       </div>
       <div class="gd-split" id="gdSplit">
