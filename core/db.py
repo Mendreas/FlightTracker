@@ -210,7 +210,7 @@ class Database:
     def import_aux(self, path: str, kind: str) -> int:
         """Importa um ficheiro NMIR / OPDI / torre e regista-o em aux_files."""
         if kind == "nmir":
-            n = self.import_nmir_xlsx(path)
+            n = self.import_nmir_xlsx(path, rebuild=False)   # a tabela de movimentos é reconstruída uma só vez no fim
         elif kind == "opdi":
             n = self.import_opdi(path)["rows"]
         else:
@@ -422,9 +422,11 @@ class Database:
         for i, (p, kind) in enumerate(aux):
             if progress:
                 progress(i, len(aux), f"{ {'nmir': 'NMIR', 'opdi': 'OPDI', 'ground': 'torre'}[kind] }: {os.path.basename(p)}")
+            t_a = time.time()
             try:
                 with guard():
-                    aux_done[kind] += self.import_aux(p, kind)
+                    n_a = self.import_aux(p, kind); aux_done[kind] += n_a
+                self._log(f"aux {kind} {os.path.basename(p)}: {n_a} registos em {time.time()-t_a:.1f}s")
             except Exception as e:  # noqa: BLE001
                 aux_errs.append(f"{os.path.basename(p)}: {e}")
                 self._log(f"aux {kind} {p}: ERRO {e}")
@@ -441,7 +443,7 @@ class Database:
             done += len(chunk)
             if progress:
                 progress(done, len(todo), os.path.basename(chunk[-1]))
-        if todo:
+        if todo or aux_done["nmir"]:
             if progress:
                 progress(done, len(todo), "a construir tabela de movimentos…")
             t_r = time.time()
@@ -694,7 +696,7 @@ class Database:
             ([airport] if airport else []) + [dates]).fetchone()
         return {"flights": r[0], "arr": r[1] or 0, "dep": r[2] or 0, "lvl": r[3] or 0, "points": int(r[4]), "csn": r[5]}
 
-    def import_nmir_xlsx(self, path: str) -> int:
+    def import_nmir_xlsx(self, path: str, rebuild: bool = True) -> int:
         """Importa um Excel NMIR (EUROCONTROL) com openpyxl: precisa de colunas com callsign e tipo
         (data e WTC opcionais). Devolve o nº de registos novos."""
         from openpyxl import load_workbook
@@ -765,7 +767,8 @@ class Database:
             SELECT csn, date, arg_max(actype, coalesce(adep,'')||coalesce(ades,'')) actype,
                    arg_max(wtc, coalesce(adep,'')||coalesce(ades,'')) wtc, max(adep) adep, max(ades) ades
             FROM nmir GROUP BY csn, date""")
-        self.rebuild_flights()
+        if rebuild:
+            self.rebuild_flights()
         return max(0, self.con.execute("SELECT count(*) FROM (SELECT DISTINCT csn, date FROM nmir)").fetchone()[0] - before)
 
     # ----------------------------------------------------------------- solo (ficheiro da torre)
