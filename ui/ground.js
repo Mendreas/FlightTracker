@@ -269,10 +269,38 @@ const Ground = (() => {
       { k: 'dt_radar_torre', label: 'Δt R−T', fmt: v => v == null ? '—' : `${v > 0 ? '+' : ''}${v} s` }, { k: 'dt_opdi_torre', label: 'Δt O−T', fmt: v => v == null ? '—' : `${v > 0 ? '+' : ''}${v} s` },
       { k: 't_rot', label: 'ROT torre', fmt: v => v == null ? '—' : Math.round(v) + ' s' }, { k: 'o_rot', label: 'ROT OPDI', fmt: v => v == null ? '—' : Math.round(v) + ' s' },
       { k: 't_taxi', label: 'Taxi', fmt: v => dur(v) }, { k: 'o_tod', label: 'TOD', fmt: v => hmsAbs(v) }, { k: 'o_levels_low', label: 'Pat. <FL100', fmt: v => v == null ? '—' : v },
+      { k: 'corr', label: 'Correção', fmt: (v, r, i) => `<button class="btn sm cr-fix" data-i="${rows.indexOf(r)}" title="Registar o valor correto / marcar como verificado">${v ? '✓ ' + esc([v.actype, v.apt].filter(Boolean).join(' ') || 'verificado') : '✎'}</button>` },
     ], rows, { id: 'crTable', limit: 4000 });
     body.innerHTML = h + `<p class="hint">R = radar CNS · N = NMIR · T = ficheiro da torre (A-SMGCS) · O = OPDI (OpenSky). Emparelhamento por callsign + data + tipo de movimento, com o instante mais próximo (janela 20 min). Tipo NMIR com * = herdado de outro dia (não conta como discrepância). O ROT do OPDI nas chegadas é aproximado (o evento de saída de pista é detetado tarde por falta de cobertura ADS-B no solo).</p>`;
     body.querySelectorAll('.csn-link').forEach(a => a.onclick = ev => { ev.preventDefault(); FP.focusFlight(+a.dataset.fid); });
-    $('crInfo').textContent = `${rows.length} de ${cross.rows.length} linhas`;
+    body.querySelectorAll('.cr-fix').forEach(b => b.onclick = () => openFix(rows[+b.dataset.i]));
+    $('crInfo').textContent = `${rows.length} de ${cross.rows.length} linhas${c.corrected ? ` · ${c.corrected} corrigidas/verificadas` : ''}`;
+  }
+  function openFix(r) {
+    const c = r.corr || {};
+    const types = [...new Set([r.t_type, r.o_type, r.n_type].filter(Boolean))];
+    const apts = [...new Set([r.t_apt, r.cls === 'arr' ? r.o_adep : r.o_ades, r.cls === 'arr' ? r.n_adep : r.n_ades].filter(Boolean))];
+    const opts = (list, cur) => list.map(x => `<option value="${esc(x)}" ${x === cur ? 'selected' : ''}>${esc(x)}</option>`).join('');
+    $('modalTitle').textContent = `Correção · ${r.csn} · ${fmtD(r.date)} · ${r.cls.toUpperCase()}`;
+    $('modalBody').innerHTML = `
+      <p class="hint">Fontes: NMIR ${esc(r.n_type || '—')} · torre ${esc(r.t_type || '—')} · OPDI ${esc(r.o_type || '—')} &nbsp;|&nbsp; ${r.cls === 'arr' ? 'ADEP' : 'ADES'}: NMIR ${esc((r.cls === 'arr' ? r.n_adep : r.n_ades) || '—')} · torre ${esc(r.t_apt || '—')} · OPDI ${esc((r.cls === 'arr' ? r.o_adep : r.o_ades) || '—')}</p>
+      <div class="row wrap" style="gap:10px;align-items:flex-end">
+        <label>Tipo correto <input id="fxType" class="inp tiny" list="fxTypes" value="${esc(c.actype || '')}" placeholder="ex.: A20N" style="width:100px"><datalist id="fxTypes">${opts(types, '')}</datalist></label>
+        <label>WTC <select id="fxWtc" class="inp tiny"><option value="">auto</option>${['L', 'M', 'H', 'J'].map(w => `<option ${c.wtc === w ? 'selected' : ''}>${w}</option>`).join('')}</select></label>
+        <label>${r.cls === 'arr' ? 'ADEP' : 'ADES'} correto <input id="fxApt" class="inp tiny" list="fxApts" value="${esc(c.apt || '')}" placeholder="ICAO" style="width:90px"><datalist id="fxApts">${opts(apts, '')}</datalist></label>
+        <label class="chk"><input type="checkbox" id="fxVer" ${c.verified ? 'checked' : ''}> Verificado — ignorar discrepância</label>
+      </div>
+      <label style="display:block;margin-top:10px">Nota <input id="fxNote" class="inp" value="${esc(c.note || '')}" placeholder="ex.: confirmado com a torre / matrícula CS-TSF é A21N"></label>
+      <p class="hint">O tipo corrigido é aplicado ao movimento radar e ao NMIR desse dia (fica na base de dados; os ficheiros de origem não são alterados).</p>
+      <div class="row" style="gap:8px;margin-top:12px"><button class="btn primary" id="fxSave">Guardar</button>${r.corr ? '<button class="btn" id="fxDel">Remover correção</button>' : ''}</div>`;
+    $('modal').classList.remove('hidden');
+    $('fxSave').onclick = async () => {
+      try {
+        await call('correction_set', r.csn, r.date, r.cls, $('fxType').value, $('fxWtc').value, $('fxApt').value, $('fxNote').value, $('fxVer').checked);
+        $('modal').classList.add('hidden'); toast('Correção guardada.', 'ok'); crossRun(true);
+      } catch (e) { toast(e.message, 'err'); }
+    };
+    if ($('fxDel')) $('fxDel').onclick = async () => { try { await call('correction_delete', r.csn, r.date, r.cls); $('modal').classList.add('hidden'); crossRun(true); } catch (e) { toast(e.message, 'err'); } };
   }
   async function crossRun(force) {
     const key = [...FP.state.days].sort().join(',') + '|' + FP.state.airport;

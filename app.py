@@ -286,6 +286,12 @@ class Api:
     def crosscheck(self):
         return self._safe(self.svc.crosscheck)
 
+    def correction_set(self, csn, date, cls, actype=None, wtc=None, apt=None, note=None, verified=False):
+        return self._safe(self.svc.correction_set, csn, date, cls, actype, wtc, apt, note, verified)
+
+    def correction_delete(self, csn, date, cls):
+        return self._safe(self.svc.correction_delete, csn, date, cls)
+
     def ground_routes(self, gids):
         return self._safe(self.svc.ground_routes, gids)
 

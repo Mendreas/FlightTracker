@@ -121,6 +121,11 @@ class Database:
         c.execute("CREATE TABLE IF NOT EXISTS meta(key VARCHAR PRIMARY KEY, value VARCHAR)")
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
+        c.execute("CREATE TABLE IF NOT EXISTS aux_files(path VARCHAR PRIMARY KEY, kind VARCHAR, size BIGINT, mtime DOUBLE, rows INTEGER, imported TIMESTAMP DEFAULT current_timestamp)")
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS corrections(
+            csn VARCHAR, date VARCHAR, cls VARCHAR, actype VARCHAR, wtc VARCHAR, apt VARCHAR, note VARCHAR,
+            verified BOOLEAN, ts TIMESTAMP DEFAULT current_timestamp, PRIMARY KEY (csn, date, cls))""")
         c.execute("""
         CREATE TABLE IF NOT EXISTS opdi_events(
             flight_id VARCHAR, icao24 VARCHAR, csn VARCHAR, adep VARCHAR, ades VARCHAR, adep_p VARCHAR, ades_p VARCHAR,
@@ -177,25 +182,62 @@ class Database:
         out = []
         for root, _dirs, files in os.walk(folder):
             for fn in files:
-                if fn.lower().endswith(".csv") and not fn.startswith((".", "~")):
+                if fn.lower().endswith((".csv", ".xlsx")) and not fn.startswith((".", "~", "$")):
                     out.append(os.path.join(root, fn))
         out.sort()
         return out
 
+    @staticmethod
+    def classify_file(path: str) -> str:
+        """'radar' (CSV do CNS), 'opdi' (flight events), 'ground' (export da torre), 'nmir' (Excel) — pela 1ª linha."""
+        low = path.lower()
+        if low.endswith(".xlsx"):
+            return "nmir"
+        try:
+            hdr = open(path, "rb").readline().decode("utf-8-sig", "replace").lower()
+        except OSError:
+            return "radar"
+        if "flt_id" in hdr and "event_time" in hdr:
+            return "opdi"
+        if "taxi_out" in hdr and "aldt" in hdr:
+            return "ground"
+        return "radar"
+
+    def _known_aux(self) -> dict[str, tuple[int, float]]:
+        return {p: (s, m) for p, s, m in self.con.execute("SELECT path, size, mtime FROM aux_files").fetchall()}
+
+    def import_aux(self, path: str, kind: str) -> int:
+        """Importa um ficheiro NMIR / OPDI / torre e regista-o em aux_files."""
+        if kind == "nmir":
+            n = self.import_nmir_xlsx(path)
+        elif kind == "opdi":
+            n = self.import_opdi(path)["rows"]
+        else:
+            n = self.import_ground(path)["rows"]
+        st = os.stat(path)
+        self.con.execute("INSERT OR REPLACE INTO aux_files VALUES (?,?,?,?,?,current_timestamp)", [path, kind, st.st_size, st.st_mtime, n])
+        return n
+
     def _known_files(self) -> dict[str, tuple[int, float]]:
         return {p: (s, m) for p, s, m in self.con.execute("SELECT path, size, mtime FROM files").fetchall()}
 
-    def pending_files(self, folder: str) -> tuple[list[str], int]:
-        """Devolve (ficheiros novos/alterados, total encontrado)."""
-        known = self._known_files()
-        todo = []
+    def pending_files(self, folder: str) -> tuple[list[str], int, list[tuple[str, str]]]:
+        """Devolve (CSV radar novos/alterados, total encontrado, outros ficheiros novos [(path, kind)])."""
+        known = self._known_files(); known_aux = self._known_aux()
+        todo, aux = [], []
         allf = self.scan_folder(folder)
         for p in allf:
             st = os.stat(p)
-            k = known.get(p)
-            if k is None or k[0] != st.st_size or abs(k[1] - st.st_mtime) > 1:
-                todo.append(p)
-        return todo, len(allf)
+            kind = self.classify_file(p)
+            if kind == "radar":
+                k = known.get(p)
+                if k is None or k[0] != st.st_size or abs(k[1] - st.st_mtime) > 1:
+                    todo.append(p)
+            else:
+                k = known_aux.get(p)
+                if k is None or k[0] != st.st_size or abs(k[1] - st.st_mtime) > 1:
+                    aux.append((p, kind))
+        return todo, len(allf), aux
 
     @staticmethod
     def _read_header(path: str):
@@ -372,8 +414,19 @@ class Database:
 
     def _import_folder(self, folder, progress, batch_size, guard, t0) -> dict:
         with guard():
-            todo, total_found = self.pending_files(folder)
-        self._log(f"== importar {folder}: {len(todo)} novos de {total_found} (scan {time.time()-t0:.1f}s)")
+            todo, total_found, aux = self.pending_files(folder)
+        self._log(f"== importar {folder}: {len(todo)} CSV radar novos + {len(aux)} NMIR/OPDI/torre, de {total_found} (scan {time.time()-t0:.1f}s)")
+        aux_done = {"nmir": 0, "opdi": 0, "ground": 0}
+        aux_errs: list[str] = []
+        for i, (p, kind) in enumerate(aux):
+            if progress:
+                progress(i, len(aux), f"{ {'nmir': 'NMIR', 'opdi': 'OPDI', 'ground': 'torre'}[kind] }: {os.path.basename(p)}")
+            try:
+                with guard():
+                    aux_done[kind] += self.import_aux(p, kind)
+            except Exception as e:  # noqa: BLE001
+                aux_errs.append(f"{os.path.basename(p)}: {e}")
+                self._log(f"aux {kind} {p}: ERRO {e}")
         if progress and todo:
             mb = sum(os.path.getsize(p) for p in todo) / 1048576
             progress(0, len(todo), f"{len(todo)} ficheiro(s) novos, {mb:,.0f} MB — a ler…")
@@ -396,9 +449,10 @@ class Database:
             self._log(f"rebuild_flights {time.time()-t_r:.1f}s")
         with guard():
             self.con.execute("INSERT OR REPLACE INTO meta VALUES ('last_folder', ?)", [folder])
+        err_list = aux_errs + err_list
         self._log(f"== fim: {rows} linhas, {len(err_list)} erros, total {time.time()-t0:.1f}s")
-        return {"found": total_found, "new": len(todo), "imported": len(todo) - len(err_list), "errors": len(err_list),
-                "rows": rows, "ms": int((time.time() - t0) * 1000), "error_list": err_list[:20]}
+        return {"found": total_found, "new": len(todo) + len(aux), "imported": len(todo) - len(err_list) + len(aux) - len(aux_errs), "errors": len(err_list),
+                "rows": rows, "ms": int((time.time() - t0) * 1000), "error_list": err_list[:20], "aux": aux_done, "aux_files": len(aux)}
 
     def remove_missing(self) -> int:
         """Apaga da base os ficheiros que já não existem no disco."""
@@ -809,6 +863,44 @@ class Database:
               IN (SELECT unnest(?::VARCHAR[]))""", [airport, airport, airport, airport, airport, airport, dates])
         names = [d[0] for d in cur.description]
         return [dict(zip(names, r)) for r in cur.fetchall()]
+
+    # ----------------------------------------------------------------- correções (cruzamento)
+    def correction_set(self, csn: str, date: str, cls: str, actype=None, wtc=None, apt=None, note=None, verified=False, airport=None) -> dict:
+        from .geo import wtc_from_type
+        actype = (actype or "").strip().upper() or None
+        wtc = (wtc or "").strip().upper() or (wtc_from_type(actype) if actype else None)
+        apt = (apt or "").strip().upper() or None
+        self.con.execute("INSERT OR REPLACE INTO corrections VALUES (?,?,?,?,?,?,?,?,current_timestamp)",
+                         [csn, date, cls, actype, wtc, apt, note, bool(verified)])
+        if actype:
+            # propaga: movimento radar + NMIR desse dia (sobrevive a reconstruções da tabela de movimentos)
+            self.con.execute("UPDATE flights SET actype=?, wtc=? WHERE csn=? AND date=? AND cls=?" + (" AND airport=?" if airport else ""),
+                             [actype, wtc, csn, date, cls] + ([airport] if airport else []))
+            old = self.con.execute("SELECT adep, ades FROM nmir WHERE csn=? AND date=? LIMIT 1", [csn, date]).fetchone()
+            self.con.execute("DELETE FROM nmir WHERE csn=? AND date=?", [csn, date])
+            self.con.execute("INSERT INTO nmir VALUES (?,?,?,?,?,?)", [csn, date, actype, wtc, old[0] if old else None, old[1] if old else None])
+        if apt:
+            field = "adep" if cls == "arr" else "ades"
+            if self.con.execute("SELECT 1 FROM nmir WHERE csn=? AND date=?", [csn, date]).fetchone():
+                self.con.execute(f"UPDATE nmir SET {field}=? WHERE csn=? AND date=?", [apt, csn, date])
+        self.cache_clear()
+        return self.correction_get(csn, date, cls)
+
+    def correction_delete(self, csn: str, date: str, cls: str):
+        self.con.execute("DELETE FROM corrections WHERE csn=? AND date=? AND cls=?", [csn, date, cls])
+
+    def correction_get(self, csn, date, cls):
+        r = self.con.execute("SELECT actype, wtc, apt, note, verified, ts FROM corrections WHERE csn=? AND date=? AND cls=?", [csn, date, cls]).fetchone()
+        return {"actype": r[0], "wtc": r[1], "apt": r[2], "note": r[3], "verified": r[4], "ts": str(r[5])} if r else None
+
+    def corrections(self, dates: list[str]) -> dict:
+        if not dates:
+            return {}
+        out = {}
+        for csn, date, cls, actype, wtc, apt, note, verified, ts in self.con.execute(
+                "SELECT csn, date, cls, actype, wtc, apt, note, verified, ts FROM corrections WHERE date IN (SELECT unnest(?::VARCHAR[]))", [dates]).fetchall():
+            out[(csn, date, cls)] = {"actype": actype, "wtc": wtc, "apt": apt, "note": note, "verified": verified, "ts": str(ts)}
+        return out
 
     def ground_summary(self) -> dict:
         r = self.con.execute("SELECT count(*), min(date), max(date), count(DISTINCT date) FROM ground").fetchone()

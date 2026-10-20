@@ -39,7 +39,7 @@ def _pair(radar: list[dict], others: list[dict], t_radar, t_other) -> dict:
     return out
 
 
-def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list[dict], nmir_lookup) -> dict:
+def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list[dict], nmir_lookup, corrections: dict | None = None) -> dict:
     """flights: movimentos radar (do filtro, aeroporto activo); ground: registos da torre; opdi: voos OPDI;
     nmir_lookup(csn, date) -> dict(type, wtc, adep, ades, source)."""
     flights = [f for f in flights if f["cls"] in ("arr", "dep")]
@@ -124,6 +124,15 @@ def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list
                     r["flags"].append("Δt OPDI/torre > 2 min")
             if r["t_rot"] and r["o_rot"]:
                 r["d_rot"] = round(r["o_rot"] - r["t_rot"])
+        corr = (corrections or {}).get((r["csn"], r["date"], r["cls"]))
+        r["corr"] = corr
+        if corr:
+            if corr.get("actype") or corr.get("verified"):
+                r["flags"] = [f for f in r["flags"] if not (f.startswith("TIPO") or f.startswith("WTC"))]
+            if corr.get("apt") or corr.get("verified"):
+                r["flags"] = [f for f in r["flags"] if not f.startswith("ADEP")]
+            if corr.get("verified"):
+                r["flags"] = [f for f in r["flags"] if f.startswith("sem ")]
         if r["t_ga"]:
             r["flags"].append("GA (torre)")
         if "R" not in r["src"]:
@@ -135,6 +144,8 @@ def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list
         if "N" not in r["src"]:
             r["flags"].append("sem NMIR")
         r["n_flags"] = len([f for f in r["flags"] if not f.startswith("sem ")])
+        if corr:
+            r["flags"].append("✓ corrigido" if (corr.get("actype") or corr.get("apt")) else "✓ verificado")
         r["t_sort"] = r["r_t_first"] or r["t_atot"] or r["t_aldt"] or r["o_rwy_in"] or r["o_rwy_out"] or 0
 
     for f in flights:
@@ -177,6 +188,7 @@ def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list
            "all3": sum(1 for r in rows if "R" in r["src"] and "T" in r["src"] and "O" in r["src"]),
            "nmir": sum(1 for r in rows if "N" in r["src"]),
            "with_flags": sum(1 for r in rows if r["n_flags"]),
+           "corrected": sum(1 for r in rows if r.get("corr")),
            "type_mismatch": sum(1 for r in rows if any(f.startswith("TIPO") for f in r["flags"])),
            "apt_mismatch": sum(1 for r in rows if any(f.startswith("ADEP") for f in r["flags"])),
            "only_radar": sum(1 for r in rows if r["src"].replace("N", "") == "R"),

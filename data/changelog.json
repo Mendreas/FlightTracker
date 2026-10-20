@@ -19,7 +19,9 @@
         "items": [
           "Importação dos CSV de flight events do OPDI (EUROCONTROL/OpenSky): ADEP/ADES, icao24, matrícula, tipo, entrada/saída de pista, TOC/TOD, cruzamentos FL50/FL100, patamares abaixo de FL100.",
           "Aba Cruzamento: um registo por movimento com o que dizem o radar, o NMIR, o ficheiro da torre e o OPDI; cobertura de cada fonte, emparelhamento por callsign/data/instante e sinalização de discrepâncias (tipo, WTC, ADEP/ADES, desvios de tempo, go-arounds, fontes em falta).",
-          "Excel com todas as fontes lado a lado (folhas Cruzamento, Discrepâncias e Cobertura)."
+          "Excel com todas as fontes lado a lado (folhas Cruzamento, Discrepâncias e Cobertura).",
+          "Correções: em cada linha do cruzamento pode registar-se o tipo/aeroporto correto ou marcar como verificado, com nota; fica na base de dados e aplica-se ao movimento radar e ao NMIR (os ficheiros de origem não são alterados).",
+          "Importar pasta reconhece agora, pelo conteúdo, CSV do radar, CSV OPDI, export da torre e Excel NMIR, em qualquer subpasta — tudo numa só importação."
         ]
       },
       {

@@ -193,7 +193,7 @@ class Service:
                     "NMIR tipo", "NMIR WTC", "NMIR ADEP", "NMIR ADES", "NMIR origem",
                     "TORRE tipo", "TORRE WTC", "TORRE matrícula", "TORRE operador", "TORRE RWY", "TORRE stand", "TORRE ADEP/ADES", "TORRE AOBT", "TORRE RWY_ENT", "TORRE ATOT", "TORRE ALDT", "TORRE RWY_VAC", "TORRE AIBT", "TORRE ROT (s)", "TORRE taxi (s)", "TORRE GA",
                     "OPDI id", "OPDI icao24", "OPDI matrícula", "OPDI tipo", "OPDI modelo", "OPDI ADEP", "OPDI ADES", "OPDI entrada pista", "OPDI saída pista", "OPDI ROT (s)", "OPDI TOC", "OPDI TOD", "OPDI último FL100", "OPDI último FL50", "OPDI 1º FL50", "OPDI 1º FL100", "OPDI patamares <FL100",
-                    "Δt radar−torre (s)", "Δt OPDI−torre (s)", "ΔROT OPDI−torre (s)"]
+                    "Δt radar−torre (s)", "Δt OPDI−torre (s)", "ΔROT OPDI−torre (s)", "CORREÇÃO tipo", "CORREÇÃO WTC", "CORREÇÃO ADEP/ADES", "CORREÇÃO nota", "VERIFICADO"]
             data = [[fmt_date(r["date"]), r["csn"], r["cls"].upper(), r["src"], "; ".join(r["flags"]),
                      hm(r["r_t_first"]), hm(r["r_t_last"]), r["r_n"] or "", r["r_alt_max"] or "",
                      r["n_type"] or "", r["n_wtc"] or "", r["n_adep"] or "", r["n_ades"] or "", r["n_src"] or "",
@@ -202,7 +202,8 @@ class Service:
                      round(r["t_rot"]) if r["t_rot"] else "", round(r["t_taxi"]) if r["t_taxi"] else "", "GA" if r["t_ga"] else "",
                      r["o_id"] or "", r["o_icao24"] or "", r["o_reg"] or "", r["o_type"] or "", r["o_model"] or "", r["o_adep"] or "", r["o_ades"] or "",
                      hm(r["o_rwy_in"]), hm(r["o_rwy_out"]), round(r["o_rot"]) if r["o_rot"] else "", hm(r["o_toc"]), hm(r["o_tod"]), hm(r["o_lx100"]), hm(r["o_lx50"]), hm(r["o_fx50"]), hm(r["o_fx100"]), r["o_levels_low"] if r["o_levels_low"] is not None else "",
-                     r["dt_radar_torre"] if r["dt_radar_torre"] is not None else "", r["dt_opdi_torre"] if r["dt_opdi_torre"] is not None else "", r["d_rot"] if r["d_rot"] is not None else ""] for r in res["rows"]]
+                     r["dt_radar_torre"] if r["dt_radar_torre"] is not None else "", r["dt_opdi_torre"] if r["dt_opdi_torre"] is not None else "", r["d_rot"] if r["d_rot"] is not None else "",
+                     (r.get("corr") or {}).get("actype") or "", (r.get("corr") or {}).get("wtc") or "", (r.get("corr") or {}).get("apt") or "", (r.get("corr") or {}).get("note") or "", "sim" if (r.get("corr") or {}).get("verified") else ""] for r in res["rows"]]
             sheets.append(("Cruzamento", cols, data))
             sheets.append(("Discrepâncias", cols, [d for d, r in zip(data, res["rows"]) if r["n_flags"]]))
             c = res["coverage"]
@@ -444,10 +445,24 @@ class Service:
         from .analysis.ops import nmir_lookup
         ground = self.db.ground_list(self.airport, self.dates)
         opdi = self.db.opdi_flights(self.airport, self.dates)
-        res = integrate.crosscheck(self.airport, self.flights, ground, opdi, lambda c, d: nmir_lookup(self.db, c, d))
+        res = integrate.crosscheck(self.airport, self.flights, ground, opdi, lambda c, d: nmir_lookup(self.db, c, d), self.db.corrections(self.dates))
         self.cross = res
         res["summary"] = {"ground": self.db.ground_summary(), "opdi": self.db.opdi_summary()}
         return res
+
+    def correction_set(self, csn, date, cls, actype=None, wtc=None, apt=None, note=None, verified=False):
+        r = self.db.correction_set(csn, date, cls, actype, wtc, apt, note, verified, self.airport)
+        # reflecte o tipo corrigido nos movimentos já carregados
+        if actype:
+            for f in self.all_flights:
+                if f["csn"] == csn and f["date"] == date and f["cls"] == cls:
+                    f["actype"] = r["actype"]; f["wtc"] = r["wtc"]
+        self.cross = None
+        return r
+
+    def correction_delete(self, csn, date, cls):
+        self.db.correction_delete(csn, date, cls); self.cross = None
+        return True
 
     def ia_context_preview(self) -> str:
         self.ensure_final()

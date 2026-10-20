@@ -351,8 +351,9 @@ window.onImportDone = async r => {
   $('progress').classList.add('hidden'); $('progressTxt').classList.add('hidden');
   if (!r.ok) { toast('Erro na importação: ' + r.error, 'err'); status('Erro na importação', 'err'); return; }
   const d = r.data;
+  const aux = d.aux || {}; const auxTxt = [aux.nmir ? `${fmt(aux.nmir)} registos NMIR` : '', aux.opdi ? `${fmt(aux.opdi)} eventos OPDI` : '', aux.ground ? `${fmt(aux.ground)} movimentos da torre` : ''].filter(Boolean).join(', ');
   let msg = d.new === 0 ? `Nada de novo: os ${d.found} ficheiros já estavam importados.`
-    : `${d.imported} ficheiro(s) novos importados (${fmt(d.rows)} plots) em ${(d.ms / 1000).toFixed(1)} s.`;
+    : `${d.imported} ficheiro(s) novos importados (${fmt(d.rows)} plots${auxTxt ? '; ' + auxTxt : ''}) em ${(d.ms / 1000).toFixed(1)} s.`;
   if (d.errors) msg += `\n${d.errors} com erro:\n` + d.error_list.join('\n');
   toast(msg, d.errors ? 'err' : 'ok');
   await refreshState(); await loadFilters();
