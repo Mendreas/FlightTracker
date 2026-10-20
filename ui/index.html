@@ -256,9 +256,14 @@
         <label class="chk"><input type="checkbox" id="gdTrails" checked> Rasto</label>
         <select id="gdBase" class="inp tiny"><option value="sat">Satélite</option><option value="osm">OSM</option><option value="none">Sem fundo</option></select>
       </div>
-      <div id="gdMap" class="gd-map"></div>
-      <div class="subtabs"><button class="subtab active" data-gsub="mov">Movimentos</button><button class="subtab" data-gsub="rot">ROT e taxi (A-SMGCS)</button><span class="spacer"></span><span id="gdCount" class="muted"></span><button class="btn sm" id="gdExport">⬇ Excel</button></div>
-      <div class="scroll" id="gdBody"><div class="empty">Importa o ficheiro da torre e aplica um filtro com dias de LPPT.</div></div>
+      <div class="gd-split" id="gdSplit">
+        <div class="gd-left" id="gdLeft">
+          <div class="subtabs"><button class="subtab active" data-gsub="mov">Movimentos</button><button class="subtab" data-gsub="rot">ROT e taxi (A-SMGCS)</button><span id="gdCount" class="muted"></span><button class="btn sm" id="gdExport">⬇ Excel</button></div>
+          <div class="scroll" id="gdBody"><div class="empty">Importa o ficheiro da torre e aplica um filtro com dias de LPPT.</div></div>
+        </div>
+        <div class="gd-handle" id="gdHandle" title="Arrasta para redimensionar"></div>
+        <div id="gdMap" class="gd-map"></div>
+      </div></div>
     </div>
 
     <!-- PONTOS -->

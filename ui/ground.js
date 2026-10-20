@@ -26,10 +26,12 @@ const Ground = (() => {
     netGroup = L.layerGroup().addTo(map); lblGroup = L.layerGroup().addTo(map); standGroup = L.layerGroup();
     routeGroup = L.layerGroup().addTo(map); trailGroup = L.layerGroup().addTo(map); acGroup = L.layerGroup().addTo(map);
     map.on('zoomend', () => { if ($('gdLabels').checked) drawLabels(); });
+    setTimeout(fitAirport, 100);
     $('gdBase').onchange = e => setBase(e.target.value);
     $('gdLabels').onchange = e => { e.target.checked ? drawLabels() : lblGroup.clearLayers(); };
     $('gdStands').onchange = e => { e.target.checked ? standGroup.addTo(map) : map.removeLayer(standGroup); };
   }
+  function fitAirport() { if (map) map.fitBounds([[38.762, -9.150], [38.800, -9.120]], { padding: [10, 10] }); }
   function setBase(k) {
     if (base) { map.removeLayer(base); base = null; }
     if (k === 'sat') base = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 19 });
@@ -85,7 +87,7 @@ const Ground = (() => {
       setSim(+$('gdTime').min);
       $('gdCount').textContent = `${rows.length} movimentos · ${Object.keys(routes).length} com percurso`;
       renderSub();
-      map.setView([38.781, -9.135], 14);
+      fitAirport();
     } catch (e) { body.innerHTML = `<div class="empty">Erro: ${esc(e.message)}</div>`; toast(e.message, 'err'); }
   }
   const epochOf = d => Date.UTC(2000 + +d.slice(0, 2), +d.slice(2, 4) - 1, +d.slice(4, 6)) / 1000;
@@ -199,9 +201,23 @@ const Ground = (() => {
   function stop() { playing = false; $('gdPlay').textContent = '▶'; if (raf) cancelAnimationFrame(raf); raf = null; }
 
   /* ---------------------------------------------------------------- ligações */
-  function onTab() { ensureMap(); setTimeout(() => map.invalidateSize(), 50); load(false); }
+  function onTab() { const first = !map; ensureMap(); setTimeout(() => { map.invalidateSize(); if (first) fitAirport(); }, 80); load(false); }
   function onFilter() { loadedKey = ''; if (document.querySelector('.tab.active')?.dataset.tab === 'solo') load(true); }
+  function initSplitter() {
+    const h = $('gdHandle'), left = $('gdLeft'), split = $('gdSplit');
+    try { const w = localStorage.getItem('fp.gdLeft'); if (w) left.style.width = w; } catch (e) {}
+    let drag = false;
+    h.onmousedown = e => { drag = true; h.classList.add('on'); e.preventDefault(); };
+    document.addEventListener('mousemove', e => {
+      if (!drag) return;
+      const r = split.getBoundingClientRect(); const w = Math.max(260, Math.min(r.width - 320, e.clientX - r.left));
+      left.style.width = w + 'px'; if (map) map.invalidateSize();
+    });
+    document.addEventListener('mouseup', () => { if (!drag) return; drag = false; h.classList.remove('on'); try { localStorage.setItem('fp.gdLeft', left.style.width); } catch (e) {} if (map) map.invalidateSize(); });
+    h.ondblclick = () => { left.style.width = '46%'; try { localStorage.removeItem('fp.gdLeft'); } catch (e) {} if (map) map.invalidateSize(); };
+  }
   document.addEventListener('DOMContentLoaded', () => {
+    initSplitter();
     $('gdPlay').onclick = () => playing ? stop() : play();
     $('gdTime').oninput = e => { stop(); setSim(+e.target.value); };
     document.querySelectorAll('[data-gsub]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x === b)); sub = b.dataset.gsub; renderSub(); });

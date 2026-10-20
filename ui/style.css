@@ -242,7 +242,13 @@ tr.rowsel{background:var(--sel)!important}tr.clk{cursor:pointer}
 .news-frame{flex:1;border:0;background:#eef2f7;width:100%}
 
 /* ---------- solo / taxi ---------- */
-.gd-map{height:52%;min-height:300px;background:var(--mapbg);border-bottom:1px solid var(--line);flex:none}
+.gd-split{display:flex;flex:1;min-height:0}
+.gd-left{display:flex;flex-direction:column;min-width:260px;width:46%;flex:none}
+.gd-left .scroll{padding:8px}
+.gd-handle{width:7px;cursor:col-resize;background:var(--line);flex:none;position:relative}
+.gd-handle:hover,.gd-handle.on{background:var(--accent)}
+.gd-handle::after{content:"⋮";position:absolute;top:50%;left:-1px;transform:translateY(-50%);color:#fff;font-size:14px}
+.gd-map{flex:1;min-width:300px;background:var(--mapbg)}
 .gd-ac{background:transparent;border:0}
 .gd-ac .dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px #000}
 .gd-ac .lbl{position:absolute;left:12px;top:-4px;font:11px var(--mono);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap}
