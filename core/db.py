@@ -122,6 +122,11 @@ class Database:
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
         c.execute("""
+        CREATE TABLE IF NOT EXISTS opdi_events(
+            flight_id VARCHAR, icao24 VARCHAR, csn VARCHAR, adep VARCHAR, ades VARCHAR, adep_p VARCHAR, ades_p VARCHAR,
+            typecode VARCHAR, model VARCHAR, registration VARCHAR, type VARCHAR, t DOUBLE, lat DOUBLE, lon DOUBLE, alt DOUBLE,
+            info_ref VARCHAR, at_apt BOOLEAN, airport VARCHAR, src VARCHAR)""")
+        c.execute("""
         CREATE TABLE IF NOT EXISTS ground(
             gid INTEGER, airport VARCHAR, date VARCHAR, mt VARCHAR, csn VARCHAR, rwy VARCHAR,
             actype VARCHAR, reg VARCHAR, ao VARCHAR, wtc VARCHAR, adep VARCHAR, ades VARCHAR, sid VARCHAR, star VARCHAR,
@@ -748,6 +753,62 @@ class Database:
         d0, d1 = c.execute("SELECT min(date), max(date) FROM ground WHERE src=?", [src]).fetchone()
         self._log(f"ground: {src} -> {n} movimentos ({d0}..{d1})")
         return {"rows": n, "from": d0, "to": d1}
+
+    # ----------------------------------------------------------------- OPDI (EUROCONTROL / OpenSky)
+    def import_opdi(self, path: str, airport: str = "LPPT") -> dict:
+        """Importa um CSV de flight events do OPDI (opdi_LPPT_AAAAMMDD.csv)."""
+        hdr = open(path, "rb").readline().decode("utf-8-sig", "replace").lower()
+        if "event_time" not in hdr or "flt_id" not in hdr:
+            raise RuntimeError("Este ficheiro não parece ser um CSV de eventos OPDI (faltam flt_id / event_time).")
+        src = os.path.basename(path)
+        c = self.con
+        c.execute("DELETE FROM opdi_events WHERE src = ?", [src])
+        at_col = next((h for h in hdr.rstrip("\r\n").split(",") if h.startswith("at_")), None)
+        at_expr = f'(lower(trim(r."{at_col}")) = \'true\')' if at_col else "NULL"
+        c.execute(f"""
+        INSERT INTO opdi_events
+        SELECT r.flight_id, lower(trim(r.icao24)), upper(trim(r.flt_id)), nullif(upper(trim(r.adep)),''), nullif(upper(trim(r.ades)),''),
+               nullif(upper(trim(r.adep_p)),''), nullif(upper(trim(r.ades_p)),''), nullif(upper(trim(r.typecode)),''), nullif(trim(r.model),''),
+               nullif(upper(trim(r.registration)),''), trim(r.type),
+               epoch(try_strptime(trim(r.event_time), '%Y-%m-%d %H:%M:%S')), TRY_CAST(r.latitude AS DOUBLE), TRY_CAST(r.longitude AS DOUBLE), TRY_CAST(r.altitude AS DOUBLE),
+               nullif(nullif(trim(r.info_ref),''),'nan'), {at_expr}, ?, ?
+        FROM read_csv(?, header=true, all_varchar=true, ignore_errors=true, null_padding=true) r""", [airport, src, path])
+        n = c.execute("SELECT count(*) FROM opdi_events WHERE src=?", [src]).fetchone()[0]
+        nf = c.execute("SELECT count(DISTINCT flight_id) FROM opdi_events WHERE src=?", [src]).fetchone()[0]
+        self._log(f"opdi: {src} -> {n} eventos, {nf} voos")
+        return {"rows": n, "flights": nf}
+
+    def opdi_summary(self) -> dict:
+        r = self.con.execute("SELECT count(*), count(DISTINCT flight_id), strftime(to_timestamp(min(t)), '%y%m%d'), strftime(to_timestamp(max(t)), '%y%m%d') FROM opdi_events").fetchone()
+        return {"events": r[0], "flights": r[1], "from": r[2], "to": r[3]}
+
+    def opdi_flights(self, airport: str, dates: list[str]) -> list[dict]:
+        """Um registo por voo OPDI com ligação ao aeroporto (ADEP ou ADES) e marcos: entrada/saída de pista no
+        aeroporto, descolagem/aterragem, TOC/TOD, cruzamentos FL50/FL100, nº de patamares abaixo FL100."""
+        if not dates:
+            return []
+        cur = self.con.execute("""
+        WITH e AS (SELECT * FROM opdi_events WHERE airport = ? AND (adep = ? OR ades = ?)),
+        f AS (SELECT flight_id, any_value(icao24) icao24, any_value(csn) csn, any_value(adep) adep, any_value(ades) ades,
+                     any_value(typecode) typecode, any_value(registration) reg, any_value(model) model,
+                     min(t) FILTER (type='first_seen') t_first, max(t) FILTER (type='last_seen') t_last,
+                     min(t) FILTER (type='entry-runway' AND at_apt) t_rwy_in, max(t) FILTER (type='exit-runway' AND at_apt) t_rwy_out,
+                     any_value(info_ref) FILTER (type IN ('exit-runway','entry-runway') AND at_apt) rwy_ref,
+                     min(t) FILTER (type='take-off') t_takeoff, max(t) FILTER (type='landing') t_landing,
+                     min(t) FILTER (type='top-of-climb') t_toc, max(t) FILTER (type='top-of-descent') t_tod,
+                     min(t) FILTER (type='first-xing-fl50') t_fx50, min(t) FILTER (type='first-xing-fl100') t_fx100,
+                     max(t) FILTER (type='last-xing-fl100') t_lx100, max(t) FILTER (type='last-xing-fl50') t_lx50,
+                     count(*) FILTER (type='level-start' AND alt < 10000 AND alt > 1500) n_levels_low,
+                     string_agg(DISTINCT info_ref, ' ') FILTER (type IN ('entry-taxiway','exit-taxiway') AND at_apt AND info_ref IS NOT NULL) twy,
+                     min(t) FILTER (type='entry-parking_position' AND at_apt) t_park_in, max(t) FILTER (type='exit-parking_position' AND at_apt) t_park_out
+              FROM e GROUP BY flight_id)
+        SELECT *, CASE WHEN ades = ? THEN 'arr' ELSE 'dep' END cls,
+               strftime(to_timestamp(coalesce(CASE WHEN ades = ? THEN coalesce(t_rwy_in, t_last, t_landing) ELSE coalesce(t_rwy_out, t_takeoff, t_first) END, t_first)), '%y%m%d') date
+        FROM f
+        WHERE strftime(to_timestamp(coalesce(CASE WHEN ades = ? THEN coalesce(t_rwy_in, t_last, t_landing) ELSE coalesce(t_rwy_out, t_takeoff, t_first) END, t_first)), '%y%m%d')
+              IN (SELECT unnest(?::VARCHAR[]))""", [airport, airport, airport, airport, airport, airport, dates])
+        names = [d[0] for d in cur.description]
+        return [dict(zip(names, r)) for r in cur.fetchall()]
 
     def ground_summary(self) -> dict:
         r = self.con.execute("SELECT count(*), min(date), max(date), count(DISTINCT date) FROM ground").fetchone()

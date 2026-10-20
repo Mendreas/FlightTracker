@@ -28,7 +28,7 @@ class Service:
         self.final = None; self.final_params = None; self.pairs = None; self.deps = None; self.movs = None
         self.star = None; self.app = None; self.app_dist = None; self.rrms = None; self.rot = None
         self.point_rows = None; self.point_name = None; self.seq = None
-        self.ground = None
+        self.ground = None; self.cross = None
 
     # ------------------------------------------------------------- filtro
     def set_filter(self, dates, blocks, csn="", cls="", airport=None):
@@ -185,6 +185,29 @@ class Service:
     def export_excel(self, path: str, kind: str, extra: dict | None = None):
         extra = extra or {}
         sheets = []
+        if kind == "cross":
+            res = self.cross or self.crosscheck()
+            hm = lambda t: time.strftime("%H:%M:%S", time.gmtime(t)) if t else ""
+            cols = ["DATA", "VOO", "MOV", "FONTES", "DISCREPÂNCIAS",
+                    "RADAR 1º plot", "RADAR último plot", "RADAR nº plots", "RADAR alt máx",
+                    "NMIR tipo", "NMIR WTC", "NMIR ADEP", "NMIR ADES", "NMIR origem",
+                    "TORRE tipo", "TORRE WTC", "TORRE matrícula", "TORRE operador", "TORRE RWY", "TORRE stand", "TORRE ADEP/ADES", "TORRE AOBT", "TORRE RWY_ENT", "TORRE ATOT", "TORRE ALDT", "TORRE RWY_VAC", "TORRE AIBT", "TORRE ROT (s)", "TORRE taxi (s)", "TORRE GA",
+                    "OPDI id", "OPDI icao24", "OPDI matrícula", "OPDI tipo", "OPDI modelo", "OPDI ADEP", "OPDI ADES", "OPDI entrada pista", "OPDI saída pista", "OPDI ROT (s)", "OPDI TOC", "OPDI TOD", "OPDI último FL100", "OPDI último FL50", "OPDI 1º FL50", "OPDI 1º FL100", "OPDI patamares <FL100",
+                    "Δt radar−torre (s)", "Δt OPDI−torre (s)", "ΔROT OPDI−torre (s)"]
+            data = [[fmt_date(r["date"]), r["csn"], r["cls"].upper(), r["src"], "; ".join(r["flags"]),
+                     hm(r["r_t_first"]), hm(r["r_t_last"]), r["r_n"] or "", r["r_alt_max"] or "",
+                     r["n_type"] or "", r["n_wtc"] or "", r["n_adep"] or "", r["n_ades"] or "", r["n_src"] or "",
+                     r["t_type"] or "", r["t_wtc"] or "", r["t_reg"] or "", r["t_ao"] or "", r["t_rwy"] or "", r["t_stand"] or "", r["t_apt"] or "",
+                     hm(r["t_aobt"]), hm(r["t_rwy_ent"]), hm(r["t_atot"]), hm(r["t_aldt"]), hm(r["t_rwy_vac"]), hm(r["t_aibt"]),
+                     round(r["t_rot"]) if r["t_rot"] else "", round(r["t_taxi"]) if r["t_taxi"] else "", "GA" if r["t_ga"] else "",
+                     r["o_id"] or "", r["o_icao24"] or "", r["o_reg"] or "", r["o_type"] or "", r["o_model"] or "", r["o_adep"] or "", r["o_ades"] or "",
+                     hm(r["o_rwy_in"]), hm(r["o_rwy_out"]), round(r["o_rot"]) if r["o_rot"] else "", hm(r["o_toc"]), hm(r["o_tod"]), hm(r["o_lx100"]), hm(r["o_lx50"]), hm(r["o_fx50"]), hm(r["o_fx100"]), r["o_levels_low"] if r["o_levels_low"] is not None else "",
+                     r["dt_radar_torre"] if r["dt_radar_torre"] is not None else "", r["dt_opdi_torre"] if r["dt_opdi_torre"] is not None else "", r["d_rot"] if r["d_rot"] is not None else ""] for r in res["rows"]]
+            sheets.append(("Cruzamento", cols, data))
+            sheets.append(("Discrepâncias", cols, [d for d, r in zip(data, res["rows"]) if r["n_flags"]]))
+            c = res["coverage"]
+            sheets.append(("Cobertura", ["INDICADOR", "VALOR"], [[k, v if v is not None else ""] for k, v in c.items()]))
+            return reports.write_excel(path, sheets)
         if kind == "ground":
             rows = self.ground or self.db.ground_list(self.airport, self.dates)
             hm = lambda t: time.strftime("%H:%M:%S", time.gmtime(t)) if t else ""
@@ -414,6 +437,17 @@ class Service:
 
     def ground_raw(self, gid: int):
         return self.db.ground_raw(int(gid))
+
+    # ------------------------------------------------------------- Cruzamento de fontes
+    def crosscheck(self):
+        from . import integrate
+        from .analysis.ops import nmir_lookup
+        ground = self.db.ground_list(self.airport, self.dates)
+        opdi = self.db.opdi_flights(self.airport, self.dates)
+        res = integrate.crosscheck(self.airport, self.flights, ground, opdi, lambda c, d: nmir_lookup(self.db, c, d))
+        self.cross = res
+        res["summary"] = {"ground": self.db.ground_summary(), "opdi": self.db.opdi_summary()}
+        return res
 
     def ia_context_preview(self) -> str:
         self.ensure_final()

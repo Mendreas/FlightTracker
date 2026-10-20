@@ -22,7 +22,7 @@ const Ground = (() => {
   function ensureMap() {
     if (map) return;
     map = L.map('gdMap', { zoomControl: true, preferCanvas: true }).setView([38.781, -9.135], 14);
-    setBase('sat');
+    setBase('osm');
     netGroup = L.layerGroup().addTo(map); lblGroup = L.layerGroup().addTo(map); standGroup = L.layerGroup();
     routeGroup = L.layerGroup().addTo(map); trailGroup = L.layerGroup().addTo(map); acGroup = L.layerGroup().addTo(map);
     map.on('zoomend', () => { if ($('gdLabels').checked) drawLabels(); });
@@ -140,9 +140,13 @@ const Ground = (() => {
   }
 
   /* ---------------------------------------------------------------- selecção e animação */
-  function select(gid) {
+  function select(gid, o = {}) {
     sel = gid === sel ? null : gid;
-    document.querySelectorAll('#gdTable tr[data-i]').forEach(tr => tr.classList.toggle('sel', rows[+tr.dataset.i].gid === sel));
+    document.querySelectorAll('#gdTable tr[data-i]').forEach(tr => {
+      const on = rows[+tr.dataset.i].gid === sel; tr.classList.toggle('sel', on);
+      if (on && o.scrollTable) tr.scrollIntoView({ block: 'center' });
+    });
+    if (o.scrollTable && sub !== 'mov') { sub = 'mov'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'mov')); renderSub(); }
     routeGroup.clearLayers();
     if (sel == null) return;
     const r = routes[sel], row = rows.find(x => x.gid === sel);
@@ -150,8 +154,8 @@ const Ground = (() => {
     L.polyline(r.pts, { color: COL[r.mt] || '#fff', weight: 4, opacity: .9 }).addTo(routeGroup);
     L.circleMarker(r.pts[0], { radius: 5, color: '#35c46a', fillOpacity: 1 }).bindTooltip('início ' + hms(r.t0)).addTo(routeGroup);
     L.circleMarker(r.pts[r.pts.length - 1], { radius: 5, color: '#ff5d5d', fillOpacity: 1 }).bindTooltip('fim ' + hms(r.t1)).addTo(routeGroup);
-    map.fitBounds(L.latLngBounds(r.pts).pad(.3));
-    setSim(r.t0 - dayEpoch + 1);
+    if (!o.keepTime) { map.fitBounds(L.latLngBounds(r.pts).pad(.3)); setSim(r.t0 - dayEpoch + 1); }
+    else drawFrame();
   }
   function posAt(r, t) {
     const T = r.t, P = r.pts;
@@ -177,7 +181,7 @@ const Ground = (() => {
       let mk = markers.get(+gid);
       if (!mk) {
         mk = L.marker(p, { icon: L.divIcon({ className: 'gd-ac', html: `<div class="dot" style="background:${COL[r.mt]}"></div><div class="lbl">${esc(r.csn)}</div>`, iconSize: [10, 10], iconAnchor: [5, 5] }) });
-        mk.on('click', () => select(+gid)); mk.addTo(acGroup); markers.set(+gid, mk);
+        mk.on('click', () => select(+gid, { keepTime: true, scrollTable: true })); mk.addTo(acGroup); markers.set(+gid, mk);
       } else mk.setLatLng(p);
       mk.getElement()?.classList.toggle('sel', +gid === sel);
       if (trails) {
@@ -230,6 +234,67 @@ const Ground = (() => {
     };
     $('gdExport').onclick = async () => { try { const p = await call('export', 'ground', {}, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
   });
-  return { onTab, onFilter };
+  /* ================================================================ Cruzamento de fontes */
+  let cross = null, crossKey = '';
+  const hmsAbs = t => t == null ? '—' : new Date(t * 1000).toISOString().slice(11, 19);
+  function crossRender() {
+    const body = $('crBody'); if (!cross) return;
+    const c = cross.coverage, filt = $('crFilter').value, q = ($('crCsn').value || '').trim().toUpperCase();
+    let rows = cross.rows;
+    if (filt === 'flags') rows = rows.filter(r => r.n_flags);
+    else if (filt === 'noradar') rows = rows.filter(r => !r.src.includes('R'));
+    else if (filt === 'notorre') rows = rows.filter(r => !r.src.includes('T'));
+    else if (filt === 'noopdi') rows = rows.filter(r => !r.src.includes('O'));
+    else if (filt === 'all3') rows = rows.filter(r => r.src.includes('R') && r.src.includes('T') && r.src.includes('O'));
+    if (q) rows = rows.filter(r => r.csn.includes(q));
+    const pct = (a, b) => b ? ` (${Math.round(a / b * 100)}%)` : '';
+    let h = '<div class="kgrid">' + C.kcard('Movimentos', c.total, 'união das fontes') + C.kcard('Radar', c.radar) + C.kcard('Torre', c.torre) + C.kcard('OPDI', c.opdi) +
+      C.kcard('Radar ∩ Torre', c.r_t + pct(c.r_t, c.radar)) + C.kcard('Radar ∩ OPDI', c.r_o + pct(c.r_o, c.radar)) + C.kcard('Torre ∩ OPDI', c.t_o + pct(c.t_o, c.torre)) + C.kcard('Nas 3', c.all3) +
+      C.kcard('Com NMIR', c.nmir + pct(c.nmir, c.total)) + C.kcard('Discrepâncias', c.with_flags, `tipo ${c.type_mismatch} · ADEP/ADES ${c.apt_mismatch}`, c.with_flags ? 'warn' : 'ok') +
+      C.kcard('Só radar', c.only_radar) + C.kcard('Só torre', c.only_torre) + C.kcard('Só OPDI', c.only_opdi) +
+      (c.dt_radar_torre_med != null ? C.kcard('Δt radar−torre', `${c.dt_radar_torre_med} s`, 'mediana · 1º plot − ATOT / último plot − ALDT') : '') +
+      (c.dt_opdi_torre_med != null ? C.kcard('Δt OPDI−torre', `${c.dt_opdi_torre_med} s`, 'mediana · evento de pista OPDI − ATOT/ALDT') : '') + '</div>';
+    const srcB = s => ['R', 'N', 'T', 'O'].map(k => `<span class="src ${s.includes(k) ? 'on' : ''}">${k}</span>`).join('');
+    h += C.table([
+      { k: 'date', label: 'Data', fmt: v => fmtD(v) }, { k: 'csn', label: 'Voo', fmt: (v, r) => r.flight_id ? `<a href="#" class="csn-link" data-fid="${r.flight_id}"><b>${esc(v)}</b></a>` : `<b>${esc(v)}</b>` },
+      { k: 'cls', label: 'Mov.', fmt: v => `<span class="badge ${v}">${v.toUpperCase()}</span>` }, { k: 'src', label: 'Fontes', fmt: srcB },
+      { k: 'flags', label: 'Discrepâncias', fmt: v => v.filter(f => !f.startsWith('sem ')).map(f => `<span class="flag">${esc(f)}</span>`).join(' ') },
+      { k: 'n_type', label: 'Tipo NMIR', fmt: (v, r) => v ? `${esc(v)}${r.n_src !== 'nmir' ? '<span class="muted" title="tipo herdado de outro dia">*</span>' : ''}` : '—' }, { k: 't_type', label: 'Tipo torre', fmt: v => v || '—' }, { k: 'o_type', label: 'Tipo OPDI', fmt: v => v || '—' },
+      { k: 't_reg', label: 'Matrícula', fmt: (v, r) => esc(v || r.o_reg || '—') }, { k: 'o_icao24', label: 'icao24', fmt: v => v || '—' },
+      { k: 'n_apt', label: 'ADEP/ADES', fmt: (v, r) => { const a = [r.cls === 'arr' ? r.n_adep : r.n_ades, r.t_apt, r.cls === 'arr' ? r.o_adep : r.o_ades].map(x => x || '·'); return `<span class="mono" title="NMIR / torre / OPDI">${a.join(' / ')}</span>`; } },
+      { k: 't_rwy', label: 'RWY', fmt: v => v || '—' }, { k: 't_stand', label: 'Stand', fmt: v => v || '—' },
+      { k: 'r_t_first', label: 'Radar 1º/últ.', fmt: (v, r) => r.flight_id ? `${hmsAbs(r.r_t_first)}–${hmsAbs(r.r_t_last)}` : '—' },
+      { k: 't_atot', label: 'Torre ATOT/ALDT', fmt: (v, r) => hmsAbs(r.cls === 'dep' ? r.t_atot : r.t_aldt) },
+      { k: 'o_rwy_in', label: 'OPDI pista', fmt: (v, r) => hmsAbs(r.cls === 'dep' ? r.o_rwy_out : r.o_rwy_in) },
+      { k: 'dt_radar_torre', label: 'Δt R−T', fmt: v => v == null ? '—' : `${v > 0 ? '+' : ''}${v} s` }, { k: 'dt_opdi_torre', label: 'Δt O−T', fmt: v => v == null ? '—' : `${v > 0 ? '+' : ''}${v} s` },
+      { k: 't_rot', label: 'ROT torre', fmt: v => v == null ? '—' : Math.round(v) + ' s' }, { k: 'o_rot', label: 'ROT OPDI', fmt: v => v == null ? '—' : Math.round(v) + ' s' },
+      { k: 't_taxi', label: 'Taxi', fmt: v => dur(v) }, { k: 'o_tod', label: 'TOD', fmt: v => hmsAbs(v) }, { k: 'o_levels_low', label: 'Pat. <FL100', fmt: v => v == null ? '—' : v },
+    ], rows, { id: 'crTable', limit: 4000 });
+    body.innerHTML = h + `<p class="hint">R = radar CNS · N = NMIR · T = ficheiro da torre (A-SMGCS) · O = OPDI (OpenSky). Emparelhamento por callsign + data + tipo de movimento, com o instante mais próximo (janela 20 min). Tipo NMIR com * = herdado de outro dia (não conta como discrepância). O ROT do OPDI nas chegadas é aproximado (o evento de saída de pista é detetado tarde por falta de cobertura ADS-B no solo).</p>`;
+    body.querySelectorAll('.csn-link').forEach(a => a.onclick = ev => { ev.preventDefault(); FP.focusFlight(+a.dataset.fid); });
+    $('crInfo').textContent = `${rows.length} de ${cross.rows.length} linhas`;
+  }
+  async function crossRun(force) {
+    const key = [...FP.state.days].sort().join(',') + '|' + FP.state.airport;
+    if (!force && cross && key === crossKey) { crossRender(); return; }
+    const body = $('crBody');
+    if (!FP.state.days.size) { body.innerHTML = '<div class="empty">Aplica um filtro com pelo menos um dia.</div>'; return; }
+    body.innerHTML = '<div class="empty">⏳ A cruzar radar, NMIR, torre e OPDI…</div>';
+    try { cross = await call('crosscheck'); crossKey = key; crossRender(); }
+    catch (e) { body.innerHTML = `<div class="empty">Erro: ${esc(e.message)}</div>`; toast(e.message, 'err'); }
+  }
+  function onTabCross() { crossRun(false); }
+  function onFilterCross() { crossKey = ''; cross = null; }
+  document.addEventListener('DOMContentLoaded', () => {
+    $('crRun').onclick = () => crossRun(true);
+    $('crFilter').onchange = crossRender; $('crCsn').oninput = crossRender;
+    $('crImportOpdi').onclick = async () => {
+      try { const r = await call('import_opdi'); if (!r) return; toast(`OPDI: ${fmt(r.rows)} eventos, ${fmt(r.flights)} voos de ${r.files} ficheiro(s).`, 'ok'); crossRun(true); }
+      catch (e) { toast(e.message, 'err'); }
+    };
+    $('crImportGround').onclick = () => $('gdImport').click();
+    $('crExport').onclick = async () => { try { const p = await call('export', 'cross', {}, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
+  });
+  return { onTab, onFilter, onTabCross, onFilterCross };
 })();
 window.Ground = Ground;

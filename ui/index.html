@@ -92,6 +92,7 @@
       <button class="tab" data-tab="ana">📈 Análise Op.</button>
       <button class="tab" data-tab="kpi">📊 KPIs</button>
       <button class="tab" data-tab="solo">🛫 Solo</button>
+      <button class="tab" data-tab="cross">🔗 Cruzamento</button>
       <button class="tab" data-tab="pts">📍 Pontos</button>
       <button class="tab" data-tab="ia">🤖 Análise IA</button>
       <button class="tab" data-tab="pref">⚙</button>
@@ -100,7 +101,7 @@
         <select id="selGroup" class="inp tiny"></select>
         <label class="chk"><input type="checkbox" id="chkColorCls" checked> Cor por classe</label>
         <label class="chk"><input type="checkbox" id="chkTiles" checked> Mapa de fundo</label>
-        <select id="selBase" class="inp tiny"><option value="osm">OSM escuro</option><option value="ruas">Ruas</option><option value="sat">Satélite</option></select>
+        <select id="selBase" class="inp tiny"><option value="ruas">Ruas</option><option value="osm">OSM</option><option value="sat">Satélite</option></select>
       </span>
     </nav>
 
@@ -254,7 +255,7 @@
         <label class="chk"><input type="checkbox" id="gdLabels" checked> Nomes</label>
         <label class="chk"><input type="checkbox" id="gdStands"> Stands</label>
         <label class="chk"><input type="checkbox" id="gdTrails" checked> Rasto</label>
-        <select id="gdBase" class="inp tiny"><option value="sat">Satélite</option><option value="osm">OSM</option><option value="none">Sem fundo</option></select>
+        <select id="gdBase" class="inp tiny"><option value="osm">OSM</option><option value="sat">Satélite</option><option value="none">Sem fundo</option></select>
       </div>
       <div class="gd-split" id="gdSplit">
         <div class="gd-left" id="gdLeft">
@@ -264,6 +265,20 @@
         <div class="gd-handle" id="gdHandle" title="Arrasta para redimensionar"></div>
         <div id="gdMap" class="gd-map"></div>
       </div></div>
+    </div>
+
+    <!-- CRUZAMENTO DE FONTES -->
+    <div id="tab-cross" class="tabpane">
+      <div class="toolbar wrap">
+        <button class="btn" id="crImportOpdi" title="Importar CSV de flight events do OPDI (opdi_LPPT_AAAAMMDD.csv)">📥 OPDI…</button>
+        <button class="btn" id="crImportGround" title="Importar o export operacional da torre">📥 Ficheiro da torre…</button>
+        <button class="btn primary" id="crRun">⟳ Cruzar fontes</button>
+        <select id="crFilter" class="inp tiny"><option value="all">Todos</option><option value="flags">Só discrepâncias</option><option value="noradar">Sem radar</option><option value="notorre">Sem torre</option><option value="noopdi">Sem OPDI</option><option value="all3">Nas 3 fontes</option></select>
+        <input id="crCsn" class="inp tiny" placeholder="callsign" style="width:110px">
+        <span class="spacer"></span><span id="crInfo" class="muted"></span>
+        <button class="btn" id="crExport">⬇ Excel</button>
+      </div>
+      <div class="scroll" id="crBody"><div class="empty">Aplica um filtro e clica "Cruzar fontes". Fontes: radar (R), NMIR (N), ficheiro da torre (T) e OPDI (O).</div></div>
     </div>
 
     <!-- PONTOS -->

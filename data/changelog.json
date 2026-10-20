@@ -13,6 +13,21 @@
           "Percurso no solo de cada voo reconstruído a partir da sequência TAXI_OUT / TAXI_IN e dos tempos reais; animação do dia com relógio, velocidade e rasto; ligação ao movimento radar correspondente.",
           "ROT (ocupação de pista) medido: chegadas ALDT → saída de pista, partidas entrada na pista → ATOT; por saída/HP, WTC e pista; tempos de taxi por stand; exportação Excel."
         ]
+      },
+      {
+        "title": "Cruzamento de fontes e OPDI",
+        "items": [
+          "Importação dos CSV de flight events do OPDI (EUROCONTROL/OpenSky): ADEP/ADES, icao24, matrícula, tipo, entrada/saída de pista, TOC/TOD, cruzamentos FL50/FL100, patamares abaixo de FL100.",
+          "Aba Cruzamento: um registo por movimento com o que dizem o radar, o NMIR, o ficheiro da torre e o OPDI; cobertura de cada fonte, emparelhamento por callsign/data/instante e sinalização de discrepâncias (tipo, WTC, ADEP/ADES, desvios de tempo, go-arounds, fontes em falta).",
+          "Excel com todas as fontes lado a lado (folhas Cruzamento, Discrepâncias e Cobertura)."
+        ]
+      },
+      {
+        "title": "Interface",
+        "items": [
+          "Tema claro por omissão; mapa 'Ruas' por omissão no Mapa e 'OSM' no Solo.",
+          "Na aba Solo a tabela fica à esquerda e o mapa à direita, com divisor arrastável; clicar num avião no mapa seleciona-o na tabela sem mexer no relógio."
+        ]
       }
     ]
   },

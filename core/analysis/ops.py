@@ -86,9 +86,9 @@ def kpis(flights: list[dict], final_results: list[dict], star: dict | None) -> d
 
 # ------------------------------------------------------------------ RRMS
 def nmir_lookup(db, csn: str, date: str) -> dict:
-    r = db.con.execute("SELECT actype, wtc FROM nmir WHERE csn=? AND date=? LIMIT 1", [csn, date]).fetchone()
+    r = db.con.execute("SELECT actype, wtc, adep, ades FROM nmir WHERE csn=? AND date=? LIMIT 1", [csn, date]).fetchone()
     if r:
-        return {"type": r[0], "wtc": r[1] or wtc_from_type(r[0]), "source": "nmir"}
+        return {"type": r[0], "wtc": r[1] or wtc_from_type(r[0]), "adep": r[2], "ades": r[3], "source": "nmir"}
     r = db.con.execute("SELECT actype, wtc FROM nmir WHERE csn=? ORDER BY date DESC LIMIT 1", [csn]).fetchone()
     if r:
         return {"type": r[0], "wtc": r[1] or wtc_from_type(r[0]), "source": "fallback"}

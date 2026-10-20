@@ -268,6 +268,24 @@ class Api:
     def ground_list(self):
         return self._safe(self.svc.ground_list)
 
+    def import_opdi(self):
+        try:
+            res = self.window.create_file_dialog(OPEN_DIALOG, allow_multiple=True, file_types=("OPDI flight events (*.csv)", "Todos (*.*)"))
+            if not res:
+                return {"ok": True, "data": None}
+            paths = list(res) if isinstance(res, (list, tuple)) else [res]
+            def f():
+                tot = {"rows": 0, "flights": 0, "files": 0}
+                for p in paths:
+                    r = self.db.import_opdi(p, "LPPT"); tot["rows"] += r["rows"]; tot["flights"] += r["flights"]; tot["files"] += 1
+                return tot
+            return self._safe(f)
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+
+    def crosscheck(self):
+        return self._safe(self.svc.crosscheck)
+
     def ground_routes(self, gids):
         return self._safe(self.svc.ground_routes, gids)
 

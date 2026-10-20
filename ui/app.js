@@ -67,7 +67,7 @@ function initMap() {
     sat:  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 18 }),
     ruas: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 18 }),
   };
-  tiles = BASES.osm;
+  tiles = BASES.ruas;
   Object.values(BASES).forEach(t => t.on('tileerror', () => { if (!t._warned) { t._warned = true; toast('Sem acesso ao mapa de fundo (sem internet?). As trajetórias continuam visíveis.', 'err'); } }));
   $('selBase').onchange = e => { map.removeLayer(tiles); tiles = BASES[e.target.value]; if ($('chkTiles').checked) tiles.addTo(map); };
   tiles.addTo(map);
@@ -426,14 +426,14 @@ function applyTheme(t) {
   document.documentElement.dataset.theme = t; try { localStorage.setItem('fp.theme', t); } catch (e) {}
   const b = $('btnTheme'); if (b) b.textContent = t === 'light' ? '☀' : '🌙';
 }
-(function () { let t = 'dark'; try { t = localStorage.getItem('fp.theme') || 'dark'; } catch (e) {} document.documentElement.dataset.theme = t; })();
+(function () { let t = 'light'; try { t = localStorage.getItem('fp.theme') || 'light'; } catch (e) {} document.documentElement.dataset.theme = t; })();
 window.FP = { state, call, toast, status, showTab, selectFlight, focusFlight, get map() { return map; }, get overlay() { return overlayGroup; }, THR, AIRPORT_CENTER, fmt };
 document.addEventListener('DOMContentLoaded', () => {
   $('btnImport').onclick = () => importFolder(false);
   $('btnReimport').onclick = () => importFolder(true);
   $('btnNmir').onclick = async () => { try { const n = await call('import_nmir'); if (n != null) { toast(`${fmt(n)} registo(s) NMIR adicionados.`, 'ok'); await refreshState(); applyFilter(); } } catch (e) { toast(e.message, 'err'); } };
   $('btnFolder').onclick = () => call('open_data_folder').catch(e => toast(e.message, 'err'));
-  applyTheme(document.documentElement.dataset.theme || 'dark');
+  applyTheme(document.documentElement.dataset.theme || 'light');
   $('btnAbout').onclick = () => { $('aboutVer').textContent = ($('ver').textContent || '').replace(/^v/, ''); $('about').classList.remove('hidden'); };
   $('aboutClose').onclick = () => $('about').classList.add('hidden');
   $('about').onclick = e => { if (e.target === $('about')) $('about').classList.add('hidden'); };

@@ -259,3 +259,6 @@ tr.rowsel{background:var(--sel)!important}tr.clk{cursor:pointer}
 .mono{font-family:var(--mono)}
 tr.gd-row.sel td{background:var(--sel)}
 #gdCount{margin-left:auto;margin-right:8px;font-size:12px}
+.src{display:inline-block;width:16px;text-align:center;font-size:10px;font-weight:700;border-radius:3px;margin-right:2px;background:var(--line);color:var(--muted)}
+.src.on{background:var(--accent);color:#fff}
+.flag{display:inline-block;background:var(--errbg);color:var(--err);border-radius:4px;padding:1px 6px;font-size:11px;margin:1px 2px 1px 0;white-space:nowrap}
