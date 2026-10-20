@@ -112,6 +112,7 @@ class Api:
             raise RuntimeError("Não foi possível abrir a base de dados (está outro FlightTracker aberto?). " + self.init_error)
         s = self.db.summary()
         s["version"] = VERSION
+        s["lan"] = {"on": True, "url": f"http://{_lan_ip()}:{sys.argv[2]}/index.html"} if ("--lan" in sys.argv and len(sys.argv) > 2 and sys.argv[1] == "--worker") else {"on": False}
         s["importing"] = self._importing
         s["log_path"] = str(data_dir() / "app.log")
         return s
@@ -511,12 +512,24 @@ def _wait_server(port: int, timeout: float = 60.0) -> bool:
     return False
 
 
+LAN = "--lan" in sys.argv or os.environ.get("FLIGHTTRACKER_LAN") == "1"   # permite abrir a app noutros dispositivos da rede (iPad, outro PC)
+FIXED_PORT = int(os.environ.get("FLIGHTTRACKER_PORT", "0") or 0)
+
+
+def _lan_ip() -> str:
+    try:
+        so = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); so.connect(("10.255.255.255", 1)); ip = so.getsockname()[0]; so.close()
+        return ip
+    except OSError:
+        return socket.gethostbyname(socket.gethostname())
+
+
 def _spawn_worker(port: int, log: Path):
     """Lança o motor de dados como processo separado: o próprio .exe (ou python app.py) com --worker."""
     if getattr(sys, "frozen", False):
-        cmd = [sys.executable, "--worker", str(port), str(data_dir()), str(log)]
+        cmd = [sys.executable, "--worker", str(port), str(data_dir()), str(log)] + (["--lan"] if LAN else [])
     else:
-        cmd = [sys.executable, str(Path(__file__).resolve()), "--worker", str(port), str(data_dir()), str(log)]
+        cmd = [sys.executable, str(Path(__file__).resolve()), "--worker", str(port), str(data_dir()), str(log)] + (["--lan"] if LAN else [])
     flags = 0
     if os.name == "nt":
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
@@ -528,8 +541,10 @@ def main():
     os.environ.setdefault("no_proxy", "127.0.0.1,localhost")
     log = setup_logging(data_dir())
     logging.info("=== FlightTracker %s a arrancar (python %s, frozen=%s) ===", VERSION, sys.version.split()[0], getattr(sys, "frozen", False))
-    port = _free_port()
+    port = FIXED_PORT or (8765 if LAN else _free_port())
     proc = _spawn_worker(port, log)
+    if LAN:
+        logging.info("Acesso na rede local: http://%s:%s/index.html", _lan_ip(), port)
     logging.info("Processo de dados iniciado (pid %s) na porta %s", proc.pid, port)
     url = f"http://127.0.0.1:{port}/index.html"
     ok = _wait_server(port, 60)
@@ -584,8 +599,8 @@ def _run_in_browser(url: str, port: int):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) >= 5 and sys.argv[1] == "--worker":
+    if len(sys.argv) >= 5 and sys.argv[1] == "--worker":   # [--lan] opcional no fim
         from core import worker
-        worker.run(int(sys.argv[2]), sys.argv[3], sys.argv[4])
+        worker.run(int(sys.argv[2]), sys.argv[3], sys.argv[4], "--lan" in sys.argv)
     else:
         main()

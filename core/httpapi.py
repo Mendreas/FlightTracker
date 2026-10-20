@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 
-def start_server(api, ui_dir: Path, port: int = 0) -> int:
+def start_server(api, ui_dir: Path, port: int = 0, host: str = "127.0.0.1") -> int:
     """Arranca o servidor numa thread e devolve a porta."""
     ui_dir = Path(ui_dir).resolve()
 
@@ -60,7 +60,7 @@ def start_server(api, ui_dir: Path, port: int = 0) -> int:
                 body = json.dumps({"ok": False, "error": str(e)}).encode("utf-8")
             self._send(200, body, "application/json; charset=utf-8")
 
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    srv = ThreadingHTTPServer((host, port), Handler)
     srv.daemon_threads = True
     threading.Thread(target=srv.serve_forever, name="http-api", daemon=True).start()
     logging.info("Servidor local em http://127.0.0.1:%s", srv.server_address[1])

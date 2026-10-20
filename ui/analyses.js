@@ -591,7 +591,7 @@ const Analyses = (() => {
     if (name === 'cross' && window.Ground) Ground.onTabCross();
     if (name === 'pts' && !R.pt && $('ptSel').value) { runPt(); }
     if (name === 'ia') loadIa();
-    if (name === 'pref') { loadIa(); call('get_state').then(s => $('prDb').textContent = `${s.db_path} · ${(s.db_bytes / 1048576).toFixed(0)} MB · ${s.files} ficheiros · ${fmt(s.rows)} plots · ${s.nmir} registos NMIR`); }
+    if (name === 'pref') { loadIa(); call('get_state').then(s => { $('prLan').innerHTML = s.lan && s.lan.on ? `Ativo — no iPad abre <b>${esc(s.lan.url)}</b>` : 'Inativo (a app só responde neste PC).'; }); call('get_state').then(s => $('prDb').textContent = `${s.db_path} · ${(s.db_bytes / 1048576).toFixed(0)} MB · ${s.files} ficheiros · ${fmt(s.rows)} plots · ${s.nmir} registos NMIR`); }
   }
   function onSub(sub) {
     if (!hasFlights()) return;

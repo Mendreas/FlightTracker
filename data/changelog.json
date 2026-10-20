@@ -38,7 +38,8 @@
         "title": "Interface",
         "items": [
           "Tema claro por omissão; mapa 'Ruas' por omissão no Mapa e 'OSM' no Solo.",
-          "Na aba Solo a tabela fica à esquerda e o mapa à direita, com divisor arrastável; clicar num avião no mapa seleciona-o na tabela sem mexer no relógio."
+          "Na aba Solo a tabela fica à esquerda e o mapa à direita, com divisor arrastável; clicar num avião no mapa seleciona-o na tabela sem mexer no relógio.",
+          "Modo rede local (atalho \"FlightTracker (acesso na rede local — iPad)\" ou FlightTracker.exe --lan): a app abre no Safari do iPad / noutro PC da mesma rede, no endereço mostrado em Preferências."
         ]
       }
     ]

@@ -38,6 +38,7 @@ Source: "..\dist\FlightTracker\*"; DestDir: "{app}"; Flags: ignoreversion recurs
 [Icons]
 Name: "{group}\FlightTracker"; Filename: "{app}\FlightTracker.exe"
 Name: "{group}\FlightTracker (no navegador)"; Filename: "{app}\FlightTracker.exe"; Parameters: "--browser"
+Name: "{group}\FlightTracker (acesso na rede local — iPad)"; Filename: "{app}\FlightTracker.exe"; Parameters: "--lan"
 Name: "{autodesktop}\FlightTracker"; Filename: "{app}\FlightTracker.exe"; Tasks: desktopicon
 
 [Run]

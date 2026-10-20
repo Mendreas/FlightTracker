@@ -77,6 +77,10 @@ a app **abre automaticamente no navegador predefinido** (Edge/Chrome) — tudo f
 com `FlightTracker.exe --browser`. Recomendações para distribuir: copiar a pasta `FlightTracker` para fora do OneDrive
 (ex.: `C:\FlightTracker`) e, se o Windows marcar o zip como "transferido da Internet", botão direito no zip → Propriedades → **Desbloquear** antes de extrair.
 
+## iPad / outros dispositivos
+
+Correr `FlightTracker.exe --lan` (há um atalho no menu Iniciar). A app passa a responder na porta 8765 para toda a rede local; em Preferências aparece o endereço a abrir no Safari do iPad (mesma rede Wi-Fi). Importações e relatórios ficam no PC. Não há autenticação — só em rede interna.
+
 ## Dados de teste
 
 ```

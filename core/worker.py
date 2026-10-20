@@ -48,7 +48,7 @@ class TkDialogs:
         pass
 
 
-def run(port: int, data_dir: str, log_path: str):
+def run(port: int, data_dir: str, log_path: str, lan: bool = False):
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s worker %(threadName)s %(message)s",
                         handlers=[logging.FileHandler(log_path, encoding="utf-8")])
     import os
@@ -58,11 +58,13 @@ def run(port: int, data_dir: str, log_path: str):
     from core.httpapi import start_server
     api = Api()
     api.window = TkDialogs()
-    start_server(api, resource_path("ui"), port)
+    start_server(api, resource_path("ui"), port, "0.0.0.0" if lan else "127.0.0.1")
+    if lan:
+        logging.info("acesso na rede local ATIVO: http://<IP deste PC>:%s/index.html", port)
     logging.info("worker pronto na porta %s", port)
     while True:
         time.sleep(3600)
 
 
 if __name__ == "__main__":
-    run(int(sys.argv[1]), sys.argv[2], sys.argv[3])
+    run(int(sys.argv[1]), sys.argv[2], sys.argv[3], "--lan" in sys.argv)
