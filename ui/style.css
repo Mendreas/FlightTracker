@@ -240,3 +240,16 @@ tr.rowsel{background:var(--sel)!important}tr.clk{cursor:pointer}
 .news-box{width:min(900px,94vw);height:92vh}
 .news-tools{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .news-frame{flex:1;border:0;background:#eef2f7;width:100%}
+
+/* ---------- solo / taxi ---------- */
+.gd-map{height:52%;min-height:300px;background:var(--mapbg);border-bottom:1px solid var(--line);flex:none}
+.gd-ac{background:transparent;border:0}
+.gd-ac .dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px #000}
+.gd-ac .lbl{position:absolute;left:12px;top:-4px;font:11px var(--mono);color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap}
+.gd-ac.sel .dot{width:14px;height:14px;border-color:#ffe34d}
+.twy-lbl{background:transparent;border:0;box-shadow:none;color:#ffd166;font:bold 11px var(--mono);text-shadow:0 0 3px #000,0 0 3px #000}
+.stand-lbl{background:transparent;border:0;box-shadow:none;color:#9fd1ff;font:9px var(--mono);text-shadow:0 0 2px #000}
+:root[data-theme="light"] .gd-map .twy-lbl{color:#7c2d12;text-shadow:0 0 3px #fff}
+.mono{font-family:var(--mono)}
+tr.gd-row.sel td{background:var(--sel)}
+#gdCount{margin-left:auto;margin-right:8px;font-size:12px}

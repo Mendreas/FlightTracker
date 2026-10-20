@@ -1,0 +1,219 @@
+/* FlightTracker 4 — aba Solo: movimentos no solo (ficheiro da torre / A-SMGCS), rede de taxiways OSM,
+   reconstrução do percurso stand ↔ pista e animação do dia; ROT e tempos de taxi. */
+'use strict';
+const Ground = (() => {
+  const $ = id => document.getElementById(id);
+  const { esc, fmt } = C;
+  const call = (...a) => FP.call(...a);
+  const toast = (m, k) => FP.toast(m, k);
+  const COL = { DEPARTURE: '#ff9b2f', ARRIVAL: '#3b9cff' };
+
+  let map = null, base = null, netGroup = null, lblGroup = null, standGroup = null, acGroup = null, routeGroup = null, trailGroup = null;
+  let net = null;                 // rede (ways, stands, thr)
+  let rows = [];                  // movimentos do dia
+  let routes = {};                // gid -> {pts, t, t0, t1, kind, csn}
+  let stats = null;
+  let sel = null;                 // gid seleccionado
+  let simT = 0, playing = false, lastFrame = 0, raf = null, sub = 'mov', dayEpoch = 0;
+  const markers = new Map();      // gid -> marker
+  let loadedKey = '';
+
+  /* ---------------------------------------------------------------- mapa */
+  function ensureMap() {
+    if (map) return;
+    map = L.map('gdMap', { zoomControl: true, preferCanvas: true }).setView([38.781, -9.135], 14);
+    setBase('sat');
+    netGroup = L.layerGroup().addTo(map); lblGroup = L.layerGroup().addTo(map); standGroup = L.layerGroup();
+    routeGroup = L.layerGroup().addTo(map); trailGroup = L.layerGroup().addTo(map); acGroup = L.layerGroup().addTo(map);
+    map.on('zoomend', () => { if ($('gdLabels').checked) drawLabels(); });
+    $('gdBase').onchange = e => setBase(e.target.value);
+    $('gdLabels').onchange = e => { e.target.checked ? drawLabels() : lblGroup.clearLayers(); };
+    $('gdStands').onchange = e => { e.target.checked ? standGroup.addTo(map) : map.removeLayer(standGroup); };
+  }
+  function setBase(k) {
+    if (base) { map.removeLayer(base); base = null; }
+    if (k === 'sat') base = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 19 });
+    else if (k === 'osm') base = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxZoom: 19 });
+    if (base) base.addTo(map);
+  }
+  async function loadNetwork() {
+    if (net) return;
+    net = await call('ground_network');
+    netGroup.clearLayers(); standGroup.clearLayers();
+    for (const w of net.ways) {
+      if (w.pts.length < 2) continue;
+      L.polyline(w.pts, { color: w.type === 'runway' ? '#e6e6e6' : '#ffd166', weight: w.type === 'runway' ? 6 : 2, opacity: w.type === 'runway' ? .55 : .5, interactive: false }).addTo(netGroup);
+    }
+    for (const [name, p] of Object.entries(net.stands)) {
+      L.circleMarker(p, { radius: 3, color: '#9fd1ff', fillOpacity: .9, weight: 1 }).bindTooltip(`Stand ${name}`).addTo(standGroup);
+      L.marker(p, { icon: L.divIcon({ className: 'stand-lbl', html: name, iconSize: [24, 10], iconAnchor: [-4, 4] }), interactive: false }).addTo(standGroup);
+    }
+    drawLabels();
+  }
+  function drawLabels() {
+    lblGroup.clearLayers();
+    if (!net || map.getZoom() < 14) return;
+    const seen = new Set();
+    for (const w of net.ways) {
+      if (!w.ref || w.type === 'runway' || w.pts.length < 2) continue;
+      const key = w.ref; if (seen.has(key) && map.getZoom() < 16) continue; seen.add(key);
+      const m = w.pts[Math.floor(w.pts.length / 2)];
+      L.marker(m, { icon: L.divIcon({ className: 'twy-lbl', html: esc(w.ref), iconSize: [30, 12], iconAnchor: [15, 6] }), interactive: false }).addTo(lblGroup);
+    }
+  }
+
+  /* ---------------------------------------------------------------- dados */
+  async function load(force) {
+    const key = [...FP.state.days].sort().join(',') + '|' + FP.state.airport;
+    if (!force && key === loadedKey) return;
+    ensureMap();
+    const body = $('gdBody');
+    if (FP.state.airport !== 'LPPT') { body.innerHTML = '<div class="empty">A vista de solo está disponível só para Lisboa (LPPT) nesta versão.</div>'; rows = []; routes = {}; clearAnim(); return; }
+    if (!FP.state.days.size) { body.innerHTML = '<div class="empty">Aplica um filtro com pelo menos um dia.</div>'; return; }
+    body.innerHTML = '<div class="empty">⏳ A carregar movimentos no solo…</div>';
+    try {
+      await loadNetwork();
+      const r = await call('ground_list');
+      rows = r.rows; stats = r.stats; loadedKey = key;
+      $('gdInfo').textContent = r.summary.rows ? `${fmt(r.summary.rows)} movimentos da torre na base (${fmtD(r.summary.from)} → ${fmtD(r.summary.to)})` : 'Sem ficheiro da torre importado';
+      if (!rows.length) { body.innerHTML = `<div class="empty">Sem movimentos da torre para os dias seleccionados${r.summary.rows ? ' — o ficheiro importado cobre ' + fmtD(r.summary.from) + ' a ' + fmtD(r.summary.to) : ''}.</div>`; routes = {}; clearAnim(); return; }
+      routes = await call('ground_routes', rows.filter(x => x.routable).map(x => x.gid));
+      const days = [...FP.state.days].sort();
+      dayEpoch = epochOf(days[0]);
+      const t0 = Math.min(...rows.map(x => x.t_ref || Infinity)), t1 = Math.max(...rows.map(x => x.t_ref || 0));
+      $('gdTime').min = Math.max(0, Math.floor(t0 - dayEpoch) - 900); $('gdTime').max = Math.ceil(t1 - dayEpoch) + 900;
+      setSim(+$('gdTime').min);
+      $('gdCount').textContent = `${rows.length} movimentos · ${Object.keys(routes).length} com percurso`;
+      renderSub();
+      map.setView([38.781, -9.135], 14);
+    } catch (e) { body.innerHTML = `<div class="empty">Erro: ${esc(e.message)}</div>`; toast(e.message, 'err'); }
+  }
+  const epochOf = d => Date.UTC(2000 + +d.slice(0, 2), +d.slice(2, 4) - 1, +d.slice(4, 6)) / 1000;
+  const fmtD = d => d ? `${d.slice(4, 6)}/${d.slice(2, 4)}/20${d.slice(0, 2)}` : '—';
+  const hms = t => { if (t == null) return '—'; const s = Math.round(t - dayEpoch); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`; };
+  const dur = s => s == null ? '—' : s >= 120 ? `${Math.floor(s / 60)}m${String(Math.round(s % 60)).padStart(2, '0')}` : `${Math.round(s)} s`;
+
+  /* ---------------------------------------------------------------- tabelas */
+  function renderSub() {
+    const body = $('gdBody');
+    if (sub === 'mov') {
+      body.innerHTML = C.table([
+        { k: 'mt', label: 'Mov.', fmt: v => `<span class="badge ${v === 'DEPARTURE' ? 'dep' : 'arr'}">${v === 'DEPARTURE' ? 'DEP' : 'ARR'}</span>` },
+        { k: 'csn', label: 'Voo', fmt: (v, r) => `<b>${esc(v)}</b>${r.ga ? ' <span class="badge lvl" title="Go-around">GA</span>' : ''}` },
+        { k: 'actype', label: 'Tipo' }, { k: 'wtc', label: 'WTC' }, { k: 'rwy', label: 'RWY' },
+        { k: 'stand', label: 'Stand', fmt: (v, r) => esc(r.mt === 'DEPARTURE' ? r.stand_d || '' : r.stand_a || '') },
+        { k: 'route', label: 'Taxi', fmt: (v, r) => `<span class="mono">${esc(r.mt === 'DEPARTURE' ? r.taxi_out || '' : r.taxi_in || '')}</span>` },
+        { k: 'hpep', label: 'HP / saída', fmt: (v, r) => esc(r.mt === 'DEPARTURE' ? r.hp || '' : r.ep || '') },
+        { k: 'tA', label: 'Off/On-block', fmt: (v, r) => hms(r.mt === 'DEPARTURE' ? r.aobt : r.aibt) },
+        { k: 'tB', label: 'RWY ent. / ALDT', fmt: (v, r) => hms(r.mt === 'DEPARTURE' ? r.rwy_ent : r.aldt) },
+        { k: 'tC', label: 'ATOT / RWY vac.', fmt: (v, r) => hms(r.mt === 'DEPARTURE' ? r.atot : r.rwy_vac) },
+        { k: 'taxi_s', label: 'Taxi', fmt: v => dur(v) }, { k: 'rot_s', label: 'ROT', fmt: v => v == null ? '—' : `<span class="${v > 90 ? 'sep-r' : v > 70 ? 'sep-o' : 'sep-g'}">${Math.round(v)} s</span>` },
+        { k: 'adep', label: 'De / para', fmt: (v, r) => esc(r.mt === 'DEPARTURE' ? r.ades || '' : r.adep || '') },
+        { k: 'flight_id', label: 'Radar', fmt: v => v ? `<a href="#" class="csn-link" data-fid="${v}">ver</a>` : '<span class="muted">—</span>' },
+      ], rows, { id: 'gdTable', limit: 3000, rowClass: r => 'gd-row' + (r.gid === sel ? ' sel' : '') });
+      body.onclick = ev => {
+        if (ev.target.classList.contains('csn-link')) { ev.preventDefault(); FP.focusFlight(+ev.target.dataset.fid); return; }
+        const tr = ev.target.closest('tr[data-i]'); if (tr) select(rows[+tr.dataset.i].gid);
+      };
+    } else { body.onclick = null; renderStats(); }
+  }
+  function renderStats() {
+    const s = stats, body = $('gdBody'); if (!s) { body.innerHTML = '<div class="empty">Sem dados.</div>'; return; }
+    const st = (o, unit = 's') => o && o.n ? `${Math.round(o.median)} ${unit}` : '—';
+    const tbl = (list, keyLabel) => C.table([{ k: 'key', label: keyLabel }, { k: 'n', label: 'N' }, { k: 'median', label: 'Mediana (s)', fmt: v => v == null ? '—' : Math.round(v) },
+      { k: 'mean', label: 'Média (s)', fmt: v => v == null ? '—' : Math.round(v) }, { k: 'p10', label: 'P10', fmt: v => v == null ? '—' : Math.round(v) }, { k: 'p90', label: 'P90', fmt: v => v == null ? '—' : Math.round(v) },
+      { k: 'max', label: 'Máx', fmt: v => v == null ? '—' : Math.round(v) }], list.filter(x => x.n));
+    let h = '<div class="kgrid">' + C.kcard('Chegadas', s.n_arr) + C.kcard('Partidas', s.n_dep) + C.kcard('Go-arounds', s.ga, '', s.ga ? 'warn' : '') +
+      C.kcard('ROT chegada', st(s.rot_arr), `ALDT → saída de pista · mediana · n=${s.rot_arr.n}`) + C.kcard('ROT partida', st(s.rot_dep), `entrada na pista → ATOT · n=${s.rot_dep.n}`) +
+      C.kcard('Taxi-in', s.taxi_in.n ? dur(s.taxi_in.median) : '—', `saída de pista → on-block · n=${s.taxi_in.n}`) + C.kcard('Taxi-out', s.taxi_out.n ? dur(s.taxi_out.median) : '—', `off-block → ATOT · n=${s.taxi_out.n}`) +
+      (s.spd_vac.n ? C.kcard('Vel. na saída', `${Math.round(s.spd_vac.median)} kt`, `mediana · n=${s.spd_vac.n}`) : '') + '</div>';
+    h += '<div class="grid2">' + C.card('ROT chegadas — distribuição (s)', C.bars(s.rot_arr_hist.counts, s.rot_arr_hist.labels, { color: C.BLUE })) +
+      C.card('ROT partidas — distribuição (s)', C.bars(s.rot_dep_hist.counts, s.rot_dep_hist.labels, { color: C.ORANGE })) + '</div>';
+    h += '<div class="grid2">' + C.card('ROT chegadas por saída de pista', tbl(s.rot_arr_by_ep, 'Saída')) + C.card('ROT chegadas por WTC', tbl(s.rot_arr_by_wtc, 'WTC')) +
+      C.card('ROT partidas por ponto de espera', tbl(s.rot_dep_by_hp, 'HP')) + C.card('ROT partidas por WTC', tbl(s.rot_dep_by_wtc, 'WTC')) +
+      C.card('ROT chegadas por pista', tbl(s.rot_arr_by_rwy, 'RWY')) + C.card('ROT partidas por pista', tbl(s.rot_dep_by_rwy, 'RWY')) +
+      C.card('Taxi-in por stand (15 mais usados)', tbl(s.taxi_in_by_stand, 'Stand')) + C.card('Taxi-out por stand (15 mais usados)', tbl(s.taxi_out_by_stand, 'Stand')) + '</div>';
+    h += '<p class="hint">ROT = tempo de ocupação de pista medido pelo A-SMGCS: chegadas ALDT → RWY_VAC; partidas RWY_ENT → ATOT. Valores &gt; 30 min ignorados. Fonte: export operacional da torre.</p>';
+    body.innerHTML = h;
+  }
+
+  /* ---------------------------------------------------------------- selecção e animação */
+  function select(gid) {
+    sel = gid === sel ? null : gid;
+    document.querySelectorAll('#gdTable tr[data-i]').forEach(tr => tr.classList.toggle('sel', rows[+tr.dataset.i].gid === sel));
+    routeGroup.clearLayers();
+    if (sel == null) return;
+    const r = routes[sel], row = rows.find(x => x.gid === sel);
+    if (!r) { toast('Sem percurso reconstruído para este movimento (sem sequência de taxi).', 'err'); return; }
+    L.polyline(r.pts, { color: COL[r.mt] || '#fff', weight: 4, opacity: .9 }).addTo(routeGroup);
+    L.circleMarker(r.pts[0], { radius: 5, color: '#35c46a', fillOpacity: 1 }).bindTooltip('início ' + hms(r.t0)).addTo(routeGroup);
+    L.circleMarker(r.pts[r.pts.length - 1], { radius: 5, color: '#ff5d5d', fillOpacity: 1 }).bindTooltip('fim ' + hms(r.t1)).addTo(routeGroup);
+    map.fitBounds(L.latLngBounds(r.pts).pad(.3));
+    setSim(r.t0 - dayEpoch + 1);
+  }
+  function posAt(r, t) {
+    const T = r.t, P = r.pts;
+    if (t <= T[0]) return P[0]; if (t >= T[T.length - 1]) return P[P.length - 1];
+    let lo = 0, hi = T.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; (T[m] <= t ? lo = m : hi = m); }
+    const f = T[hi] > T[lo] ? (t - T[lo]) / (T[hi] - T[lo]) : 0;
+    return [P[lo][0] + (P[hi][0] - P[lo][0]) * f, P[lo][1] + (P[hi][1] - P[lo][1]) * f];
+  }
+  function setSim(s) {
+    simT = s; $('gdTime').value = Math.round(s); $('gdClock').textContent = hms(dayEpoch + s);
+    drawFrame();
+  }
+  function drawFrame() {
+    if (!map) return;
+    const t = dayEpoch + simT, trails = $('gdTrails').checked;
+    trailGroup.clearLayers();
+    const active = new Set();
+    for (const [gid, r] of Object.entries(routes)) {
+      if (t < r.t0 - 5 || t > r.t1 + 20) continue;
+      active.add(+gid);
+      const p = posAt(r, t);
+      let mk = markers.get(+gid);
+      if (!mk) {
+        mk = L.marker(p, { icon: L.divIcon({ className: 'gd-ac', html: `<div class="dot" style="background:${COL[r.mt]}"></div><div class="lbl">${esc(r.csn)}</div>`, iconSize: [10, 10], iconAnchor: [5, 5] }) });
+        mk.on('click', () => select(+gid)); mk.addTo(acGroup); markers.set(+gid, mk);
+      } else mk.setLatLng(p);
+      mk.getElement()?.classList.toggle('sel', +gid === sel);
+      if (trails) {
+        const pts = []; for (let i = 0; i < r.t.length; i++) { if (r.t[i] > t) break; if (r.t[i] >= t - 90) pts.push(r.pts[i]); }
+        pts.push(p);
+        if (pts.length > 1) L.polyline(pts, { color: COL[r.mt], weight: 2, opacity: .7, interactive: false }).addTo(trailGroup);
+      }
+    }
+    for (const [gid, mk] of markers) if (!active.has(gid)) { acGroup.removeLayer(mk); markers.delete(gid); }
+  }
+  function clearAnim() { stop(); markers.forEach(m => acGroup && acGroup.removeLayer(m)); markers.clear(); routeGroup && routeGroup.clearLayers(); trailGroup && trailGroup.clearLayers(); sel = null; }
+  function tick(ts) {
+    if (!playing) return;
+    const dt = lastFrame ? (ts - lastFrame) / 1000 : 0; lastFrame = ts;
+    let s = simT + dt * (+$('gdSpeed').value);
+    if (s > +$('gdTime').max) { s = +$('gdTime').max; stop(); }
+    setSim(s);
+    if (playing) raf = requestAnimationFrame(tick);
+  }
+  function play() { if (!Object.keys(routes).length) return; playing = true; lastFrame = 0; $('gdPlay').textContent = '⏸'; raf = requestAnimationFrame(tick); }
+  function stop() { playing = false; $('gdPlay').textContent = '▶'; if (raf) cancelAnimationFrame(raf); raf = null; }
+
+  /* ---------------------------------------------------------------- ligações */
+  function onTab() { ensureMap(); setTimeout(() => map.invalidateSize(), 50); load(false); }
+  function onFilter() { loadedKey = ''; if (document.querySelector('.tab.active')?.dataset.tab === 'solo') load(true); }
+  document.addEventListener('DOMContentLoaded', () => {
+    $('gdPlay').onclick = () => playing ? stop() : play();
+    $('gdTime').oninput = e => { stop(); setSim(+e.target.value); };
+    document.querySelectorAll('[data-gsub]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x === b)); sub = b.dataset.gsub; renderSub(); });
+    $('gdImport').onclick = async () => {
+      try {
+        const r = await call('import_ground'); if (!r) return;
+        toast(`${fmt(r.rows)} movimentos importados de ${r.files} ficheiro(s) (${fmtD(r.from)} → ${fmtD(r.to)}).`, 'ok');
+        loadedKey = ''; load(true);
+      } catch (e) { toast(e.message, 'err'); }
+    };
+    $('gdExport').onclick = async () => { try { const p = await call('export', 'ground', {}, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
+  });
+  return { onTab, onFilter };
+})();
+window.Ground = Ground;

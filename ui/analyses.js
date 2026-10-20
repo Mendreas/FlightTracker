@@ -517,6 +517,7 @@ const Analyses = (() => {
      ['fastBody', 'Filtro alterado. Abre a sub-aba para recalcular'], ['sdBody', 'Filtro alterado. Clica Atualizar análise'], ['dyBody', 'Filtro alterado. Clica Actualizar'], ['rrBody', 'Filtro alterado. Clica Analisar'], ['rotBody', 'Filtro alterado. Clica Analisar'], ['kpiBody', 'Filtro alterado. Clica Actualizar'], ['ptBody', 'Filtro alterado. Clica Pesquisar'], ['seqBody', 'Filtro alterado. Clica Pesquisar']].forEach(([id, m]) => empty($(id), m));
     ['finCount', 'starCount', 'appCount', 'adCount', 'fastCount', 'rrCount', 'rotCount', 'ptCount', 'seqCount', 'kpiNote'].forEach(id => $(id).textContent = '');
     renderScale();
+    if (window.Ground) Ground.onFilter();
     const active = document.querySelector('.tab.active'); if (active) onTab(active.dataset.tab);
     prefetch();
   }
@@ -527,6 +528,7 @@ const Analyses = (() => {
     if (name === 'app' && !R.app && !P.app) runApp(false);
     if (name === 'ana') onSub(document.querySelector('#tab-ana .subtab.active').dataset.sub);
     if (name === 'kpi' && !R.kpis && !P.kpis) runKpis();
+    if (name === 'solo' && window.Ground) Ground.onTab();
     if (name === 'pts' && !R.pt && $('ptSel').value) { runPt(); }
     if (name === 'ia') loadIa();
     if (name === 'pref') { loadIa(); call('get_state').then(s => $('prDb').textContent = `${s.db_path} · ${(s.db_bytes / 1048576).toFixed(0)} MB · ${s.files} ficheiros · ${fmt(s.rows)} plots · ${s.nmir} registos NMIR`); }

@@ -28,6 +28,7 @@ class Service:
         self.final = None; self.final_params = None; self.pairs = None; self.deps = None; self.movs = None
         self.star = None; self.app = None; self.app_dist = None; self.rrms = None; self.rot = None
         self.point_rows = None; self.point_name = None; self.seq = None
+        self.ground = None
 
     # ------------------------------------------------------------- filtro
     def set_filter(self, dates, blocks, csn="", cls="", airport=None):
@@ -184,6 +185,26 @@ class Service:
     def export_excel(self, path: str, kind: str, extra: dict | None = None):
         extra = extra or {}
         sheets = []
+        if kind == "ground":
+            rows = self.ground or self.db.ground_list(self.airport, self.dates)
+            hm = lambda t: time.strftime("%H:%M:%S", time.gmtime(t)) if t else ""
+            sheets.append(("Movimentos solo", ["DATA", "MOV", "VOO", "TIPO", "WTC", "RWY", "STAND", "TAXI", "HP/EP", "AOBT/AIBT", "RWY_ENT/ALDT", "ATOT/RWY_VAC", "TAXI (s)", "ROT (s)", "ADEP/ADES", "GA"],
+                           [[fmt_date(r["date"]), "DEP" if r["mt"] == "DEPARTURE" else "ARR", r["csn"], r.get("actype") or "", r.get("wtc") or "", r.get("rwy") or "",
+                             (r.get("stand_d") if r["mt"] == "DEPARTURE" else r.get("stand_a")) or "", (r.get("taxi_out") if r["mt"] == "DEPARTURE" else r.get("taxi_in")) or "",
+                             (r.get("hp") if r["mt"] == "DEPARTURE" else r.get("ep")) or "",
+                             hm(r["aobt"] if r["mt"] == "DEPARTURE" else r["aibt"]), hm(r["rwy_ent"] if r["mt"] == "DEPARTURE" else r["aldt"]), hm(r["atot"] if r["mt"] == "DEPARTURE" else r["rwy_vac"]),
+                             round(r["taxi_s"]) if r.get("taxi_s") else "", round(r["rot_s"]) if r.get("rot_s") else "",
+                             (r.get("ades") if r["mt"] == "DEPARTURE" else r.get("adep")) or "", "GA" if r.get("ga") else ""] for r in rows]))
+            from . import ground as gmod
+            st = gmod.ground_stats(rows) if rows else None
+            if st:
+                def sec(name, lst):
+                    return [[name, x["key"], x["n"], round(x.get("median") or 0), round(x.get("mean") or 0), round(x.get("p10") or 0), round(x.get("p90") or 0), round(x.get("max") or 0)] for x in lst if x["n"]]
+                sheets.append(("ROT e taxi", ["GRUPO", "CHAVE", "N", "MEDIANA (s)", "MÉDIA (s)", "P10", "P90", "MÁX"],
+                               sec("ROT ARR por saída", st["rot_arr_by_ep"]) + sec("ROT ARR por WTC", st["rot_arr_by_wtc"]) + sec("ROT ARR por RWY", st["rot_arr_by_rwy"]) +
+                               sec("ROT DEP por HP", st["rot_dep_by_hp"]) + sec("ROT DEP por WTC", st["rot_dep_by_wtc"]) + sec("ROT DEP por RWY", st["rot_dep_by_rwy"]) +
+                               sec("Taxi-in por stand", st["taxi_in_by_stand"]) + sec("Taxi-out por stand", st["taxi_out_by_stand"])))
+            return reports.write_excel(path, sheets)
         if kind == "operacional":
             self.ensure_final()
             geral = []
@@ -358,6 +379,41 @@ class Service:
         ans = ia.ask(p, s["keys"].get(p, ""), s["models"].get(p) or ia.PROVIDERS[p]["models"][0][0], question, ctx, s["azure_endpoint"])
         self.ia_history.append({"role": "ai", "text": ans["texto"], "grafico": ans.get("grafico")})
         return ans
+
+    # ------------------------------------------------------------- Solo (ficheiro da torre)
+    def ground_list(self):
+        from . import ground as gmod
+        rows = self.db.ground_list(self.airport, self.dates)
+        try:
+            af = gmod.airfield(self.airport)
+        except Exception:  # noqa: BLE001 — aeroporto sem rede embebida
+            af = None
+        for r in rows:
+            r["routable"] = bool(af) and bool(r.get("taxi_out") or r.get("taxi_in"))
+        self.ground = rows
+        return {"rows": rows, "summary": self.db.ground_summary(), "network": af is not None,
+                "stats": gmod.ground_stats(rows) if rows else None}
+
+    def ground_routes(self, gids: list[int]):
+        from . import ground as gmod
+        af = gmod.airfield(self.airport)
+        out = {}
+        for r in self.db.ground_get([int(g) for g in gids]):
+            m = gmod.build_movement(r, af)
+            if m:
+                m["csn"] = r["csn"]; m["mt"] = r["mt"]; m["actype"] = r.get("actype"); m["rwy"] = r.get("rwy")
+                m["stand"] = r.get("stand_d") if r["mt"] == "DEPARTURE" else r.get("stand_a")
+                out[r["gid"]] = m
+        return out
+
+    def ground_network(self):
+        from . import ground as gmod
+        af = gmod.airfield(self.airport)
+        ways = [{"type": w["type"], "ref": w.get("ref"), "pts": [af.nodes[n] for n in w["nodes"] if n in af.nodes]} for w in af.ways]
+        return {"ways": ways, "stands": af.stands, "holding": af.holding, "thr": {k: v["thr"] for k, v in af.thr.items()}}
+
+    def ground_raw(self, gid: int):
+        return self.db.ground_raw(int(gid))
 
     def ia_context_preview(self) -> str:
         self.ensure_final()

@@ -1,5 +1,22 @@
 [
   {
+    "version": "4.1.0",
+    "date": "em desenvolvimento",
+    "title": "Solo: taxi, ROT e dados da torre (LPPT)",
+    "summary": "Nova aba Solo com os movimentos no solo de Lisboa a partir do export operacional da torre (A-SMGCS): percurso stand ↔ pista reconstruído sobre a rede real de taxiways, animação do dia, tempos de ocupação de pista e de taxi.",
+    "sections": [
+      {
+        "title": "Solo / taxi",
+        "items": [
+          "Importação do ficheiro da torre (ALL_LPPT_AAAA-MM-DD_…csv): AOBT/ATOT/ALDT/AIBT, entrada e saída de pista, ponto de espera, stands, sequência de taxiways, SID/STAR, go-arounds, ATFM.",
+          "Rede de taxiways, pistas e 89 stands de LPPT (OpenStreetMap) embebida na app — não precisa de internet.",
+          "Percurso no solo de cada voo reconstruído a partir da sequência TAXI_OUT / TAXI_IN e dos tempos reais; animação do dia com relógio, velocidade e rasto; ligação ao movimento radar correspondente.",
+          "ROT (ocupação de pista) medido: chegadas ALDT → saída de pista, partidas entrada na pista → ATOT; por saída/HP, WTC e pista; tempos de taxi por stand; exportação Excel."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.0.0",
     "date": "2026-10-19",
     "title": "Reescrita em Python + DuckDB",

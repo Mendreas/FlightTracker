@@ -91,6 +91,7 @@
       <button class="tab" data-tab="app">🛬 Vel. APP</button>
       <button class="tab" data-tab="ana">📈 Análise Op.</button>
       <button class="tab" data-tab="kpi">📊 KPIs</button>
+      <button class="tab" data-tab="solo">🛫 Solo</button>
       <button class="tab" data-tab="pts">📍 Pontos</button>
       <button class="tab" data-tab="ia">🤖 Análise IA</button>
       <button class="tab" data-tab="pref">⚙</button>
@@ -240,6 +241,26 @@
       <div class="scroll" id="kpiBody"><div class="empty">Clica Actualizar</div></div>
     </div>
 
+    <!-- SOLO / TAXI -->
+    <div id="tab-solo" class="tabpane">
+      <div class="toolbar wrap">
+        <button class="btn primary" id="gdImport" title="Importar o export operacional da torre (ALL_LPPT_AAAA-MM-DD_…csv)">📥 Ficheiro da torre…</button>
+        <span id="gdInfo" class="muted"></span>
+        <span class="spacer"></span>
+        <button class="btn" id="gdPlay" title="Reproduzir o dia">▶</button>
+        <select id="gdSpeed" class="inp tiny"><option value="1">1×</option><option value="5">5×</option><option value="10" selected>10×</option><option value="30">30×</option><option value="60">60×</option><option value="120">120×</option></select>
+        <input type="range" id="gdTime" min="0" max="86400" value="0" step="1" style="width:260px">
+        <b id="gdClock" class="mono">00:00:00</b>
+        <label class="chk"><input type="checkbox" id="gdLabels" checked> Nomes</label>
+        <label class="chk"><input type="checkbox" id="gdStands"> Stands</label>
+        <label class="chk"><input type="checkbox" id="gdTrails" checked> Rasto</label>
+        <select id="gdBase" class="inp tiny"><option value="sat">Satélite</option><option value="osm">OSM</option><option value="none">Sem fundo</option></select>
+      </div>
+      <div id="gdMap" class="gd-map"></div>
+      <div class="subtabs"><button class="subtab active" data-gsub="mov">Movimentos</button><button class="subtab" data-gsub="rot">ROT e taxi (A-SMGCS)</button><span class="spacer"></span><span id="gdCount" class="muted"></span><button class="btn sm" id="gdExport">⬇ Excel</button></div>
+      <div class="scroll" id="gdBody"><div class="empty">Importa o ficheiro da torre e aplica um filtro com dias de LPPT.</div></div>
+    </div>
+
     <!-- PONTOS -->
     <div id="tab-pts" class="tabpane">
       <div class="subtabs"><button class="subtab active" data-sub="pt">Passagens num ponto</button><button class="subtab" data-sub="seq">Sequência</button><button class="subtab" data-sub="ptman">Pontos personalizados</button></div>
@@ -310,5 +331,6 @@
 <script src="charts.js"></script>
 <script src="app.js"></script>
 <script src="analyses.js"></script>
+<script src="ground.js"></script>
 </body>
 </html>

@@ -26,7 +26,7 @@ from core.httpapi import start_server
 from core.service import Service
 
 APP_NAME = "FlightTracker"
-VERSION = "4.0.0"
+VERSION = "4.1.0"
 
 
 def setup_logging(folder: Path):
@@ -247,6 +247,35 @@ class Api:
 
     def run_rrms(self):
         return self._safe(self.svc.run_rrms)
+
+    # ---- solo
+    def import_ground(self):
+        try:
+            res = self.window.create_file_dialog(OPEN_DIALOG, allow_multiple=True, file_types=("Export da torre (*.csv)", "Todos (*.*)"))
+            if not res:
+                return {"ok": True, "data": None}
+            paths = list(res) if isinstance(res, (list, tuple)) else [res]
+            def f():
+                tot = {"rows": 0, "files": 0}
+                for p in paths:
+                    r = self.db.import_ground(p, "LPPT"); tot["rows"] += r["rows"]; tot["files"] += 1
+                    tot["from"] = min(tot.get("from") or r["from"], r["from"]); tot["to"] = max(tot.get("to") or r["to"], r["to"])
+                return tot
+            return self._safe(f)
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+
+    def ground_list(self):
+        return self._safe(self.svc.ground_list)
+
+    def ground_routes(self, gids):
+        return self._safe(self.svc.ground_routes, gids)
+
+    def ground_network(self):
+        return self._safe(self.svc.ground_network)
+
+    def ground_raw(self, gid):
+        return self._safe(self.svc.ground_raw, gid)
 
     def run_rot(self):
         return self._safe(self.svc.run_rot)

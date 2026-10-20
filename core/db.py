@@ -15,6 +15,7 @@ Tabelas:
 from __future__ import annotations
 
 import logging
+import json
 import os
 import re
 import sys
@@ -120,6 +121,13 @@ class Database:
         c.execute("CREATE TABLE IF NOT EXISTS meta(key VARCHAR PRIMARY KEY, value VARCHAR)")
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS ground(
+            gid INTEGER, airport VARCHAR, date VARCHAR, mt VARCHAR, csn VARCHAR, rwy VARCHAR,
+            actype VARCHAR, reg VARCHAR, ao VARCHAR, wtc VARCHAR, adep VARCHAR, ades VARCHAR, sid VARCHAR, star VARCHAR,
+            stand_d VARCHAR, stand_a VARCHAR, apron VARCHAR, taxi_out VARCHAR, taxi_in VARCHAR, hp VARCHAR, ep VARCHAR,
+            aobt DOUBLE, hp_time DOUBLE, rwy_ent DOUBLE, atot DOUBLE, aldt DOUBLE, rwy_vac DOUBLE, aibt DOUBLE, ctot DOUBLE,
+            spd_vac DOUBLE, ga BOOLEAN, rto BOOLEAN, atfm_delay DOUBLE, regulation VARCHAR, src VARCHAR, raw JSON)""")
         if c.execute("SELECT count(*) FROM files").fetchone()[0] and not c.execute("SELECT value FROM meta WHERE key='airports_geo_v1'").fetchone():
             try:
                 n = self.fix_airports()
@@ -698,6 +706,93 @@ class Database:
             FROM nmir GROUP BY csn, date""")
         self.rebuild_flights()
         return max(0, self.con.execute("SELECT count(*) FROM (SELECT DISTINCT csn, date FROM nmir)").fetchone()[0] - before)
+
+    # ----------------------------------------------------------------- solo (ficheiro da torre)
+    def import_ground(self, path: str, airport: str = "LPPT") -> dict:
+        """Importa o export operacional da torre (ALL_LPPT_AAAA-MM-DD_..csv, separador ';').
+        Guarda os campos principais tipados e a linha completa em JSON (raw) para relatórios à medida."""
+        c = self.con
+        hdr = open(path, "rb").readline().decode("utf-8-sig", "replace")
+        if "TAXI_OUT" not in hdr.upper() or "ALDT" not in hdr.upper():
+            raise RuntimeError("Este ficheiro não parece ser o export da torre (faltam colunas TAXI_OUT / ALDT).")
+        sep = ";" if hdr.count(";") >= hdr.count(",") else ","
+        cols = [h.strip().strip('"') for h in hdr.rstrip("\r\n").split(sep)]
+        up = {h.upper(): h for h in cols}
+        def col(name, cast="VARCHAR"):
+            h = up.get(name.upper())
+            if h is None:
+                return "NULL"
+            q = f'r."{h}"'
+            if cast == "TS":
+                return f"epoch(try_strptime(nullif(trim({q}),''), '%Y-%m-%d %H:%M:%S'))"
+            if cast == "NUM":
+                return f"TRY_CAST(replace(nullif(trim({q}),''), ',', '.') AS DOUBLE)"
+            if cast == "BOOL":
+                return f"(upper(trim({q})) = 'TRUE')"
+            return f"nullif(trim({q}),'')"
+        src = os.path.basename(path)
+        c.execute("DELETE FROM ground WHERE src = ?", [src])
+        next_id = c.execute("SELECT coalesce(max(gid),0)+1 FROM ground").fetchone()[0]
+        c.execute(f"""
+        INSERT INTO ground
+        SELECT {next_id} + row_number() OVER () - 1, ?, strftime(TRY_CAST({col('DATE')} AS DATE), '%y%m%d'), upper({col('MT')}),
+               upper({col('CALLSIGN')}), {col('RWY')}, {col('AC_TYPE')}, {col('REG')}, {col('AO')},
+               CASE upper({col('ICAO_WTC')}) WHEN 'HEAVY' THEN 'H' WHEN 'MEDIUM' THEN 'M' WHEN 'LIGHT' THEN 'L' WHEN 'SUPER' THEN 'J' ELSE {col('ICAO_WTC')} END,
+               {col('ADEP')}, {col('ADES')}, {col('SID')}, {col('STAR')},
+               {col('STANDD')}, {col('STANDA')}, {col('APRON')}, {col('TAXI_OUT')}, {col('TAXI_IN')}, {col('HP')}, {col('EP')},
+               {col('AOBT','TS')}, {col('HP_TIME','TS')}, {col('RWY_ENT','TS')}, {col('ATOT','TS')}, {col('ALDT','TS')}, {col('RWY_VAC','TS')}, {col('AIBT','TS')}, {col('CTOT','TS')},
+               {col('SPD@RWY_VAC','NUM')}, {col('GA','BOOL')}, {col('RTO','BOOL')}, {col('ATFM_DELAY','NUM')}, {col('REGULATION_NAME')}, ?, to_json(r)
+        FROM read_csv(?, delim=?, header=true, all_varchar=true, ignore_errors=true, null_padding=true) r
+        WHERE {col('CALLSIGN')} IS NOT NULL""", [airport, src, path, sep])
+        n = c.execute("SELECT count(*) FROM ground WHERE src=?", [src]).fetchone()[0]
+        d0, d1 = c.execute("SELECT min(date), max(date) FROM ground WHERE src=?", [src]).fetchone()
+        self._log(f"ground: {src} -> {n} movimentos ({d0}..{d1})")
+        return {"rows": n, "from": d0, "to": d1}
+
+    def ground_summary(self) -> dict:
+        r = self.con.execute("SELECT count(*), min(date), max(date), count(DISTINCT date) FROM ground").fetchone()
+        return {"rows": r[0], "from": r[1], "to": r[2], "days": r[3]}
+
+    def ground_dates(self) -> list[str]:
+        return [d for (d,) in self.con.execute("SELECT DISTINCT date FROM ground ORDER BY 1").fetchall()]
+
+    def ground_list(self, airport: str, dates: list[str]) -> list[dict]:
+        """Movimentos no solo das datas, com o movimento radar mais próximo no tempo (flight_id), quando existe."""
+        if not dates:
+            return []
+        cols = ["gid", "date", "mt", "csn", "rwy", "actype", "reg", "ao", "wtc", "adep", "ades", "sid", "star", "stand_d", "stand_a",
+                "taxi_out", "taxi_in", "hp", "ep", "aobt", "hp_time", "rwy_ent", "atot", "aldt", "rwy_vac", "aibt", "ctot", "spd_vac", "ga", "rto", "atfm_delay"]
+        rows = self.con.execute(f"""
+        WITH g AS (SELECT {', '.join(cols)}, CASE WHEN mt='DEPARTURE' THEN atot ELSE aldt END AS t_ref
+                   FROM ground WHERE airport=? AND date IN (SELECT unnest(?::VARCHAR[]))),
+        m AS (SELECT g.gid, f.flight_id, abs(f.t_first - g.t_ref) AS dt_dep, abs(f.t_last - g.t_ref) AS dt_arr,
+                     row_number() OVER (PARTITION BY g.gid ORDER BY CASE WHEN g.mt='DEPARTURE' THEN abs(f.t_first - g.t_ref) ELSE abs(f.t_last - g.t_ref) END) rn
+              FROM g JOIN flights f ON f.csn = g.csn AND f.date = g.date AND f.airport = ?
+                                   AND f.cls = CASE WHEN g.mt='DEPARTURE' THEN 'dep' ELSE 'arr' END
+              WHERE g.t_ref IS NOT NULL)
+        SELECT g.*, m.flight_id FROM g LEFT JOIN m ON m.gid = g.gid AND m.rn = 1
+        ORDER BY g.t_ref""", [airport, dates, airport]).fetchall()
+        names = cols + ["t_ref", "flight_id"]
+        out = []
+        for r in rows:
+            d = dict(zip(names, r))
+            d["taxi_s"] = (d["atot"] - d["aobt"]) if d["mt"] == "DEPARTURE" and d["atot"] and d["aobt"] else \
+                          (d["aibt"] - d["rwy_vac"]) if d["mt"] != "DEPARTURE" and d["aibt"] and d["rwy_vac"] else None
+            d["rot_s"] = (d["atot"] - d["rwy_ent"]) if d["mt"] == "DEPARTURE" and d["atot"] and d["rwy_ent"] else \
+                         (d["rwy_vac"] - d["aldt"]) if d["mt"] != "DEPARTURE" and d["rwy_vac"] and d["aldt"] else None
+            out.append(d)
+        return out
+
+    def ground_get(self, gids: list[int]) -> list[dict]:
+        if not gids:
+            return []
+        cur = self.con.execute("SELECT * EXCLUDE (raw) FROM ground WHERE gid IN (SELECT unnest(?::INTEGER[]))", [gids])
+        names = [d[0] for d in cur.description]
+        return [dict(zip(names, r)) for r in cur.fetchall()]
+
+    def ground_raw(self, gid: int) -> dict | None:
+        r = self.con.execute("SELECT raw FROM ground WHERE gid=?", [gid]).fetchone()
+        return json.loads(r[0]) if r and r[0] else None
 
     def airport_nmir(self, airport: str, dates: list[str]) -> dict:
         """Movimentos (flight_id) cujo voo tem, no NMIR, ADEP ou ADES = aeroporto, nas datas dadas.
