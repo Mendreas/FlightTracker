@@ -69,6 +69,7 @@ class Database:
         Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         self._main = duckdb.connect(self.path)
         self._main.execute("PRAGMA threads=%d" % max(2, (os.cpu_count() or 4)))
+        self._main.execute("SET enable_progress_bar=false")
         self._tls = threading.local()
         self._init_schema()
 
@@ -113,7 +114,9 @@ class Database:
             cls VARCHAR, modes VARCHAR, actype VARCHAR, wtc VARCHAR, blocks VARCHAR)""")
         c.execute("""
         CREATE TABLE IF NOT EXISTS nmir(
-            csn VARCHAR, date VARCHAR, actype VARCHAR, wtc VARCHAR)""")
+            csn VARCHAR, date VARCHAR, actype VARCHAR, wtc VARCHAR, adep VARCHAR, ades VARCHAR)""")
+        for col in ("adep", "ades"):   # bases criadas por versões anteriores
+            c.execute(f"ALTER TABLE nmir ADD COLUMN IF NOT EXISTS {col} VARCHAR")
         c.execute("CREATE TABLE IF NOT EXISTS meta(key VARCHAR PRIMARY KEY, value VARCHAR)")
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
@@ -127,7 +130,7 @@ class Database:
         if c.execute("SELECT count(*) FROM nmir").fetchone()[0] == 0:
             seed = resource_path("data", "nmir_seed.csv")
             if seed.exists():
-                c.execute("INSERT INTO nmir SELECT csn, date, actype, wtc FROM read_csv(?, header=true, all_varchar=true)",
+                c.execute("INSERT INTO nmir SELECT csn, date, actype, wtc, NULL, NULL FROM read_csv(?, header=true, all_varchar=true)",
                           [str(seed)])
 
     def fix_airports(self) -> int:
@@ -650,6 +653,9 @@ class Database:
             i_type = find("aircraft type", "actype", "ac type", "type")
             i_date = find("lobd", "eobd", "date", "data", "dof", "lobt", "eobt")   # LOBD = dia do voo (NMIR)
             i_wtc = find("wtc", "wake")
+            i_adep = find("adep", "departure"); i_ades = find("ades", "destination")
+            if i_ades is not None and "diverted" in header[i_ades]:
+                i_ades = next((i for i, h in enumerate(header) if h == "ades"), i_ades)
             if i_csn is None or i_type is None:
                 continue
             for row in it:
@@ -676,17 +682,34 @@ class Database:
                                 d = s2
                 wtc = row[i_wtc] if i_wtc is not None and i_wtc < len(row) else None
                 typ_s = str(typ).strip().upper()
+                cell = lambda i: (str(row[i]).strip().upper() or None) if i is not None and i < len(row) and row[i] else None
                 rows_out.append((str(csn).strip().upper(), d, typ_s,
-                                 str(wtc).strip().upper() if wtc else (wtc_from_type(typ_s) or None)))
+                                 str(wtc).strip().upper() if wtc else (wtc_from_type(typ_s) or None), cell(i_adep), cell(i_ades)))
         if not rows_out:
             raise RuntimeError("Excel sem colunas reconhecidas (callsign / aircraft type).")
-        before = self.con.execute("SELECT count(*) FROM nmir").fetchone()[0]
+        before = self.con.execute("SELECT count(*) FROM (SELECT DISTINCT csn, date FROM nmir)").fetchone()[0]
         cols = list(zip(*rows_out))
-        self.con.execute("INSERT INTO nmir SELECT * FROM (SELECT unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]))",
-                         [list(cols[0]), list(cols[1]), list(cols[2]), list(cols[3])])
-        self.con.execute("CREATE OR REPLACE TABLE nmir AS SELECT DISTINCT * FROM nmir")
+        self.con.execute("INSERT INTO nmir SELECT * FROM (SELECT unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]))",
+                         [list(c) for c in cols])
+        # a mesma (csn, data) pode já existir sem ADEP/ADES (base inicial): fica a versão mais completa
+        self.con.execute("""CREATE OR REPLACE TABLE nmir AS
+            SELECT csn, date, arg_max(actype, coalesce(adep,'')||coalesce(ades,'')) actype,
+                   arg_max(wtc, coalesce(adep,'')||coalesce(ades,'')) wtc, max(adep) adep, max(ades) ades
+            FROM nmir GROUP BY csn, date""")
         self.rebuild_flights()
-        return self.con.execute("SELECT count(*) FROM nmir").fetchone()[0] - before
+        return max(0, self.con.execute("SELECT count(*) FROM (SELECT DISTINCT csn, date FROM nmir)").fetchone()[0] - before)
+
+    def airport_nmir(self, airport: str, dates: list[str]) -> dict:
+        """Movimentos (flight_id) cujo voo tem, no NMIR, ADEP ou ADES = aeroporto, nas datas dadas.
+        n_nmir = registos NMIR com esse aeroporto nessas datas (0 → não há listagem para o aeroporto/mês)."""
+        if not dates:
+            return {"ids": [], "n_nmir": 0}
+        n = self.con.execute("SELECT count(*) FROM nmir WHERE (adep=? OR ades=?) AND date IN (SELECT unnest(?::VARCHAR[]))",
+                             [airport, airport, dates]).fetchone()[0]
+        ids = [r[0] for r in self.con.execute("""
+            SELECT DISTINCT f.flight_id FROM flights f JOIN nmir n ON n.csn=f.csn AND n.date=f.date
+            WHERE (n.adep=? OR n.ades=?) AND f.date IN (SELECT unnest(?::VARCHAR[]))""", [airport, airport, dates]).fetchall()]
+        return {"ids": ids, "n_nmir": int(n)}
 
     def close(self):
         self.con.close()

@@ -208,6 +208,9 @@ class Api:
     def set_airport(self, airport):
         return self._safe(self.svc.set_airport, airport)
 
+    def set_airport_only(self, on):
+        return self._safe(self.svc.set_airport_only, bool(on))
+
     # ---------------------------------------------------------------- análises
     def run_final(self, rwy="BOTH", faf=7, corr=2, alt=1000):
         return self._safe(self.svc.run_final, rwy, faf, corr, alt)

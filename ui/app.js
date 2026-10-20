@@ -14,7 +14,7 @@ const AIRPORT_CENTER = { LPPT: [38.78, -9.14], LPFR: [37.02, -7.97], LPMA: [32.7
 
 const state = {
   filters: null, airport: 'LPPT', airports: [], month: null, days: new Set(), blocks: new Set(), clsView: '',
-  allFlights: [], flights: [], byId: new Map(), hidden: new Set(), selected: null,
+  allFlights: [], flights: [], byId: new Map(), hidden: new Set(), selected: null, aptOnly: false, aptOnlyIds: null,
   tracks: {}, layers: new Map(), points: null, sortKey: 'date', sortAsc: true,
 };
 const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -171,18 +171,33 @@ async function switchAirport(a) {
   if (a === state.airport) return;
   state.airport = a; renderAirports();
   if (state.allFlights.length) { try { await call('set_airport', a); } catch (e) { toast(e.message, 'err'); } }
+  if (state.aptOnly) await applyAptOnly(true, true);
   applyAirportView();
   map.setView(AIRPORT_CENTER[a] || AIRPORT_CENTER.LPPT, 10);
   if (window.Analyses) Analyses.onFilter();
 }
+/* Filtro "Só ARR/DEP": voos que o NMIR (ADEP/ADES) dá como chegada/partida do aeroporto activo. */
+async function applyAptOnly(on, silent) {
+  try {
+    const r = await call('set_airport_only', on);
+    if (on && !r.on) {
+      state.aptOnly = false; state.aptOnlyIds = null;
+      toast(`Não há dados NMIR com ADEP/ADES = ${state.airport} para as datas seleccionadas. Importa o Excel NMIR desse aeroporto/mês (botão NMIR…).`, 'err');
+    } else {
+      state.aptOnly = r.on; state.aptOnlyIds = r.on ? new Set(r.ids) : null;
+      if (r.on && !silent) toast(`${r.n} voo(s) com ARR/DEP ${state.airport} no NMIR (${fmt(r.n_nmir)} registos).`, 'ok');
+    }
+  } catch (e) { state.aptOnly = false; state.aptOnlyIds = null; toast(e.message, 'err'); }
+  $('btnAptOnly').classList.toggle('on', state.aptOnly);
+}
 function applyAirportView() {
-  state.flights = state.allFlights.filter(f => f.airport === state.airport);
+  state.flights = state.allFlights.filter(f => f.airport === state.airport && (!state.aptOnly || !state.aptOnlyIds || state.aptOnlyIds.has(f.flight_id)));
   state.byId = new Map(state.flights.map(f => [f.flight_id, f]));
   state.hidden.clear(); state.selected = null; closeDetail();
   applyClsView(); renderFlightList(); renderTable(); drawTracks();
   const arr = state.flights.filter(f => f.cls === 'arr').length, dep = state.flights.filter(f => f.cls === 'dep').length;
   status(`${state.airport}: ${state.flights.length} movimento(s) · ${arr} chegadas · ${dep} partidas · ${state.days.size} dia(s) · ${fmt(state.allFlights.length)} no total (todos os aeroportos)`, 'on', $('sTime').textContent);
-  $('tblInfo').textContent = `${state.flights.length} movimentos em ${state.airport}`;
+  $('tblInfo').textContent = `${state.flights.length} movimentos em ${state.airport}${state.aptOnly ? ' (só ARR/DEP segundo o NMIR)' : ''}`;
 }
 function applyClsView() { state.hidden.clear(); const q = ($('inpCsn').value || '').trim().toLowerCase(); state.flights.forEach(f => { if ((state.clsView && f.cls !== state.clsView) || (q && !f.csn.toLowerCase().includes(q))) state.hidden.add(f.flight_id); }); }
 
@@ -199,6 +214,7 @@ async function applyFilter() {
     const tr = await call('get_tracks', state.allFlights.map(f => f.flight_id));
     state.tracks = tr.tracks;
     const t2 = performance.now();
+    if (state.aptOnly) await applyAptOnly(true, true);
     renderAirports(); applyAirportView();
     status($('sTxt').textContent + (tr.step > 1 ? ` · trajetórias 1 em cada ${tr.step} plots` : ''), 'on',
       `consulta ${Math.round(t1 - t0)} ms · trajetórias ${Math.round(t2 - t1)} ms · total ${Math.round(performance.now() - t0)} ms`);
@@ -427,6 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
   $('clsBtns').querySelectorAll('.tog').forEach(b => b.onclick = () => { state.clsView = b.dataset.v; $('clsBtns').querySelectorAll('.tog').forEach(x => x.classList.toggle('on', x === b)); applyClsView(); renderFlightList(); drawTracks(); });
   $('selMonth').onchange = e => { state.month = e.target.value; renderCalendar(); };
   $('selAirportTop').onchange = e => switchAirport(e.target.value);
+  $('btnAptOnly').onclick = async () => { await applyAptOnly(!state.aptOnly, false); applyAirportView(); if (window.Analyses) Analyses.onFilter(); };
   $('daysAll').onclick = () => { [...dayInfo().keys()].filter(k => k.startsWith(state.month)).forEach(k => state.days.add(k)); renderCalendar(); };
   $('daysNone').onclick = () => { state.days.clear(); renderCalendar(); };
   $('blocksAll').onclick = () => { state.filters.blocks.forEach(b => state.blocks.add(b)); renderBlocks(); };

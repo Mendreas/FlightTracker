@@ -10,7 +10,7 @@ const Analyses = (() => {
   const R = { final: null, star: null, app: null, ad: null, fast: null, dados: null, diaria: null, rrms: null, rot: null, kpis: null, pt: null, seq: null };
   const hasFlights = () => FP.state.flights.length > 0;
   const sec = v => v == null ? '—' : fmt(Math.round(v));
-  const rwyBadge = r => `<span class="badge" style="background:${r === '02' || r === '17' || r === '10' || r === '05' ? '#3b9cff' : '#c77dff'}">RWY ${esc(r)}</span>`;
+  const rwyBadge = r => `<span class="badge rwy ${r === '02' || r === '17' || r === '10' || r === '05' ? 'a' : 'b'}">RWY ${esc(r)}</span>`;
   const csnLink = (csn, fid) => `<a href="#" class="csn-link" data-fid="${fid}"><b>${esc(csn)}</b></a>`;
   const wireCsn = root => root.querySelectorAll('.csn-link').forEach(a => a.onclick = ev => { ev.preventDefault(); FP.focusFlight(+a.dataset.fid); });
   const sepCls = (s, thr) => s < 120 ? 'sep-r' : s < thr ? 'sep-o' : 'sep-g';
@@ -492,30 +492,50 @@ const Analyses = (() => {
   }
 
   /* ================================================================ orquestração */
+  /* Pré-cálculo em segundo plano: depois de um filtro, as análises principais são calculadas uma a uma
+     (Final → FAST → STAR → APP → KPIs → Dados → Diária) para que as abas abram já com resultados. */
+  const P = {};            // pedidos em curso, por análise
+  let prefetchGen = 0;
+  function prefetch() {
+    const gen = ++prefetchGen;
+    const steps = [['final', () => runFinal(false)], ['fast', runFast], ['star', () => runStar(false)], ['app', () => runApp(false)],
+                   ['kpis', runKpis], ['dados', runDados], ['diaria', runDiaria]];
+    setTimeout(async () => {
+      for (const [k, fn] of steps) {
+        if (gen !== prefetchGen || !hasFlights()) return;
+        if (R[k] || P[k]) continue;
+        FP.status($('sTxt').textContent, 'busy', `a preparar ${k} em segundo plano…`);
+        P[k] = fn().catch(() => null).finally(() => { P[k] = null; });
+        await P[k];
+      }
+      if (gen === prefetchGen) FP.status($('sTxt').textContent, 'on', 'análises prontas');
+    }, 1500);
+  }
   function onFilter() {
-    Object.keys(R).forEach(k => R[k] = null); FP.overlay.clearLayers(); ptCircle = null;
+    Object.keys(R).forEach(k => R[k] = null); Object.keys(P).forEach(k => P[k] = null); FP.overlay.clearLayers(); ptCircle = null;
     [['finBody', 'Filtro alterado. Clica Analisar para actualizar resultados'], ['starBody', 'Filtro alterado. Clica Analisar'], ['appBody', 'Filtro alterado. Clica Analisar'], ['adBody', 'Filtro alterado. Clica Analisar'],
      ['fastBody', 'Filtro alterado. Abre a sub-aba para recalcular'], ['sdBody', 'Filtro alterado. Clica Atualizar análise'], ['dyBody', 'Filtro alterado. Clica Actualizar'], ['rrBody', 'Filtro alterado. Clica Analisar'], ['rotBody', 'Filtro alterado. Clica Analisar'], ['kpiBody', 'Filtro alterado. Clica Actualizar'], ['ptBody', 'Filtro alterado. Clica Pesquisar'], ['seqBody', 'Filtro alterado. Clica Pesquisar']].forEach(([id, m]) => empty($(id), m));
     ['finCount', 'starCount', 'appCount', 'adCount', 'fastCount', 'rrCount', 'rotCount', 'ptCount', 'seqCount', 'kpiNote'].forEach(id => $(id).textContent = '');
     renderScale();
     const active = document.querySelector('.tab.active'); if (active) onTab(active.dataset.tab);
+    prefetch();
   }
   function onTab(name) {
     if (!hasFlights()) return;
-    if (name === 'final' && !R.final) runFinal(false);
-    if (name === 'star' && !R.star) runStar(false);
-    if (name === 'app' && !R.app) runApp(false);
+    if (name === 'final' && !R.final && !P.final) runFinal(false);
+    if (name === 'star' && !R.star && !P.star) runStar(false);
+    if (name === 'app' && !R.app && !P.app) runApp(false);
     if (name === 'ana') onSub(document.querySelector('#tab-ana .subtab.active').dataset.sub);
-    if (name === 'kpi' && !R.kpis) runKpis();
+    if (name === 'kpi' && !R.kpis && !P.kpis) runKpis();
     if (name === 'pts' && !R.pt && $('ptSel').value) { runPt(); }
     if (name === 'ia') loadIa();
     if (name === 'pref') { loadIa(); call('get_state').then(s => $('prDb').textContent = `${s.db_path} · ${(s.db_bytes / 1048576).toFixed(0)} MB · ${s.files} ficheiros · ${fmt(s.rows)} plots · ${s.nmir} registos NMIR`); }
   }
   function onSub(sub) {
     if (!hasFlights()) return;
-    if (sub === 'fast' && !R.fast) runFast();
-    if (sub === 'dados' && !R.dados) runDados();
-    if (sub === 'diaria' && !R.diaria) runDiaria();
+    if (sub === 'fast' && !R.fast && !P.fast) runFast();
+    if (sub === 'dados' && !R.dados && !P.dados) runDados();
+    if (sub === 'diaria' && !R.diaria && !P.diaria) runDiaria();
     if (sub === 'rrms' && !R.rrms) runRrms(false);
     if (sub === 'rot' && !R.rot) runRot();
     if (sub === 'seq' && !R.seq && $('seqSel').value) runSeq();
