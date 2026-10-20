@@ -50,7 +50,7 @@ const Ground = (() => {
       L.circleMarker(p, { radius: 3, color: '#9fd1ff', fillOpacity: .9, weight: 1 }).bindTooltip(`Stand ${name}`).addTo(standGroup);
       L.marker(p, { icon: L.divIcon({ className: 'stand-lbl', html: name, iconSize: [24, 10], iconAnchor: [-4, 4] }), interactive: false }).addTo(standGroup);
     }
-    drawLabels();
+    if ($('gdLabels').checked) drawLabels();
   }
   function drawLabels() {
     lblGroup.clearLayers();
@@ -256,6 +256,7 @@ const Ground = (() => {
       (c.dt_opdi_torre_med != null ? C.kcard('Δt OPDI−torre', `${c.dt_opdi_torre_med} s`, 'mediana · evento de pista OPDI − ATOT/ALDT') : '') + '</div>';
     const srcB = s => ['R', 'N', 'T', 'O'].map(k => `<span class="src ${s.includes(k) ? 'on' : ''}">${k}</span>`).join('');
     h += C.table([
+      { k: 'corr', label: '✎', fmt: (v, r) => `<button class="btn sm cr-fix" data-i="${rows.indexOf(r)}" title="Registar o valor correto / marcar como verificado">${v ? '✓ ' + esc([v.actype, v.apt, v.wtc && !v.actype ? 'WTC ' + v.wtc : ''].filter(Boolean).join(' ') || 'verificado') : '✎'}</button>` },
       { k: 'date', label: 'Data', fmt: v => fmtD(v) }, { k: 'csn', label: 'Voo', fmt: (v, r) => r.flight_id ? `<a href="#" class="csn-link" data-fid="${r.flight_id}"><b>${esc(v)}</b></a>` : `<b>${esc(v)}</b>` },
       { k: 'cls', label: 'Mov.', fmt: v => `<span class="badge ${v}">${v.toUpperCase()}</span>` }, { k: 'src', label: 'Fontes', fmt: srcB },
       { k: 'flags', label: 'Discrepâncias', fmt: v => v.filter(f => !f.startsWith('sem ')).map(f => `<span class="flag">${esc(f)}</span>`).join(' ') },
@@ -269,12 +270,32 @@ const Ground = (() => {
       { k: 'dt_radar_torre', label: 'Δt R−T', fmt: v => v == null ? '—' : `${v > 0 ? '+' : ''}${v} s` }, { k: 'dt_opdi_torre', label: 'Δt O−T', fmt: v => v == null ? '—' : `${v > 0 ? '+' : ''}${v} s` },
       { k: 't_rot', label: 'ROT torre', fmt: v => v == null ? '—' : Math.round(v) + ' s' }, { k: 'o_rot', label: 'ROT OPDI', fmt: v => v == null ? '—' : Math.round(v) + ' s' },
       { k: 't_taxi', label: 'Taxi', fmt: v => dur(v) }, { k: 'o_tod', label: 'TOD', fmt: v => hmsAbs(v) }, { k: 'o_levels_low', label: 'Pat. <FL100', fmt: v => v == null ? '—' : v },
-      { k: 'corr', label: 'Correção', fmt: (v, r, i) => `<button class="btn sm cr-fix" data-i="${rows.indexOf(r)}" title="Registar o valor correto / marcar como verificado">${v ? '✓ ' + esc([v.actype, v.apt].filter(Boolean).join(' ') || 'verificado') : '✎'}</button>` },
     ], rows, { id: 'crTable', limit: 4000 });
     body.innerHTML = h + `<p class="hint">R = radar CNS · N = NMIR · T = ficheiro da torre (A-SMGCS) · O = OPDI (OpenSky). Emparelhamento por callsign + data + tipo de movimento, com o instante mais próximo (janela 20 min). Tipo NMIR com * = herdado de outro dia (não conta como discrepância). O ROT do OPDI nas chegadas é aproximado (o evento de saída de pista é detetado tarde por falta de cobertura ADS-B no solo).</p>`;
     body.querySelectorAll('.csn-link').forEach(a => a.onclick = ev => { ev.preventDefault(); FP.focusFlight(+a.dataset.fid); });
-    body.querySelectorAll('.cr-fix').forEach(b => b.onclick = () => openFix(rows[+b.dataset.i]));
+    body.querySelectorAll('.cr-fix').forEach(b => b.onclick = ev => { ev.stopPropagation(); openFix(rows[+b.dataset.i]); });
+    body.querySelectorAll('#crTable tbody tr').forEach(tr => { tr.classList.add('clk'); tr.onclick = ev => { if (ev.target.closest('a,button')) return; openDetail(rows[+tr.dataset.i]); }; });
     $('crInfo').textContent = `${rows.length} de ${cross.rows.length} linhas${c.corrected ? ` · ${c.corrected} corrigidas/verificadas` : ''}`;
+  }
+  function openDetail(r) {
+    const T = t => hmsAbs(t), D = s => s == null ? '—' : dur(s), V = v => v == null || v === '' ? '—' : esc(String(v));
+    const sec = (title, pairs, on) => `<div class="card ${on ? '' : 'off'}"><h3>${title}${on ? '' : ' <span class="muted">(sem dados)</span>'}</h3>` +
+      (on ? `<table class="d-tbl"><tbody>${pairs.map(([k, v]) => `<tr><td class="muted">${k}</td><td><b>${v}</b></td></tr>`).join('')}</tbody></table>` : '') + '</div>';
+    const o = r.cls === 'arr';
+    $('modalTitle').textContent = `${r.csn} · ${fmtD(r.date)} · ${r.cls === 'arr' ? 'chegada' : 'partida'} · fontes ${r.src}`;
+    $('modalBody').innerHTML = (r.flags.length ? `<p>${r.flags.map(f => `<span class="flag">${esc(f)}</span>`).join(' ')}</p>` : '') +
+      (r.corr ? `<p class="hint">Correção: ${V(r.corr.actype)} / WTC ${V(r.corr.wtc)} / ${V(r.corr.apt)} — ${V(r.corr.note)} ${r.corr.verified ? '(verificado)' : ''}</p>` : '') +
+      '<div class="grid2">' +
+      sec('Radar (CNS)', [['1º plot', T(r.r_t_first)], ['último plot', T(r.r_t_last)], ['plots', V(r.r_n)], ['alt. máx (ft)', V(r.r_alt_max)], ['tipo (na tabela)', V(r.r_actype)]], r.src.includes('R')) +
+      sec('NMIR', [['tipo', V(r.n_type) + (r.n_src && r.n_src !== 'nmir' ? ` <span class="muted">(${r.n_src})</span>` : '')], ['WTC', V(r.n_wtc)], ['ADEP', V(r.n_adep)], ['ADES', V(r.n_ades)]], r.src.includes('N')) +
+      sec('Torre (A-SMGCS / CPPM)', [['tipo / WTC', `${V(r.t_type)} / ${V(r.t_wtc)}`], ['matrícula', V(r.t_reg)], ['operador', V(r.t_ao)], ['pista', V(r.t_rwy)], ['stand', V(r.t_stand)], [o ? 'ADEP' : 'ADES', V(r.t_apt)],
+        ['AOBT', T(r.t_aobt)], ['RWY_ENT', T(r.t_rwy_ent)], ['ATOT', T(r.t_atot)], ['ALDT', T(r.t_aldt)], ['RWY_VAC', T(r.t_rwy_vac)], ['AIBT', T(r.t_aibt)], ['ROT', r.t_rot == null ? '—' : Math.round(r.t_rot) + ' s'], ['taxi', D(r.t_taxi)], ['go-around', r.t_ga ? 'sim' : 'não']], r.src.includes('T')) +
+      sec('OPDI (OpenSky)', [['id', V(r.o_id)], ['icao24', V(r.o_icao24)], ['matrícula', V(r.o_reg)], ['tipo / modelo', `${V(r.o_type)} / ${V(r.o_model)}`], ['ADEP → ADES', `${V(r.o_adep)} → ${V(r.o_ades)}`],
+        ['entrada na pista', T(r.o_rwy_in)], ['saída da pista', T(r.o_rwy_out)], ['ROT (aprox.)', r.o_rot == null ? '—' : Math.round(r.o_rot) + ' s'], ['TOC', T(r.o_toc)], ['TOD', T(r.o_tod)], ['último FL100 / FL50', `${T(r.o_lx100)} / ${T(r.o_lx50)}`], ['1º FL50 / FL100', `${T(r.o_fx50)} / ${T(r.o_fx100)}`], ['patamares < FL100', V(r.o_levels_low)]], r.src.includes('O')) +
+      '</div>' + `<div class="row" style="gap:8px;margin-top:10px"><button class="btn primary" id="dtFix">✎ Corrigir / verificar</button>${r.flight_id ? `<button class="btn" id="dtMap">🗺 Ver no mapa</button>` : ''}</div>`;
+    $('modal').classList.remove('hidden');
+    $('dtFix').onclick = () => openFix(r);
+    if ($('dtMap')) $('dtMap').onclick = () => { $('modal').classList.add('hidden'); FP.focusFlight(r.flight_id); };
   }
   function openFix(r) {
     const c = r.corr || {};
@@ -290,6 +311,7 @@ const Ground = (() => {
         <label>${r.cls === 'arr' ? 'ADEP' : 'ADES'} correto <input id="fxApt" class="inp tiny" list="fxApts" value="${esc(c.apt || '')}" placeholder="ICAO" style="width:90px"><datalist id="fxApts">${opts(apts, '')}</datalist></label>
         <label class="chk"><input type="checkbox" id="fxVer" ${c.verified ? 'checked' : ''}> Verificado — ignorar discrepância</label>
       </div>
+      <label class="chk" style="margin-top:8px"><input type="checkbox" id="fxAllType" checked> Aplicar a WTC a <b>todos os voos deste tipo</b> (${esc(types[0] || 'tipo')}), em todos os dias — e aos que vierem a ser importados</label>
       <label style="display:block;margin-top:10px">Nota <input id="fxNote" class="inp" value="${esc(c.note || '')}" placeholder="ex.: confirmado com a torre / matrícula CS-TSF é A21N"></label>
       <p class="hint">O tipo corrigido é aplicado ao movimento radar e ao NMIR desse dia (fica na base de dados; os ficheiros de origem não são alterados).</p>
       <div class="row" style="gap:8px;margin-top:12px"><button class="btn primary" id="fxSave">Guardar</button>${r.corr ? '<button class="btn" id="fxDel">Remover correção</button>' : ''}</div>`;
@@ -297,6 +319,7 @@ const Ground = (() => {
     $('fxSave').onclick = async () => {
       try {
         await call('correction_set', r.csn, r.date, r.cls, $('fxType').value, $('fxWtc').value, $('fxApt').value, $('fxNote').value, $('fxVer').checked);
+        if ($('fxAllType').checked && $('fxWtc').value) { const t = $('fxType').value || types[0]; if (t) { const n = await call('type_wtc_set', t, $('fxWtc').value, $('fxNote').value); toast(`WTC ${$('fxWtc').value} aplicada a ${fmt(n)} movimento(s) ${t}.`, 'ok'); } }
         $('modal').classList.add('hidden'); toast('Correção guardada.', 'ok'); crossRun(true);
       } catch (e) { toast(e.message, 'err'); }
     };

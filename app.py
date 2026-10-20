@@ -292,6 +292,9 @@ class Api:
     def correction_delete(self, csn, date, cls):
         return self._safe(self.svc.correction_delete, csn, date, cls)
 
+    def type_wtc_set(self, actype, wtc, note=None):
+        return self._safe(self.svc.type_wtc_set, actype, wtc, note)
+
     def ground_routes(self, gids):
         return self._safe(self.svc.ground_routes, gids)
 

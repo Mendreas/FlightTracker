@@ -122,6 +122,7 @@ class Database:
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
         c.execute("CREATE TABLE IF NOT EXISTS aux_files(path VARCHAR PRIMARY KEY, kind VARCHAR, size BIGINT, mtime DOUBLE, rows INTEGER, imported TIMESTAMP DEFAULT current_timestamp)")
+        c.execute("CREATE TABLE IF NOT EXISTS type_overrides(actype VARCHAR PRIMARY KEY, wtc VARCHAR, note VARCHAR, ts TIMESTAMP DEFAULT current_timestamp)")
         c.execute("""
         CREATE TABLE IF NOT EXISTS corrections(
             csn VARCHAR, date VARCHAR, cls VARCHAR, actype VARCHAR, wtc VARCHAR, apt VARCHAR, note VARCHAR,
@@ -514,6 +515,7 @@ class Database:
         FROM (SELECT modes, any_value(actype) actype, any_value(wtc) wtc FROM flights
               WHERE actype IS NOT NULL AND modes IS NOT NULL AND modes <> '' GROUP BY modes) m
         WHERE flights.actype IS NULL AND flights.modes IS NOT NULL AND flights.modes <> '' AND m.modes = flights.modes""")
+        self.apply_type_overrides()
 
     # ----------------------------------------------------------------- queries
     def summary(self) -> dict:
@@ -885,6 +887,23 @@ class Database:
                 self.con.execute(f"UPDATE nmir SET {field}=? WHERE csn=? AND date=?", [apt, csn, date])
         self.cache_clear()
         return self.correction_get(csn, date, cls)
+
+    def type_wtc_set(self, actype: str, wtc: str, note: str | None = None) -> int:
+        """WTC corrigida para um tipo de aeronave: vale para todos os movimentos, presentes e futuros."""
+        actype = actype.strip().upper(); wtc = wtc.strip().upper()
+        self.con.execute("INSERT OR REPLACE INTO type_overrides VALUES (?,?,?,current_timestamp)", [actype, wtc, note])
+        self.con.execute("UPDATE nmir SET wtc=? WHERE actype=?", [wtc, actype])
+        n = self.con.execute("SELECT count(*) FROM flights WHERE actype=? AND coalesce(wtc,'') <> ?", [actype, wtc]).fetchone()[0]
+        self.con.execute("UPDATE flights SET wtc=? WHERE actype=?", [wtc, actype])
+        self.cache_clear()
+        return n
+
+    def type_overrides(self) -> dict:
+        return {a: w for a, w in self.con.execute("SELECT actype, wtc FROM type_overrides").fetchall()}
+
+    def apply_type_overrides(self):
+        self.con.execute("UPDATE flights SET wtc = o.wtc FROM type_overrides o WHERE flights.actype = o.actype")
+        self.con.execute("UPDATE nmir SET wtc = o.wtc FROM type_overrides o WHERE nmir.actype = o.actype")
 
     def correction_delete(self, csn: str, date: str, cls: str):
         self.con.execute("DELETE FROM corrections WHERE csn=? AND date=? AND cls=?", [csn, date, cls])

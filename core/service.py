@@ -445,7 +445,7 @@ class Service:
         from .analysis.ops import nmir_lookup
         ground = self.db.ground_list(self.airport, self.dates)
         opdi = self.db.opdi_flights(self.airport, self.dates)
-        res = integrate.crosscheck(self.airport, self.flights, ground, opdi, lambda c, d: nmir_lookup(self.db, c, d), self.db.corrections(self.dates))
+        res = integrate.crosscheck(self.airport, self.flights, ground, opdi, lambda c, d: nmir_lookup(self.db, c, d), self.db.corrections(self.dates), self.db.type_overrides())
         self.cross = res
         res["summary"] = {"ground": self.db.ground_summary(), "opdi": self.db.opdi_summary()}
         return res
@@ -463,6 +463,14 @@ class Service:
     def correction_delete(self, csn, date, cls):
         self.db.correction_delete(csn, date, cls); self.cross = None
         return True
+
+    def type_wtc_set(self, actype, wtc, note=None):
+        n = self.db.type_wtc_set(actype, wtc, note)
+        for f in self.all_flights:
+            if f.get("actype") == actype.strip().upper():
+                f["wtc"] = wtc.strip().upper()
+        self.cross = None; self.reset_results()
+        return n
 
     def ia_context_preview(self) -> str:
         self.ensure_final()

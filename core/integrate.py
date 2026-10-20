@@ -39,7 +39,7 @@ def _pair(radar: list[dict], others: list[dict], t_radar, t_other) -> dict:
     return out
 
 
-def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list[dict], nmir_lookup, corrections: dict | None = None) -> dict:
+def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list[dict], nmir_lookup, corrections: dict | None = None, type_overrides: dict | None = None) -> dict:
     """flights: movimentos radar (do filtro, aeroporto activo); ground: registos da torre; opdi: voos OPDI;
     nmir_lookup(csn, date) -> dict(type, wtc, adep, ades, source)."""
     flights = [f for f in flights if f["cls"] in ("arr", "dep")]
@@ -100,7 +100,11 @@ def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list
         types = {x for x in (n_type_exact, r["t_type"], r["o_type"]) if x}
         if len(types) > 1:
             r["flags"].append("TIPO ≠ (" + " / ".join(sorted(types)) + ")")
-        wtcs = {x for x in ((r["n_wtc"] if r["n_src"] == "nmir" else None), r["t_wtc"], (wtc_from_type(r["o_type"]) if r["o_type"] else None)) if x}
+        ov = (type_overrides or {})
+        if any(t and t in ov for t in (r["n_type"], r["t_type"], r["o_type"])):
+            wtcs = set()      # WTC fixada para este tipo pelo utilizador
+        else:
+            wtcs = {x for x in ((r["n_wtc"] if r["n_src"] == "nmir" else None), r["t_wtc"], (wtc_from_type(r["o_type"]) if r["o_type"] else None)) if x}
         if len(wtcs) > 1:
             r["flags"].append("WTC ≠")
         other_n = r["n_adep"] if r["cls"] == "arr" else r["n_ades"]
