@@ -578,9 +578,10 @@ class Service:
             return sorted(out, key=lambda x: -x["dev_min"])
         if key == "mov_radar":
             return self.db.flights_list(self.airport, dates, [], "", "")
-        if key.startswith("heat:"):          # heat:<dow>:<hora>:<all|arr|dep>
-            _, dow, hour, kind = key.split(":")
-            return self.db.heatmap_rows(self.airport, d0, d1, int(dow), int(hour), kind)
+        if key.startswith("heat:"):          # heat:<dow>:<hora>:<all|arr|dep>[:<aeroporto>]
+            parts = key.split(":")
+            apt = parts[4] if len(parts) > 4 else self.airport
+            return self.db.heatmap_rows(apt, d0, d1, int(parts[1]), int(parts[2]), parts[3])
         return []
 
     def set_capacity(self, airport: str, cap: int):

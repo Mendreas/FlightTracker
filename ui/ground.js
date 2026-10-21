@@ -432,7 +432,9 @@ const Ground = (() => {
     const f = $('pnFrom').value, t = $('pnTo').value; if (!f || !t) return;
     const [r0, r1] = refRange();
     const body = $('pnBody'); body.innerHTML = '<div class="empty">⏳ A calcular o painel…</div>';
-    try { panel = await call('panel', ymd(f), ymd(t), r0 ? ymd(r0) : null, r1 ? ymd(r1) : null); panel._range = [f, t, r0, r1]; panelRender(); }
+    try { panel = await call('panel', ymd(f), ymd(t), r0 ? ymd(r0) : null, r1 ? ymd(r1) : null); panel._range = [f, t, r0, r1];
+      if (heatApt && heatApt !== panel.airport) { try { panel.heatOther = await call('heatmap', heatApt, ymd(f), ymd(t)); } catch (e) { panel.heatOther = null; } } else heatApt = panel.airport;
+      panelRender(); }
     catch (e) { body.innerHTML = `<div class="empty">Erro: ${esc(e.message)}</div>`; toast(e.message, 'err'); }
   }
   function panelRender() {
@@ -488,7 +490,7 @@ const Ground = (() => {
     const topTbl = (list, listR, label) => { const refMap = new Map((listR || []).map(([k, n]) => [k, n])); return C.table([{ k: 0, label }, { k: 1, label: 'Movimentos' }, ...(listR ? [{ k: 2, label: 'Referência', fmt: (v, r) => refMap.get(r[0]) ?? '—' }] : [])], list.map(r => [r[0], r[1], refMap.get(r[0])])); };
     h += '<div class="grid2">' + C.card('Top 10 operadores (radar)', topTbl(top.operators, topR && topR.operators, 'Operador')) + C.card('Top 10 tipos (radar)', topTbl(top.types, topR && topR.types, 'Tipo')) + C.card('Top 10 aeroportos origem/destino (NMIR)', topTbl(top.airports, topR && topR.airports, 'Aeroporto')) + '</div>';
     // mapa de calor hora × dia da semana
-    h += C.card('Mapa de calor — hora × dia da semana', heatHtml(panel.heat, panel.airport, f, t));
+    h += C.card('Mapa de calor — hora × dia da semana', heatHtml(heatApt === panel.airport ? panel.heat : (panel.heatOther || null), heatApt, f, t));
     // qualidade de dados
     const dot = (ok, warn) => `<span class="dq ${ok ? 'ok' : warn ? 'warn' : 'bad'}"></span>`;
     h += C.card('Qualidade / cobertura dos dados por dia', C.table([
@@ -503,16 +505,18 @@ const Ground = (() => {
     $('pnInfo').textContent = `${M.length} dias${R.length ? ` · referência ${R.length} dias` : ''}`;
   }
   const HEAT_DOW = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-  let heatKind = 'all';
+  let heatKind = 'all', heatApt = null;
+  const APT_NAMES = { LPPT: 'Lisboa (LPPT)', LPPR: 'Porto (LPPR)', LPFR: 'Faro (LPFR)', LPMA: 'Madeira (LPMA)' };
   function heatHtml(heat, apt, f, t) {
-    if (!heat) return '<div class="empty">Sem dados.</div>';
+    const aptSel = `<label>Aeroporto <select id="heatApt" class="inp tiny">${Object.keys(APT_NAMES).map(a => `<option value="${a}"${a === apt ? ' selected' : ''}>${APT_NAMES[a]}</option>`).join('')}</select></label>`;
+    if (!heat) return `<div class="heat-tools">${aptSel}</div><div class="empty">Sem dados.</div>`;
     const G = heat.grid[heatKind]; const max = Math.max(1, ...G.flat());
     const total = G.flat().reduce((a, b) => a + b, 0);
     const lbl = { all: 'movimentos', arr: 'chegadas', dep: 'partidas' }[heatKind];
     const color = v => { if (!v) return ''; const x = v / max; // amarelo → laranja → vermelho escuro
       const stops = [[255, 237, 160], [254, 178, 76], [240, 59, 32], [128, 0, 38]]; const i = Math.min(2, Math.floor(x * 3)); const k = x * 3 - i;
       const c = stops[i].map((a, j) => Math.round(a + (stops[i + 1][j] - a) * k)); return `background:rgb(${c.join(',')})`; };
-    let h = `<div class="heat-tools"><label>Mostrar <select id="heatKind" class="inp tiny"><option value="all"${heatKind === 'all' ? ' selected' : ''}>movimentos</option><option value="arr"${heatKind === 'arr' ? ' selected' : ''}>chegadas</option><option value="dep"${heatKind === 'dep' ? ' selected' : ''}>partidas</option></select></label>` +
+    let h = `<div class="heat-tools">${aptSel}<label>Mostrar <select id="heatKind" class="inp tiny"><option value="all"${heatKind === 'all' ? ' selected' : ''}>movimentos</option><option value="arr"${heatKind === 'arr' ? ' selected' : ''}>chegadas</option><option value="dep"${heatKind === 'dep' ? ' selected' : ''}>partidas</option></select></label>` +
       `<span class="muted">Aeroporto ${esc(apt)} · ${fmt(total)} ${lbl} no período · ${heat.tower_days} dia(s) torre, ${heat.radar_days} dia(s) só radar · mais escuro = mais voos · clica numa célula para ver os voos</span></div>`;
     h += '<table class="heat"><thead><tr><th></th>' + Array.from({ length: 24 }, (_, i) => `<th>${String(i).padStart(2, '0')}</th>`).join('') + '</tr></thead><tbody>';
     for (let d = 0; d < 7; d++) {
@@ -520,16 +524,23 @@ const Ground = (() => {
     }
     return h + '</tbody></table>';
   }
-  document.addEventListener('change', ev => { if (ev.target.id === 'heatKind') { heatKind = ev.target.value; panelRender(); } });
+  document.addEventListener('change', async ev => {
+    if (ev.target.id === 'heatKind') { heatKind = ev.target.value; panelRender(); }
+    if (ev.target.id === 'heatApt') {
+      heatApt = ev.target.value; const [f, t] = panel._range;
+      try { panel.heatOther = heatApt === panel.airport ? null : await call('heatmap', heatApt, ymd(f), ymd(t)); } catch (e) { toast(e.message, 'err'); }
+      panelRender();
+    }
+  });
   document.addEventListener('click', async ev => {
     const td = ev.target.closest('.heat td'); if (!td || !panel) return;
-    const [f, t] = panel._range; const dow = +td.dataset.dow, hh = +td.dataset.h;
+    const [f, t] = panel._range; const dow = +td.dataset.dow, hh = +td.dataset.h; const apt = heatApt || panel.airport;
     const lbl = { all: 'Movimentos', arr: 'Chegadas', dep: 'Partidas' }[heatKind];
     const T = v => v == null ? '—' : new Date(v * 1000).toISOString().slice(11, 19);
     const cols = [{ k: 'date', label: 'Data', fmt: fmtD }, { k: 'csn', label: 'Voo', fmt: (v, r) => r.flight_id ? `<a href="#" class="csn-link" data-fid="${r.flight_id}"><b>${esc(v)}</b></a>` : `<b>${esc(v || '')}</b>` },
       { k: 'src', label: 'Fonte' }, { k: 'mt', label: 'Tipo mov.', fmt: (v, r) => v ? (v === 'DEPARTURE' ? 'partida' : 'chegada') : (r.cls === 'dep' ? 'partida' : 'chegada') }, { k: 'actype', label: 'Tipo' }, { k: 'rwy', label: 'RWY' }, { k: 't_ref', label: 'Hora (UTC)', fmt: T }, { k: 'adep', label: 'ADEP' }, { k: 'ades', label: 'ADES' }];
-    const key = `pn.heat.${dow}.${hh}.${heatKind}`;
-    try { const rows = await call('panel_details', `heat:${dow}:${hh}:${heatKind}`, ymd(f), ymd(t)); Drill.set(key, `${lbl} — ${HEAT_DOW[dow]} ${String(hh).padStart(2, '0')}:00–${String(hh + 1).padStart(2, '0')}:00 UTC · ${f} → ${t}`, cols, rows); Drill.open(key); } catch (e) { toast(e.message, 'err'); }
+    const key = `pn.heat.${apt}.${dow}.${hh}.${heatKind}`;
+    try { const rows = await call('panel_details', `heat:${dow}:${hh}:${heatKind}:${apt}`, ymd(f), ymd(t)); Drill.set(key, `${lbl} ${apt} — ${HEAT_DOW[dow]} ${String(hh).padStart(2, '0')}:00–${String(hh + 1).padStart(2, '0')}:00 UTC · ${f} → ${t}`, cols, rows); Drill.open(key); } catch (e) { toast(e.message, 'err'); }
   });
   function onTabPanel() { panelDefaults(); if (!panel) panelRun(); }
   document.addEventListener('DOMContentLoaded', () => {

@@ -297,6 +297,9 @@ class Api:
     def panel(self, d0, d1, r0=None, r1=None):
         return self._safe(self.svc.panel, d0, d1, r0, r1)
 
+    def heatmap(self, airport, d0, d1):
+        return self._safe(self.svc.db.heatmap, airport, d0, d1)
+
     def export_rows(self, title, headers, rows):
         def f():
             res = self.window.create_file_dialog(SAVE_DIALOG, save_filename=f"{re.sub(r'[^A-Za-z0-9_-]+', '_', title)[:40]}_{time.strftime('%Y-%m-%d')}.xlsx", file_types=("Excel (*.xlsx)",))
