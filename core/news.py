@@ -43,7 +43,7 @@ def email_html(e: dict) -> str:
         secs += f"""
 <tr><td style="padding:0 40px 18px;">
   <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #dbe4f0;border-radius:8px;border-collapse:separate;overflow:hidden;">
-    <tr><td bgcolor="#1d6fb8" style="background:#1d6fb8;color:#ffffff;padding:10px 16px;font-weight:700;font-size:14px;">{h(s['title'])}</td></tr>
+    <tr><td bgcolor="#1d6fb8" style="background:#1d6fb8;color:#ffffff;padding:10px 16px;font-weight:700;font-size:14px;"><font color="#ffffff" style="color:#ffffff;"><b>{h(s['title'])}</b></font></td></tr>
     <tr><td bgcolor="#f3f8fd" style="background:#f3f8fd;padding:14px 16px 8px;color:#1e293b;font-size:13px;"><ul style="margin:0;padding-left:18px;">{items}</ul></td></tr>
   </table>
 </td></tr>"""
@@ -54,21 +54,21 @@ def email_html(e: dict) -> str:
 <table width="680" cellpadding="0" cellspacing="0" style="max-width:680px;background:#ffffff;border-radius:12px;overflow:hidden;border-collapse:separate;">
 
 <tr><td bgcolor="#0f2744" style="background:#0f2744;padding:34px 40px 28px;text-align:center;">
-  <div style="font-size:34px;color:#7cc4ff;">&#9992;</div>
-  <h1 style="color:#ffffff;font-size:28px;margin:10px 0 12px;">FlightTracker</h1>
-  <span style="display:inline-block;border:2px solid #3b82f6;color:#bfdbfe;border-radius:20px;padding:6px 18px;font-size:13px;letter-spacing:2px;">VERS&Atilde;O {h(e['version'])}</span>
-  <p style="color:#cbd5e1;font-size:14px;margin:16px 0 0;">{h(e['title'])}</p>
+  <div style="font-size:34px;color:#7cc4ff;"><font color="#7cc4ff" style="color:#7cc4ff;">&#9992;</font></div>
+  <h1 style="color:#ffffff;font-size:28px;margin:10px 0 12px;"><font color="#ffffff" style="color:#ffffff;">FlightTracker</font></h1>
+  <span style="display:inline-block;border:2px solid #3b82f6;color:#bfdbfe;border-radius:20px;padding:6px 18px;font-size:13px;letter-spacing:2px;"><font color="#bfdbfe" style="color:#bfdbfe;">VERS&Atilde;O {h(e['version'])}</font></span>
+  <p style="color:#cbd5e1;font-size:14px;margin:16px 0 0;"><font color="#cbd5e1" style="color:#cbd5e1;">{h(e['title'])}</font></p>
 </td></tr>
 
 <tr><td style="padding:26px 40px 14px;color:#1e293b;font-size:14px;line-height:1.55;">{h(e['summary'])}</td></tr>
 {secs}
 <tr><td bgcolor="#0f2744" style="background:#0f2744;padding:24px 40px;text-align:center;">
-  <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;">Download da vers&atilde;o {h(e['version'])}</p>
+  <p style="color:#94a3b8;font-size:12px;margin:0 0 16px;text-transform:uppercase;letter-spacing:1px;"><font color="#94a3b8" style="color:#94a3b8;">DOWNLOAD DA VERS&Atilde;O {h(e['version'])}</font></p>
   <table cellpadding="0" cellspacing="0" align="center"><tr>
-    <td style="padding:0 8px;"><a href="{LINK_WIN}" style="display:inline-block;background:#3b82f6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; Windows (instalador .exe)</a></td>
-    <td style="padding:0 8px;"><a href="{LINK_MAC}" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;">&#8595; macOS (.dmg)</a></td>
+    <td style="padding:0 8px;"><a href="{LINK_WIN}" style="display:inline-block;background:#3b82f6;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;"><font color="#ffffff" style="color:#ffffff;"><b>&#8595; Windows (instalador .exe)</b></font></a></td>
+    <td style="padding:0 8px;"><a href="{LINK_MAC}" style="display:inline-block;background:#6366f1;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:700;"><font color="#ffffff" style="color:#ffffff;"><b>&#8595; macOS (.dmg)</b></font></a></td>
   </tr></table>
-  <p style="color:#64748b;font-size:11px;margin:14px 0 0;">Instala por cima da vers&atilde;o anterior &middot; a base de dados importada mant&eacute;m-se &middot; <a href="{LINK_ALL}" style="color:#60a5fa;">todas as vers&otilde;es</a></p>
+  <p style="color:#64748b;font-size:11px;margin:14px 0 0;"><font color="#94a3b8" style="color:#94a3b8;">Instala por cima da vers&atilde;o anterior &middot; a base de dados importada mant&eacute;m-se &middot; <a href="{LINK_ALL}" style="color:#60a5fa;"><font color="#60a5fa">todas as vers&otilde;es</font></a></font></p>
 </td></tr>
 
 <tr><td style="padding:16px 40px;text-align:center;border-top:1px solid #e2e8f0;">
