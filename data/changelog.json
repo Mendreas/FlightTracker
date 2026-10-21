@@ -1,5 +1,19 @@
 [
   {
+    "version": "4.1.1",
+    "date": "em desenvolvimento",
+    "title": "Pequenas melhorias",
+    "summary": "",
+    "sections": [
+      {
+        "title": "Interface",
+        "items": [
+          "Email de novidades: botão 📋 Copiar para colar no Outlook na web (Edge) — cola o email formatado numa nova mensagem; assunto copiável à parte."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.1.0",
     "date": "2026-10-21",
     "title": "Solo (A-SMGCS), KPIs PRU, Painel e cruzamento de fontes",

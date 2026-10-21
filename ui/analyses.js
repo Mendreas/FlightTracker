@@ -769,6 +769,22 @@ const Analyses = (() => {
     const closeNews = () => $('newsModal').classList.add('hidden');
     $('newsClose').onclick = closeNews; $('newsModal').onclick = e => { if (e.target === $('newsModal')) closeNews(); };
     $('newsOpen').onclick = async () => { try { const p = await call('news_email', newsVersion); toast('Rascunho aberto no cliente de e-mail (' + p + ').', 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    $('newsCopy').onclick = async () => {
+      try {
+        const r = await call('news_preview', newsVersion);
+        // só o corpo do email (sem <html>/<head>), em HTML + texto simples; o Outlook na web cola o HTML formatado
+        const doc = new DOMParser().parseFromString(r.html, 'text/html'); const bodyHtml = doc.body.innerHTML; const text = r.subject + '\n\n' + doc.body.innerText;
+        if (navigator.clipboard && window.ClipboardItem) {
+          await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([bodyHtml], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
+        } else {   // fallback: seleção + execCommand
+          const div = document.createElement('div'); div.innerHTML = bodyHtml; div.style.position = 'fixed'; div.style.left = '-9999px'; document.body.appendChild(div);
+          const range = document.createRange(); range.selectNodeContents(div); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range); document.execCommand('copy'); sel.removeAllRanges(); div.remove();
+        }
+        toast('Copiado. No Outlook: Nova mensagem → cola no corpo (Ctrl+V). Assunto: ' + r.subject, 'ok');
+        $('newsSubject').value = r.subject; $('newsSubjectWrap').classList.remove('hidden'); $('newsSubject').select();
+      } catch (e) { toast('Não foi possível copiar: ' + e.message, 'err'); }
+    };
+    $('newsSubjectCopy').onclick = async () => { try { await navigator.clipboard.writeText($('newsSubject').value); toast('Assunto copiado.', 'ok'); } catch (e) { $('newsSubject').select(); document.execCommand('copy'); toast('Assunto copiado.', 'ok'); } };
     $('newsSave').onclick = async () => { try { const p = await call('news_save_html', newsVersion); if (p) toast('Guardado em ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
     $('prAbout').onclick = e => { e.preventDefault(); $('btnAbout').click(); };
     loadChangelog();
