@@ -42,6 +42,9 @@ jobs:
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$env:V installer\FlightTracker.iss
           Copy-Item "dist\FlightTracker-Setup-$env:V.exe" "dist\FlightTracker-Setup.exe"
+          # instalador dentro de um zip: as redes empresariais bloqueiam o download direto de .exe, mas deixam passar .zip
+          Compress-Archive -Path "dist\FlightTracker-Setup-$env:V.exe" -DestinationPath "dist\FlightTracker-Setup-$env:V.zip"
+          Copy-Item "dist\FlightTracker-Setup-$env:V.zip" "dist\FlightTracker-Setup.zip"
       - name: Pasta portátil (zip)
         shell: pwsh
         run: Compress-Archive -Path dist\FlightTracker -DestinationPath dist\FlightTracker-windows-portable.zip
@@ -71,9 +74,10 @@ jobs:
           tag_name: latest
           name: FlightTracker — versão mais recente
           body: |
-            Instalador Windows e DMG macOS da versão mais recente (${{ env.V }}).
+            Instalador Windows (dentro de um zip, para passar nos filtros de rede), pasta portátil e DMG macOS da versão mais recente (${{ env.V }}).
             Instala por cima da versão anterior — a base de dados importada mantém-se.
           files: |
+            dist/FlightTracker-Setup.zip
             dist/FlightTracker-Setup.exe
             dist/FlightTracker-windows-portable.zip
           make_latest: true
@@ -84,7 +88,9 @@ jobs:
           tag_name: v${{ env.V }}
           name: FlightTracker ${{ env.V }}
           body: Ver histórico de versões na app (Preferências → Histórico de versões) ou em data/changelog.json.
-          files: dist/FlightTracker-Setup-${{ env.V }}.exe
+          files: |
+            dist/FlightTracker-Setup-${{ env.V }}.zip
+            dist/FlightTracker-Setup-${{ env.V }}.exe
           make_latest: false
 
   macos:

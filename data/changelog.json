@@ -1,14 +1,16 @@
 [
   {
     "version": "4.1.1",
-    "date": "em desenvolvimento",
-    "title": "Pequenas melhorias",
-    "summary": "",
+    "date": "2026-10-21",
+    "title": "Download em zip e email para Outlook na web",
+    "summary": "O instalador Windows passa a ser distribuído dentro de um ficheiro zip (as redes empresariais bloqueiam o download direto de .exe); o email de novidades pode ser copiado e colado no Outlook na web.",
     "sections": [
       {
-        "title": "Interface",
+        "title": "Distribuição",
         "items": [
-          "Email de novidades: botão 📋 Copiar para colar no Outlook na web (Edge) — cola o email formatado numa nova mensagem; assunto copiável à parte."
+          "Link de download do Windows aponta para FlightTracker-Setup.zip (com o FlightTracker-Setup.exe lá dentro); o zip passa nos filtros de rede que bloqueiam .exe. Procedimento a manter em todas as versões.",
+          "Email de novidades com instruções de instalação e link para a versão portátil (sem instalação).",
+          "Email de novidades: botão 📋 Copiar para colar no Outlook na web (Edge) e desenho com fundos claros que fica igual depois de colar."
         ]
       }
     ]

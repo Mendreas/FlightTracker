@@ -58,7 +58,7 @@ Cada *push* para `main` gera automaticamente (GitHub Actions → *Build Windows 
 
 | O quê | Onde |
 |---|---|
-| Instalador Windows (`FlightTracker-Setup.exe`, instala em `%LOCALAPPDATA%\Programs\FlightTracker`, sem direitos de administrador) | [Release *latest*](https://github.com/Mendreas/FlightTracker/releases/latest) — link fixo `releases/download/latest/FlightTracker-Setup.exe` |
+| Instalador Windows (`FlightTracker-Setup.zip` com o `FlightTracker-Setup.exe` lá dentro — o zip passa nos filtros de rede que bloqueiam .exe; instala em `%LOCALAPPDATA%\Programs\FlightTracker`, sem direitos de administrador) | [Release *latest*](https://github.com/Mendreas/FlightTracker/releases/latest) — link fixo `releases/download/latest/FlightTracker-Setup.zip` (e `.exe`) |
 | DMG macOS (`FlightTracker-macOS.dmg`) | idem — `releases/download/latest/FlightTracker-macOS.dmg` |
 | Pasta portátil (zip, sem instalar) | idem — `FlightTracker-windows-portable.zip` |
 | Release com o número da versão (`v4.0.0`, …) | [Releases](https://github.com/Mendreas/FlightTracker/releases) — fica o histórico |

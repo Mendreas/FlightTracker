@@ -11,7 +11,8 @@ from core.db import resource_path
 
 REPO = "https://github.com/Mendreas/FlightTracker"
 # Ligações fixas: a release "latest" é substituída em cada build, por isso os links nunca mudam.
-LINK_WIN = f"{REPO}/releases/download/latest/FlightTracker-Setup.exe"
+LINK_WIN = f"{REPO}/releases/download/latest/FlightTracker-Setup.zip"      # .exe dentro de .zip: passa nos filtros de rede
+LINK_PORT = f"{REPO}/releases/download/latest/FlightTracker-windows-portable.zip"
 LINK_MAC = f"{REPO}/releases/download/latest/FlightTracker-macOS.dmg"
 LINK_ALL = f"{REPO}/releases"
 
@@ -67,11 +68,12 @@ def email_html(e: dict) -> str:
 <tr><td bgcolor="#e8f1fb" style="background:#e8f1fb;padding:22px 40px;text-align:center;border-top:3px solid #1d6fb8;">
   <p style="font-size:13px;margin:0 0 14px;letter-spacing:1px;"><b>DOWNLOAD DA VERS&Atilde;O {h(e['version'])}</b></p>
   <table cellpadding="0" cellspacing="0" align="center"><tr>
-    <td bgcolor="#ffffff" style="background:#ffffff;border:2px solid #1d6fb8;border-radius:8px;padding:10px 22px;font-size:14px;"><a href="{LINK_WIN}" style="text-decoration:none;font-weight:700;"><b>&#8595; Windows (instalador .exe)</b></a></td>
+    <td bgcolor="#ffffff" style="background:#ffffff;border:2px solid #1d6fb8;border-radius:8px;padding:10px 22px;font-size:14px;"><a href="{LINK_WIN}" style="text-decoration:none;font-weight:700;"><b>&#8595; Windows (instalador, .zip)</b></a></td>
     <td style="width:16px;"></td>
     <td bgcolor="#ffffff" style="background:#ffffff;border:2px solid #1d6fb8;border-radius:8px;padding:10px 22px;font-size:14px;"><a href="{LINK_MAC}" style="text-decoration:none;font-weight:700;"><b>&#8595; macOS (.dmg)</b></a></td>
   </tr></table>
-  <p style="font-size:12px;margin:14px 0 0;">Instala por cima da vers&atilde;o anterior &middot; a base de dados importada mant&eacute;m-se &middot; <a href="{LINK_ALL}">todas as vers&otilde;es</a></p>
+  <p style="font-size:12px;margin:14px 0 0;line-height:1.5;"><b>Windows:</b> descarregar o zip, abrir e executar o <i>FlightTracker-Setup.exe</i> que est&aacute; l&aacute; dentro (o instalador vai dentro de um zip porque a rede bloqueia o download direto de .exe). Instala por cima da vers&atilde;o anterior &middot; a base de dados importada mant&eacute;m-se.<br>
+  Sem permiss&otilde;es para instalar? <a href="{LINK_PORT}">vers&atilde;o port&aacute;til (zip)</a>: descompactar para uma pasta e abrir o FlightTracker.exe. &middot; <a href="{LINK_ALL}">todas as vers&otilde;es</a></p>
 </td></tr>
 
 <tr><td style="padding:14px 40px;text-align:center;">

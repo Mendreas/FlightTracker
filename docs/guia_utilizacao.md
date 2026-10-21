@@ -49,9 +49,9 @@ A pasta `AppData` está normalmente escondida no Windows. Se não a vir, escreva
 ### 2.1 Windows
 
 1. Abra a página de releases: https://github.com/Mendreas/FlightTracker/releases/latest
-2. Em "Assets", clique em `FlightTracker-Setup.exe` para descarregar.
-3. O Chrome ou o Edge podem avisar que o ficheiro "não é frequentemente transferido" ou "pode ser perigoso". Isto acontece porque o programa não tem assinatura digital comercial, não porque tenha algum problema. Na lista de transferências, clique nos três pontos (ou na seta) junto ao ficheiro e escolha **Manter** → **Manter mesmo assim**.
-4. Execute o instalador. Não precisa de ser administrador: o programa instala-se na sua pasta de utilizador. Aceite as opções por omissão e, se quiser, marque "Criar atalho no ambiente de trabalho".
+2. Em "Assets", clique em `FlightTracker-Setup.zip` para descarregar (o instalador vai dentro de um zip porque a rede da empresa bloqueia o download direto de ficheiros .exe; o link do email de novidades aponta para este zip).
+3. Abra o zip e execute o `FlightTracker-Setup.exe` que está lá dentro. O Chrome/Edge ou o Windows podem avisar que o ficheiro "não é frequentemente transferido" ou "pode ser perigoso". Isto acontece porque o programa não tem assinatura digital comercial, não porque tenha algum problema. Escolha **Manter** / **Mais informações → Executar mesmo assim**.
+4. Siga o instalador. Não precisa de ser administrador: o programa instala-se na sua pasta de utilizador. Aceite as opções por omissão e, se quiser, marque "Criar atalho no ambiente de trabalho".
 5. No fim, o FlightTracker abre automaticamente. Fica também no menu Iniciar com três atalhos: **FlightTracker** (normal), **FlightTracker (no navegador)** e **FlightTracker (acesso na rede local — iPad)** (ver capítulo 15).
 
 Existe ainda uma versão **portátil** em zip (`FlightTracker-windows-portable.zip`): descompacta-se para qualquer pasta e executa-se `FlightTracker.exe` sem instalar. A base de dados fica na mesma pasta de dados indicada em 1.3.
