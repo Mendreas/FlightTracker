@@ -24,6 +24,7 @@
 :root[data-theme="light"] .sep-o{color:#b45309}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);font:14px/1.45 var(--font);overflow:hidden}
+body{display:flex;flex-direction:column}
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 .hidden{display:none!important}
@@ -31,7 +32,7 @@ a:hover{text-decoration:underline}
 .mini{font-size:11px;color:var(--muted);font-weight:400;margin-left:4px}
 
 /* ---------- topbar ---------- */
-#topbar{height:56px;display:flex;align-items:center;gap:18px;padding:0 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+#topbar{min-height:56px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:6px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex:none}
 .brand{display:flex;align-items:center;gap:10px}
 .logo{font-size:22px;color:var(--accent)}
 .ttl{font-weight:700;font-size:15px}
@@ -66,10 +67,10 @@ a:hover{text-decoration:underline}
 .about-i{font-size:11px;color:#7f8ba0;margin-bottom:18px}
 
 /* ---------- layout ---------- */
-#main{display:flex;height:calc(100% - 56px)}
+#main{display:flex;flex:1;min-height:0}
 #sidebar{width:290px;flex:none;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);overflow:hidden}
-#content{flex:1;display:flex;flex-direction:column;min-width:0;position:relative}
-#detail{width:400px;flex:none;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+#content{flex:1;display:flex;flex-direction:column;min-width:0;position:relative;overflow:hidden}
+#detail{width:400px;max-width:45%;flex:none;background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
 
 .box{padding:10px 12px;border-bottom:1px solid var(--line)}
 .box.grow{flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:0}
@@ -104,7 +105,7 @@ a:hover{text-decoration:underline}
 .empty{padding:24px 12px;text-align:center;color:var(--muted);font-size:13px}
 
 /* ---------- tabs / map ---------- */
-.tabs{display:flex;align-items:center;gap:2px;padding:6px 10px 0;background:var(--panel);border-bottom:1px solid var(--line)}
+.tabs{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:6px 10px 0;background:var(--panel);border-bottom:1px solid var(--line);flex:none}
 .tab{background:transparent;border:0;color:var(--muted);padding:7px 14px;font:inherit;font-size:13px;cursor:pointer;border-bottom:2px solid transparent}
 .tab.active{color:var(--txt);border-bottom-color:var(--accent)}
 .tabs-right{margin-left:auto;display:flex;gap:12px;align-items:center;padding-bottom:5px}
