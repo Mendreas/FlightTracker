@@ -138,7 +138,10 @@ const C = (() => {
     return render(o.sortKey || null, o.sortAsc !== false);
   }
   const hq = t => (window.helpIcon ? window.helpIcon(t) : '');
-  const kcard = (label, value, sub = '', cls = '', drill = null) => `<div class="kcard ${cls} ${drill ? 'clk' : ''}" ${drill ? `data-drill="${esc(drill)}" title="Clica para ver os dados de origem"` : ''}><b>${esc(value)}</b><span>${esc(label)}${hq(label)}</span>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>`;
+  const kcard = (label, value, sub = '', cls = '', drill = null) => {
+    const dk = drill || (window.DrillAuto ? window.DrillAuto(label) : null);
+    return `<div class="kcard ${cls} ${dk ? 'clk' : ''}" ${dk ? `data-drill="${esc(dk)}" title="Clica para ver os dados de origem"` : ''}><b>${esc(value)}</b><span>${esc(label)}${hq(label)}</span>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>`;
+  };
   const card = (title, body, note = '') => `<section class="card"><h3>${esc(title)}${hq(title)}</h3>${note ? `<p class="note">${esc(note)}</p>` : ''}<div class="chart">${body}</div></section>`;
   /* séries temporais: series=[{name, values:[num|null], color, dash, width}], labels=[str] */
   function lines(series, labels, o = {}) {

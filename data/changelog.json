@@ -13,7 +13,7 @@
           "Relatório mensal num clique (KPIs PRU + evolução diária + ROT/taxi + KPIs radar + cruzamento) e relatórios à medida: escolhe as secções, guarda como botão.",
           "NMIR: importa também ETOT/CTOT/ATOT/ETA/ATA e atraso ATFM.",
           "Solo: replay ar + solo — as trajetórias radar do dia animam-se no mesmo relógio; a chegada passa do radar para o percurso no solo ao aterrar e a partida o inverso.",
-          "Cartões clicáveis: em KPIs e no Painel, clicar num cartão (movimentos, go-arounds, taxi adicional, pontualidade, ATFM, CDO…) abre a lista dos voos/dias que deram origem ao valor, com exportação para Excel."
+          "Cartões clicáveis em todas as abas (Final, STAR, APP, FAST, Dados, Diária, RRMS, ROT, KPIs, Painel, Solo, Cruzamento): clicar num cartão abre a lista dos voos/registos que deram origem ao valor, com exportação para Excel e PDF."
         ]
       },
       {

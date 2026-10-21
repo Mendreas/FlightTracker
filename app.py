@@ -305,6 +305,9 @@ class Api:
             return self.svc.export_rows(path, title, headers, rows)
         return self._safe(f)
 
+    def report_rows(self, title, headers, rows):
+        return self._safe(self.svc.report_rows, title, headers, rows)
+
     def panel_details(self, key, d0, d1):
         return self._safe(self.svc.panel_details, key, d0, d1)
 

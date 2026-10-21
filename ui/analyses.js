@@ -37,6 +37,11 @@ const Analyses = (() => {
     $('finCount').textContent = `${rs.length} aterragem(ns) detectada(s)`;
     const sel = $('finRwy'); const cur = sel.value; sel.innerHTML = '<option value="BOTH">Ambas</option>' + d.rwys.map(r => `<option value="${r}">RWY ${r}</option>`).join(''); sel.value = cur;
     if (!rs.length) { empty(el, 'Nenhuma aterragem detectada nos parâmetros actuais'); return; }
+    const bySep = rs.filter(x => x.sepTimeS != null).slice().sort((a, b) => a.sepTimeS - b.sepTimeS);
+    drillScope('final', { 'Aterragens': rs, 'Estabilizadas': { title: 'Aproximações estabilizadas / não estabilizadas', rows: rs.slice().sort((a, b) => (a.stab ? 1 : 0) - (b.stab ? 1 : 0)) },
+      'IAS@FAF méd': { title: 'IAS no FAF por aterragem', rows: rs.slice().sort((a, b) => (b.iasFAF || 0) - (a.iasFAF || 0)) }, 'Tempo FAF→THR méd': { title: 'Tempo FAF→THR por aterragem', rows: rs.slice().sort((a, b) => b.durS - a.durS) },
+      'Sep. temporal méd': { title: 'Separação temporal entre aterragens consecutivas', rows: bySep }, 'Sep. temporal mín': { title: 'Separações (da menor para a maior)', rows: bySep },
+      ...Object.fromEntries(Object.keys(s.byRwy).map(r => ['RWY ' + r, { title: 'Aterragens RWY ' + r, rows: rs.filter(x => x.rwy === r) }])) });
     let h = '<div class="kgrid">' + C.kcard('Aterragens', s.n) + C.kcard('Estabilizadas', `${s.stab} (${Math.round(s.stab / s.n * 100)}%)`, '', s.stab === s.n ? 'ok' : 'warn') +
       C.kcard('IAS@FAF méd', fmt(s.iasFAF) + ' kt') + C.kcard('Tempo FAF→THR méd', fmt(s.durS) + ' s') + C.kcard('Sep. temporal méd', sec(s.sepMean) + ' s') + C.kcard('Sep. temporal mín', sec(s.sepMin) + ' s') +
       Object.entries(s.byRwy).map(([r, n]) => C.kcard('RWY ' + r, n)).join('') + '</div>';
@@ -77,6 +82,8 @@ const Analyses = (() => {
     const r = R.star, el = $('starBody'); if (!r) return;
     $('starCount').textContent = `${r.totalPasses} passagens · ${r.totalViol} violações`;
     const pct = r.pct; const cls = pct == null ? '' : pct >= 95 ? 'ok' : pct < 85 ? 'bad' : '';
+    drillScope('star', { 'Voos ARR analisados': { title: 'Chegadas do filtro', rows: FP.state.flights.filter(f => f.cls === 'arr') }, 'Passagens detectadas': { title: 'Passagens por waypoint', rows: r.perWp }, 'Conformes': { title: 'Conformidade por waypoint', rows: r.perWp },
+      'Violações': { title: 'Violações de IAS nos waypoints STAR', rows: r.violations }, 'Taxa de cumprimento': { title: 'Cumprimento por waypoint', rows: r.perWp }, 'Waypoints sem coordenadas': { title: 'Waypoints sem coordenadas', rows: r.missing.map(w => ({ wp: w })) } });
     let h = '<div class="kgrid">' + C.kcard('Voos ARR analisados', `${r.flightsAnalysed}/${r.flightsTotal}`) + C.kcard('Passagens detectadas', r.totalPasses) + C.kcard('Conformes', r.totalComp, '', 'ok') +
       C.kcard('Violações', r.totalViol, '', r.totalViol ? 'bad' : 'ok') + C.kcard('Taxa de cumprimento', pct == null ? '—' : fmt(pct, 1) + '%', `Raio ${r.radius} NM · Tol +${r.tol} kt`, cls) +
       (r.missing.length ? C.kcard('Waypoints sem coordenadas', r.missing.length, r.missing.join(', '), 'warn') : '') + '</div>';
@@ -132,6 +139,8 @@ const Analyses = (() => {
     $('appRwyBtns').querySelectorAll('.tog').forEach(b => b.onclick = () => { appRwyFilter = b.dataset.v; renderApp(); });
     const recs = r.records.filter(x => appRwyFilter === 'ALL' || x.rwy === appRwyFilter);
     $('appCount').textContent = `${recs.length} voo(s) com violações${appRwyFilter !== 'ALL' ? ' (RWY ' + appRwyFilter + ')' : ''}`;
+    const appRows = recs.map(x => ({ ...x, pontos: (x.points || []).map(pt => `${pt.point} ${pt.ias == null ? '—' : Math.round(pt.ias)}/${Math.round(pt.limit)}`).join(' · ') }));
+    drillScope('app', { 'Pistas': { title: 'Voos com violações na final', rows: appRows }, 'Voos ARR analisados': { title: 'Chegadas analisadas', rows: FP.state.flights.filter(f => f.cls === 'arr') }, 'Voos com violações': { title: 'Voos com violações na final (IAS por ponto / limite)', rows: appRows } });
     let h = '<div class="kgrid">' + C.kcard('Pistas', appRwyFilter === 'ALL' ? rwys.map(x => 'RWY ' + x).join(' + ') : 'RWY ' + appRwyFilter) + C.kcard('Voos ARR analisados', `${r.arrAnalysed}/${r.flightsTotal}`) +
       C.kcard('Raio CPA', r.radius + ' NM') + C.kcard('Tolerância', '±' + r.tol + ' kt') + C.kcard('Voos com violações', recs.length, '', recs.length ? 'bad' : 'ok') + '</div>';
     h += '<h3 class="mini">Violações por voo (ordem temporal) — clica para seleccionar</h3>' + (recs.length ? C.table([{ k: 'i', label: '#', fmt: (v, x, i) => i + 1 }, { k: 'tod', label: 'Hora' }, { k: 'date', label: 'Data' },
@@ -269,6 +278,14 @@ const Analyses = (() => {
     const d = R.dados, el = $('sdBody'), k = d.kpis, limit = d.kpis && parseInt($('sdLimit').value), ch = d.charts;
     fillSel('sdDate', d.options.dates, v => `${v.slice(4, 6)}/${v.slice(2, 4)}/20${v.slice(0, 2)}`); fillSel('sdHour', d.options.hours, v => v + 'h'); fillSel('sdRwy', d.options.rwys, v => 'RWY ' + v); fillSel('sdSeq', d.options.seqs);
     const pk = p => p ? `${p.hour}h (${p.n})` : '—';
+    const dr = d.rows || [], crit = dr.filter(x => x.sep < (parseInt($('sdLimit').value) || 165)), fl = FP.state.flights.filter(f => f.cls !== 'lvl');
+    const hourRows = (d.tables && d.tables.hour) || [], byRwy = {}; dr.forEach(x => { byRwy[x.rwy] = (byRwy[x.rwy] || 0) + 1; });
+    drillScope('dados', { 'Movimentos': { title: 'Movimentos (radar)', rows: fl }, 'Passagens THR detetadas': { title: 'Aterragens detetadas (Final)', rows: (R.final && R.final.results) || [] }, 'Pares globais': { title: 'Todos os pares de aterragens', rows: dr },
+      'Pares analisados': { title: 'Pares analisados', rows: dr }, 'Abaixo do limite': { title: 'Pares abaixo do limite de separação', rows: crit }, 'Críticos com DEP': { title: 'Pares críticos com partida intercalada', rows: crit.filter(x => x.depCnt > 0) }, 'Críticos sem DEP': { title: 'Pares críticos sem partida intercalada', rows: crit.filter(x => !x.depCnt) },
+      'Menor separação': { title: 'Pares por separação (crescente)', rows: dr.slice().sort((a, b) => a.sep - b.sep) }, 'Média': { title: 'Separações de todos os pares', rows: dr }, 'Mediana': { title: 'Separações de todos os pares', rows: dr.slice().sort((a, b) => a.sep - b.sep) },
+      'Hora mais crítica': { title: 'Resumo por hora', rows: hourRows }, 'Hora mais movimentada': { title: 'Resumo por hora', rows: hourRows }, 'Pista mais usada': { title: 'Pares por pista', rows: Object.entries(byRwy).map(([r, n]) => ({ rwy: r, pairs: n })) },
+      'DEP entre chegadas': { title: 'Pares com partidas intercaladas', rows: dr.filter(x => x.depCnt > 0) }, 'Movimentos ARR+DEP': { title: 'Chegadas e partidas (radar)', rows: fl },
+      'Pico aterragens': { title: 'Resumo por hora', rows: hourRows }, 'Pico descolagens': { title: 'Resumo por hora', rows: hourRows }, 'Pico movimentos': { title: 'Resumo por hora', rows: hourRows } });
     let h = '<div class="kgrid">' + C.kcard('Ficheiros carregados', k.files) + C.kcard('Movimentos', k.movementRows) + C.kcard('Passagens THR detetadas', k.landings) + C.kcard('Pares globais', k.allPairs) + '</div>';
     h += `<div class="hint" style="margin-bottom:8px">${k.pairs} pares precedente/seguidor analisados · ${k.crit} abaixo de ${limit}s</div>`;
     h += '<div class="kgrid">' + C.kcard('Pares analisados', k.pairs) + C.kcard('Abaixo do limite', k.crit, '', k.crit ? 'bad' : 'ok') + C.kcard('Críticos com DEP', k.critDep) + C.kcard('Críticos sem DEP', k.critNoDep) +
@@ -308,6 +325,10 @@ const Analyses = (() => {
   }
   function renderDiaria() {
     const d = R.diaria, el = $('dyBody'), k = d.kpis, st = d.stats, pk = p => p ? `${p.hour}h (${p.n})` : '—';
+    const flD = FP.state.flights.filter(f => f.cls !== 'lvl');
+    drillScope('diaria', { 'Dias selecionados': { title: 'Estatísticas por dia', rows: st }, 'Movimentos ARR+DEP': { title: 'Chegadas e partidas (radar)', rows: flD }, 'Aterragens': { title: 'Aterragens (Final)', rows: (R.final && R.final.results) || [] }, 'Descolagens': { title: 'Partidas (radar)', rows: flD.filter(f => f.cls === 'dep') },
+      'Pares': { title: 'Estatísticas por dia', rows: st }, [`Abaixo de ${d.limit}s`]: { title: 'Pares críticos por dia', rows: st }, 'Críticos com DEP': { title: 'Estatísticas por dia', rows: st }, 'Pico de aterragens': { title: 'Estatísticas por dia', rows: st }, 'Pico de descolagens': { title: 'Estatísticas por dia', rows: st },
+      'Callsigns comuns aos dias': { title: 'Callsigns presentes em todos os dias', rows: (d.common || []).map(c => typeof c === 'string' ? { csn: c } : c) } });
     let h = '<div class="kgrid">' + C.kcard('Dias selecionados', k.days) + C.kcard('Movimentos ARR+DEP', k.movs) + C.kcard('Aterragens', k.arr) + C.kcard('Descolagens', k.dep) + C.kcard('Pares', k.pairs) + C.kcard(`Abaixo de ${d.limit}s`, k.crit, '', k.crit ? 'bad' : 'ok') +
       C.kcard('Críticos com DEP', k.critDep) + C.kcard('Pico de aterragens', pk(k.peakArr)) + C.kcard('Pico de descolagens', pk(k.peakDep)) + C.kcard('Callsigns comuns aos dias', k.common) + '</div>';
     h += '<div class="card narr"><h3>Síntese</h3>' + d.narrative.paragraphs.map(p => `<p>${esc(p)}</p>`).join('') + '<div class="insights">' + d.narrative.insights.map(i => `<span>${esc(i)}</span>`).join('') + '</div></div>';
@@ -345,6 +366,9 @@ const Analyses = (() => {
     const st = rows => { const s = rrStats(rows); return s ? [`${s.altMin} / ${s.altAvg} / ${s.altMax} ft`, `${s.iasMin == null ? '—' : s.iasMin} / ${s.iasAvg == null ? '—' : s.iasAvg} / ${s.iasMax == null ? '—' : s.iasMax} kt`] : ['—', '—']; };
     const [a02, i02] = st(s02), [a20, i20] = st(s20);
     let h = `<div class="hint" style="margin-bottom:8px">RRMS — Reduced Runway Separation Minima · Pontos 2400m das THR deslocadas · ${d.points['02'].label} (${d.points['02'].dms}) · ${d.points['20'].label} (${d.points['20'].dms}) · aeronaves DEP e sobrevoos</div>`;
+    drillScope('rrms', { 'RWY 02 — passagens': { title: 'Passagens no ponto 2400 m — RWY 02', rows: s02 }, 'RWY 20 — passagens': { title: 'Passagens no ponto 2400 m — RWY 20', rows: s20 },
+      'Alt. mín/méd/máx RWY 02': { title: 'Passagens RWY 02 (altitude)', rows: s02.slice().sort((a, b) => a.altFt - b.altFt) }, 'Alt. mín/méd/máx RWY 20': { title: 'Passagens RWY 20 (altitude)', rows: s20.slice().sort((a, b) => a.altFt - b.altFt) },
+      'IAS mín/méd/máx RWY 02': { title: 'Passagens RWY 02 (IAS)', rows: s02.slice().sort((a, b) => (a.ias || 0) - (b.ias || 0)) }, 'IAS mín/méd/máx RWY 20': { title: 'Passagens RWY 20 (IAS)', rows: s20.slice().sort((a, b) => (a.ias || 0) - (b.ias || 0)) } });
     h += '<div class="kgrid">' + C.kcard('RWY 02 — passagens', s02.length, `${s02.filter(x => x.airborne).length} no ar · ${s02.filter(x => !x.airborne).length} no solo`) + C.kcard('RWY 20 — passagens', s20.length, `${s20.filter(x => x.airborne).length} no ar · ${s20.filter(x => !x.airborne).length} no solo`) +
       C.kcard('Alt. mín/méd/máx RWY 02', a02) + C.kcard('Alt. mín/méd/máx RWY 20', a20) + C.kcard('IAS mín/méd/máx RWY 02', i02) + C.kcard('IAS mín/méd/máx RWY 20', i20) + '</div>';
     // estatísticas por grupo
@@ -382,6 +406,8 @@ const Analyses = (() => {
     const rows = d.results.filter(r => rf === 'all' || r.rwy === rf);
     $('rotCount').textContent = `${rows.length} aterragem(ns)`;
     const vals = rows.map(r => r.rotS).sort((a, b) => a - b), n = vals.length;
+    const rotSorted = rows.slice().sort((a, b) => b.rotS - a.rotS);
+    drillScope('rot', { 'N.º aterragens': { title: 'Aterragens com ROT', rows: rows }, 'ROT médio': { title: 'ROT por aterragem', rows: rotSorted }, 'P85': { title: 'ROT por aterragem (decrescente)', rows: rotSorted }, 'P95': { title: 'ROT por aterragem (decrescente)', rows: rotSorted }, 'Máximo': { title: 'ROT por aterragem (decrescente)', rows: rotSorted } });
     let h = '<div class="kgrid">' + C.kcard('N.º aterragens', n) + C.kcard('ROT médio', n ? fmt(vals.reduce((a, b) => a + b, 0) / n) + ' s' : '—') + C.kcard('P85', n ? vals[Math.min(Math.floor(n * .85), n - 1)] + ' s' : '—') + C.kcard('P95', n ? vals[Math.min(Math.floor(n * .95), n - 1)] + ' s' : '—') + C.kcard('Máximo', n ? vals[n - 1] + ' s' : '—') + '</div>';
     if (d.n < d.processed * 0.3) h += '<div class="hint sep-o" style="margin-bottom:8px">⚠ A maioria das chegadas termina antes da pista (cobertura radar até ~250 ft / 1,5 NM da THR) — o ROT só é calculável quando existem plots na rolagem.</div>';
     h += `<div class="hint" style="margin-bottom:8px">ARR processados: ${d.processed} · sem pontos: ${d.dbg.noPts || 0} · THR não detectada: ${d.dbg.noCross || 0} · sem saída de pista: ${d.dbg.noOnRwy || 0} · ROT inválido: ${d.dbg.tooShort || 0} · calculados: ${d.n}</div>`;
@@ -400,18 +426,46 @@ const Analyses = (() => {
   /* ---- drill-down: clicar num cartão mostra os dados de origem */
   const DRILL = {};           // key -> {title, cols:[{k,label,fmt?}], rows}
   function drillSet(key, title, cols, rows) { DRILL[key] = { title, cols, rows: rows || [] }; }
+  // âmbito automático: cada função de render declara { 'Nome do cartão': linhas } e os cartões com esse nome ficam clicáveis
+  let drillScopeMap = {}, drillPrefix = '';
+  function drillScope(prefix, map) { drillPrefix = prefix; drillScopeMap = map || {}; }
+  const COL_LABELS = { csn: 'Voo', date: 'Data', rwy: 'RWY', actype: 'Tipo', wtc: 'WTC', cls: 'Mov.', tod: 'Hora', tod_first: 'Início', tod_last: 'Fim', tFAFstr: 'Hora FAF', tTHRstr: 'Hora THR', durS: 'FAF→THR (s)',
+    iasFAF: 'IAS FAF (kt)', ias4: 'IAS 4 NM (kt)', iasTHR: 'IAS THR (kt)', altFAF: 'Alt FAF (ft)', altTHR: 'Alt THR (ft)', crossFAF: 'Desvio eixo (NM)', trackNM: 'Distância (NM)', stab: 'Estab.', cdo: 'CDO', cdoLevelOffs: 'Patamares', cdoLevelSecs: 'Tempo nível (s)', sepTimeS: 'Sep. (s)',
+    wp: 'Waypoint', ias: 'IAS (kt)', limit: 'Limite (kt)', excess: 'Excesso (kt)', dCpa: 'CPA (NM)', total: 'Passagens', compliant: 'Conformes', violations: 'Violações', pct: '%', op: 'Operador', flights: 'Voos', rate: 'Taxa',
+    mode: 'Modo', detected: 'Pontos', violCount: 'Violações', maxAbsDeviation: 'Desvio máx (kt)', company: 'Operador',
+    lead: 'Líder', leadTod: 'Hora líder', leadIas: 'IAS líder', leadAlt: 'Alt líder', trail: 'Seguidor', trailTod: 'Hora seguidor', trailIas: 'IAS seguidor', trailAlt: 'Alt seguidor', sep: 'Sep. (s)', sepNm: 'Sep. (NM)', seq: 'Seq.', depCnt: 'DEP', firstDep: '1º DEP', firstDepTod: 'Hora DEP', bSecAtDep: 'Seguidor no DEP (s)', bNmAtDep: 'Seguidor no DEP (NM)', hour: 'Hora',
+    arrivals: 'Chegadas', pairs: 'Pares', crit: 'Críticos', dep: 'Partidas', arr: 'Chegadas', minSep: 'Sep. mín (s)', avgSep: 'Sep. média (s)', movements: 'Movimentos', critical: 'Críticos',
+    cat: 'Cat.', acType: 'Tipo', airborne: 'No ar', distNM: 'Dist. (NM)', altFt: 'Alt (ft)', comp: 'Operador', rotS: 'ROT (s)', exitM: 'Saída (m)', alt_max: 'Alt máx', alt_min: 'Alt mín', n: 'N', label: 'Hora', value: 'Valor',
+    day: 'Dia', weekday: 'Dia da semana', movs: 'Movimentos', peakHour: 'Hora de pico', peakN: 'Pico', common: 'Comuns', name: 'Nome', mt: 'Mov.', stand_d: 'Stand DEP', stand_a: 'Stand ARR', taxi_out: 'Taxi-out', taxi_in: 'Taxi-in', hp: 'HP', ep: 'Saída', aobt: 'AOBT', hp_time: 'HP', rwy_ent: 'RWY_ENT', atot: 'ATOT', aldt: 'ALDT', rwy_vac: 'RWY_VAC', aibt: 'AIBT', ctot: 'CTOT', spd_vac: 'Vel. saída (kt)', ga: 'GA', rto: 'RTO', atfm_delay: 'ATFM (min)', taxi_s: 'Taxi (s)', rot_s: 'ROT (s)', adep: 'ADEP', ades: 'ADES', reg: 'Matrícula', ao: 'Operador', sid: 'SID', star: 'STAR',
+    src: 'Fontes', n_type: 'Tipo NMIR', t_type: 'Tipo torre', o_type: 'Tipo OPDI', t_reg: 'Matrícula', o_icao24: 'icao24', t_rwy: 'RWY', t_stand: 'Stand', t_rot: 'ROT torre', o_rot: 'ROT OPDI', t_taxi: 'Taxi', flags: 'Discrepâncias' };
+  const HIDE_COLS = new Set(['flight_id', 'id', 'idx', '_dateRaw', 'dateRaw', 'points', 'deps', 'depDistances', 'latFAF', 'lonFAF', 'latTHR', 'lonTHR', 'epoch', 'epochTHR', 'epochFAF', 'tLead', 'tTrail', 'leadFlight', 'trailFlight', 'routable', 'corr', 'n_flags', 't_sort', 'gid', 't_ref', 'raw', 'leg']);
+  const TIME_COLS = new Set(['aobt', 'hp_time', 'rwy_ent', 'atot', 'aldt', 'rwy_vac', 'aibt', 'ctot', 'etot', 'eta', 'ata', 't_first', 't_last', 't', 'r_t_first', 'r_t_last', 't_aobt', 't_rwy_ent', 't_atot', 't_aldt', 't_rwy_vac', 't_aibt', 'o_rwy_in', 'o_rwy_out', 'o_tod', 'o_toc', 't_tod', 't_toc']);
+  const hms = t => t == null ? '—' : new Date(t * 1000).toISOString().slice(11, 19);
+  function autoCols(rows) {
+    const keys = []; for (const r of rows.slice(0, 50)) for (const k of Object.keys(r)) if (!keys.includes(k) && !HIDE_COLS.has(k)) keys.push(k);
+    return keys.map(k => ({ k, label: COL_LABELS[k] || k, fmt: TIME_COLS.has(k) ? hms : k === 'date' ? (v => typeof v === 'string' && /^\d{6}$/.test(v) ? fd(v) : esc(String(v ?? '—'))) : k === 'csn' ? ((v, r) => r.flight_id ? csnLink(v, r.flight_id) : `<b>${esc(v ?? '')}</b>`)
+      : (v => v == null ? '—' : typeof v === 'boolean' ? (v ? '✓' : '—') : Array.isArray(v) ? esc(v.join('; ')) : typeof v === 'number' ? fmt(v, Number.isInteger(v) ? 0 : 1) : esc(String(v))) }));
+  }
+  window.DrillAuto = label => {
+    const d = drillScopeMap[label]; if (!d) return null;
+    const rows = Array.isArray(d) ? d : d.rows, key = 'auto:' + drillPrefix + ':' + label;
+    drillSet(key, (Array.isArray(d) ? label : d.title || label), (Array.isArray(d) || !d.cols) ? autoCols(rows || []) : d.cols, rows || []);
+    return key;
+  };
   function drillOpen(key) {
     const d = DRILL[key]; if (!d) { toast('Sem detalhe disponível para este valor.', 'err'); return; }
     const cols = d.cols.map(c => ({ ...c, fmt: c.fmt || (v => v == null ? '—' : typeof v === 'number' ? fmt(v, Number.isInteger(v) ? 0 : 1) : esc(String(v))) }));
     $('modalTitle').textContent = `${d.title} — ${d.rows.length} registo(s)`;
-    $('modalBody').innerHTML = `<div class="row" style="gap:8px;margin-bottom:8px"><button class="btn sm" id="drExport">⬇ Excel</button><span class="hint">Dados que deram origem ao valor do cartão.</span></div>` +
+    $('modalBody').innerHTML = `<div class="row" style="gap:8px;margin-bottom:8px"><button class="btn sm" id="drExport">⬇ Excel</button><button class="btn sm" id="drPdf">📄 PDF</button><span class="hint">Dados que deram origem ao valor do cartão.</span></div>` +
       (d.rows.length ? C.table(cols, d.rows, { limit: 3000 }) : '<div class="empty">Sem registos.</div>');
     wireCsn($('modalBody'));
-    $('drExport').onclick = async () => { try { const p = await call('export_rows', d.title, d.cols.map(c => c.label), d.rows.map(r => d.cols.map(c => r[c.k] == null ? '' : r[c.k]))); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    const plain = () => d.rows.map(r => cols.map(c => { const v = r[c.k]; if (v == null) return ''; if (TIME_COLS.has(c.k)) return hms(v); if (c.k === 'date' && typeof v === 'string' && /^\d{6}$/.test(v)) return fd(v); if (Array.isArray(v)) return v.join('; '); if (typeof v === 'boolean') return v ? 'sim' : ''; return v; }));
+    $('drExport').onclick = async () => { try { const p = await call('export_rows', d.title, cols.map(c => c.label), plain()); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    $('drPdf').onclick = async () => { try { await call('report_rows', d.title, cols.map(c => c.label), plain()); toast('Aberto no navegador — Imprimir → Guardar como PDF.', 'ok'); } catch (e) { toast(e.message, 'err'); } };
     $('modal').classList.remove('hidden');
   }
   document.addEventListener('click', ev => { const k = ev.target.closest('.kcard[data-drill]'); if (k && !(window.DrillSrv && window.DrillSrv[k.dataset.drill])) drillOpen(k.dataset.drill); });
-  window.Drill = { set: drillSet, open: drillOpen };
+  window.Drill = { set: drillSet, open: drillOpen, scope: (p, m) => drillScope(p, m) };
   const T = t => t == null ? '—' : new Date(t * 1000).toISOString().slice(11, 19);
   const fd = d => d ? `${d.slice(4, 6)}/${d.slice(2, 4)}/20${d.slice(0, 2)}` : '—';
   const csnCol = { k: 'csn', label: 'Voo', fmt: (v, r) => r.flight_id ? csnLink(v, r.flight_id) : `<b>${esc(v || '')}</b>` };
@@ -461,7 +515,7 @@ const Analyses = (() => {
       <p class="hint">Fontes: radar ${d.sources.radar} · torre ${d.sources.torre} · NMIR ${d.sources.nmir} · OPDI ${d.sources.opdi}. Definições em <i>ansperformance.eu</i>: tempo adicional = real − referência não-impedida (percentil 20 do grupo).</p>`;
     h += '<div class="kgrid">';
     if (t) h += C.kcard('Movimentos de pista', fmt(t.n), `${t.source} · ${fmt(t.per_day, 0)}/dia`, '', 'pru.mov') + C.kcard('Pico 60 min', `${t.peak_roll60} mov.`, t.peak_when ? `${new Date(t.peak_when[1] * 1000).toISOString().slice(11, 16)} UTC · hora cheia máx. ${t.peak_hour_mov}` : '', '', 'pru.peak') +
-      C.kcard('Utilização no pico', pc(t.util_peak), `capacidade declarada ${t.capacity}/h · ${t.hours_over_capacity} h acima`, t.util_peak > 100 ? 'warn' : 'ok') +
+      C.kcard('Utilização no pico', pc(t.util_peak), `capacidade declarada ${t.capacity}/h · ${t.hours_over_capacity} h acima`, t.util_peak > 100 ? 'warn' : 'ok', 'pru.peak') +
       C.kcard('Go-arounds', t.ga, t.ga_rate != null ? `${fmt(t.ga_rate, 1)} por 1 000 aterragens` : 'sem ficheiro da torre', t.ga ? 'warn' : '', 'pru.ga');
     if (x) h += C.kcard('Taxi-out adicional', x.taxi_out.n ? `${m1(x.taxi_out.mean_min)} min` : '—', `média por partida · n=${x.taxi_out.n}`, '', 'pru.taxi_out') + C.kcard('Taxi-in adicional', x.taxi_in.n ? `${m1(x.taxi_in.mean_min)} min` : '—', `média por chegada · n=${x.taxi_in.n}`, '', 'pru.taxi_in');
     if (a && a.n) h += C.kcard(`ASMA adicional (${a.ring_nm} NM)`, `${m1(a.mean_min)} min`, `média por chegada · n=${a.n} · trânsito mediano ${s0(a.transit.median)}`, '', 'pru.asma');
@@ -493,6 +547,17 @@ const Analyses = (() => {
     drillSet('kpi.all', 'Movimentos (radar)', fcols, fl); drillSet('kpi.arr', 'Chegadas (radar)', fcols, fl.filter(f => f.cls === 'arr')); drillSet('kpi.dep', 'Partidas (radar)', fcols, fl.filter(f => f.cls === 'dep')); drillSet('kpi.lvl', 'Sobrevoos (radar)', fcols, fl.filter(f => f.cls === 'lvl'));
     const p = v => k.total ? Math.round(v / k.total * 100) + '%' : '';
     $('kpiNote').textContent = [k.approach && `${k.approach.n} aproximações`, k.star && `${k.star.passes} passagens STAR`, k.star && `${k.star.viol} violações IAS`].filter(Boolean).join(' · ');
+    const finRs = (R.final && R.final.results) || [], peakFl = fl.filter(f => Math.floor((f.t_first % 86400) / 3600) === k.peakHour);
+    const lr = k.landingRate ? k.landingRate.labels.map((l, i) => ({ label: l + 'h', value: k.landingRate.series[i] })) : [];
+    const sv = (R.star && R.star.violations) || [], sw = (R.star && R.star.perWp) || [];
+    drillScope('kpi', { 'Dias de dados': { title: 'Movimentos por dia', rows: (k.byDay || []).map(d => Array.isArray(d) ? { date: d[0], n: d[1] } : d) }, 'Total': { title: 'Passagens por waypoint', rows: sw }, 'Hora de pico': { title: `Movimentos na hora de pico (${String(k.peakHour).padStart(2, '0')}:00)`, rows: peakFl }, 'Período (UTC)': { title: 'Movimentos', rows: fl }, 'Amostras (radar)': { title: 'Movimentos (plots por movimento)', rows: fl },
+      'Aterragens': { title: 'Aterragens (Final)', rows: finRs }, 'Estabilizadas': { title: 'Aproximações estabilizadas / não', rows: finRs.slice().sort((a, b) => (a.stab ? 1 : 0) - (b.stab ? 1 : 0)) }, 'IAS@FAF méd.': { title: 'IAS no FAF por aterragem', rows: finRs }, 'Tempo FAF→THR méd.': { title: 'Tempo FAF→THR por aterragem', rows: finRs },
+      'Sep. temporal méd.': { title: 'Separações entre aterragens', rows: finRs.filter(x => x.sepTimeS != null) }, 'Sep. temporal mín./máx.': { title: 'Separações (crescente)', rows: finRs.filter(x => x.sepTimeS != null).sort((a, b) => a.sepTimeS - b.sepTimeS) },
+      ...Object.fromEntries(Object.keys((k.approach && k.approach.byRwy) || {}).map(r => ['RWY ' + r, { title: 'Aterragens RWY ' + r, rows: finRs.filter(x => x.rwy === r) }])),
+      'Pico 60 min': { title: 'Aterragens por janela de 60 min (passos de 5 min)', rows: lr }, 'Média período': { title: 'Aterragens por janela de 60 min', rows: lr },
+      'Média': { title: 'Separações entre aterragens', rows: finRs.filter(x => x.sepTimeS != null) }, 'Mediana': { title: 'Separações (crescente)', rows: finRs.filter(x => x.sepTimeS != null).sort((a, b) => a.sepTimeS - b.sepTimeS) }, 'Mínimo': { title: 'Separações (crescente)', rows: finRs.filter(x => x.sepTimeS != null).sort((a, b) => a.sepTimeS - b.sepTimeS) }, 'Máximo': { title: 'Separações (decrescente)', rows: finRs.filter(x => x.sepTimeS != null).sort((a, b) => b.sepTimeS - a.sepTimeS) }, 'Bunching': { title: 'Pares com menos de 90 s', rows: finRs.filter(x => x.sepTimeS != null && x.sepTimeS < 90) },
+      'Taxa CDO': { title: 'Aproximações (CDO)', rows: finRs.slice().sort((a, b) => (a.cdo ? 1 : 0) - (b.cdo ? 1 : 0)) }, 'Level-offs méd./aprox.': { title: 'Patamares por aproximação', rows: finRs.slice().sort((a, b) => (b.cdoLevelOffs || 0) - (a.cdoLevelOffs || 0)) }, 'Tempo nível méd.': { title: 'Tempo em nível por aproximação', rows: finRs.slice().sort((a, b) => (b.cdoLevelSecs || 0) - (a.cdoLevelSecs || 0)) },
+      'Passagens analisadas': { title: 'Passagens por waypoint', rows: sw }, 'Conformes': { title: 'Conformidade por waypoint', rows: sw }, 'Violações': { title: 'Violações de IAS (STAR)', rows: sv }, 'Taxa de cumprimento': { title: 'Cumprimento por waypoint', rows: sw } });
     let h = C.card('Resumo Operacional', '<div class="kgrid">' + C.kcard('Movimentos', fmt(k.total), '', '', 'kpi.all') + C.kcard('Chegadas (ARR)', k.arr, p(k.arr), '', 'kpi.arr') + C.kcard('Partidas (DEP)', k.dep, p(k.dep), '', 'kpi.dep') + C.kcard('Sobrevoos (LVL)', k.lvl, p(k.lvl), '', 'kpi.lvl') + C.kcard('Dias de dados', k.days) +
       C.kcard('Hora de pico', `${String(k.peakHour).padStart(2, '0')}:00`, `${k.peakN} mov.`) + C.kcard('Período (UTC)', k.period) + C.kcard('Amostras (radar)', fmt(k.pts)) + '</div>' + (k.days > 1 ? `<p class="hint">Contagem por (callsign, dia): ${k.total} movimentos em ${k.callsigns} callsigns distintos ao longo de ${k.days} dias.</p>` : ''));
     if (k.approach) { const a = k.approach; h += C.card(`Análise de Aproximações (${FP.state.airport})`, '<div class="kgrid">' + C.kcard('Aterragens', a.n, a.rate ? fmt(a.rate, 1) + ' aterr./h' : '') + Object.entries(a.byRwy).map(([r, n]) => C.kcard('RWY ' + r, n)).join('') +

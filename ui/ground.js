@@ -131,6 +131,11 @@ const Ground = (() => {
     const tbl = (list, keyLabel) => C.table([{ k: 'key', label: keyLabel }, { k: 'n', label: 'N' }, { k: 'median', label: 'Mediana (s)', fmt: v => v == null ? '—' : Math.round(v) },
       { k: 'mean', label: 'Média (s)', fmt: v => v == null ? '—' : Math.round(v) }, { k: 'p10', label: 'P10', fmt: v => v == null ? '—' : Math.round(v) }, { k: 'p90', label: 'P90', fmt: v => v == null ? '—' : Math.round(v) },
       { k: 'max', label: 'Máx', fmt: v => v == null ? '—' : Math.round(v) }], list.filter(x => x.n));
+    const arrR = rows.filter(r => r.mt !== 'DEPARTURE'), depR = rows.filter(r => r.mt === 'DEPARTURE');
+    const byRot = (list) => list.filter(r => r.rot_s != null).slice().sort((a, b) => b.rot_s - a.rot_s), byTaxi = list => list.filter(r => r.taxi_s != null).slice().sort((a, b) => b.taxi_s - a.taxi_s);
+    Drill.scope('solo', { 'Chegadas': { title: 'Chegadas (torre)', rows: arrR }, 'Partidas': { title: 'Partidas (torre)', rows: depR }, 'Go-arounds': { title: 'Go-arounds (torre)', rows: rows.filter(r => r.ga) },
+      'ROT chegada': { title: 'ROT por chegada (decrescente)', rows: byRot(arrR) }, 'ROT partida': { title: 'ROT por partida (decrescente)', rows: byRot(depR) }, 'Taxi-in': { title: 'Taxi-in por chegada (decrescente)', rows: byTaxi(arrR) }, 'Taxi-out': { title: 'Taxi-out por partida (decrescente)', rows: byTaxi(depR) },
+      'Vel. na saída': { title: 'Velocidade na saída de pista por chegada', rows: arrR.filter(r => r.spd_vac != null).slice().sort((a, b) => b.spd_vac - a.spd_vac) } });
     let h = '<div class="kgrid">' + C.kcard('Chegadas', s.n_arr) + C.kcard('Partidas', s.n_dep) + C.kcard('Go-arounds', s.ga, '', s.ga ? 'warn' : '') +
       C.kcard('ROT chegada', st(s.rot_arr), `ALDT → saída de pista · mediana · n=${s.rot_arr.n}`) + C.kcard('ROT partida', st(s.rot_dep), `entrada na pista → ATOT · n=${s.rot_dep.n}`) +
       C.kcard('Taxi-in', s.taxi_in.n ? dur(s.taxi_in.median) : '—', `saída de pista → on-block · n=${s.taxi_in.n}`) + C.kcard('Taxi-out', s.taxi_out.n ? dur(s.taxi_out.median) : '—', `off-block → ATOT · n=${s.taxi_out.n}`) +
@@ -288,6 +293,15 @@ const Ground = (() => {
     else if (filt === 'all3') rows = rows.filter(r => r.src.includes('R') && r.src.includes('T') && r.src.includes('O'));
     if (q) rows = rows.filter(r => r.csn.includes(q));
     const pct = (a, b) => b ? ` (${Math.round(a / b * 100)}%)` : '';
+    const A = cross.rows, has = k => r => r.src.includes(k), only = k => r => r.src.replace('N', '') === k;
+    const ccols = [{ k: 'date', label: 'Data', fmt: fmtD }, { k: 'csn', label: 'Voo', fmt: (v, r) => r.flight_id ? `<a href="#" class="csn-link" data-fid="${r.flight_id}"><b>${esc(v)}</b></a>` : `<b>${esc(v)}</b>` }, { k: 'cls', label: 'Mov.', fmt: v => v.toUpperCase() }, { k: 'src', label: 'Fontes' }, { k: 'flags', label: 'Discrepâncias', fmt: v => v.filter(f => !f.startsWith('sem ')).join('; ') || '—' },
+      { k: 'n_type', label: 'Tipo NMIR', fmt: v => v || '—' }, { k: 't_type', label: 'Tipo torre', fmt: v => v || '—' }, { k: 'o_type', label: 'Tipo OPDI', fmt: v => v || '—' }, { k: 't_reg', label: 'Matrícula', fmt: (v, r) => v || r.o_reg || '—' }, { k: 't_rwy', label: 'RWY', fmt: v => v || '—' }, { k: 't_stand', label: 'Stand', fmt: v => v || '—' }];
+    const cs = (title, f) => ({ title, cols: ccols, rows: A.filter(f) });
+    Drill.scope('cross', { 'Movimentos': cs('Todos os movimentos (união das fontes)', () => true), 'Radar': cs('Movimentos com radar', has('R')), 'Torre': cs('Movimentos com torre', has('T')), 'OPDI': cs('Movimentos com OPDI', has('O')),
+      'Radar ∩ Torre': cs('Radar e torre', r => has('R')(r) && has('T')(r)), 'Radar ∩ OPDI': cs('Radar e OPDI', r => has('R')(r) && has('O')(r)), 'Torre ∩ OPDI': cs('Torre e OPDI', r => has('T')(r) && has('O')(r)), 'Nas 3': cs('Nas três fontes', r => has('R')(r) && has('T')(r) && has('O')(r)),
+      'Com NMIR': cs('Com registo NMIR', has('N')), 'Discrepâncias': cs('Movimentos com discrepâncias', r => r.n_flags), 'Só radar': cs('Só radar', only('R')), 'Só torre': cs('Só torre', only('T')), 'Só OPDI': cs('Só OPDI', only('O')),
+      'Δt radar−torre': { title: 'Δt radar − torre por movimento', cols: [...ccols, { k: 'dt_radar_torre', label: 'Δt (s)' }], rows: A.filter(r => r.dt_radar_torre != null).sort((a, b) => Math.abs(b.dt_radar_torre) - Math.abs(a.dt_radar_torre)) },
+      'Δt OPDI−torre': { title: 'Δt OPDI − torre por movimento', cols: [...ccols, { k: 'dt_opdi_torre', label: 'Δt (s)' }], rows: A.filter(r => r.dt_opdi_torre != null).sort((a, b) => Math.abs(b.dt_opdi_torre) - Math.abs(a.dt_opdi_torre)) } });
     let h = '<div class="kgrid">' + C.kcard('Movimentos', c.total, 'união das fontes') + C.kcard('Radar', c.radar) + C.kcard('Torre', c.torre) + C.kcard('OPDI', c.opdi) +
       C.kcard('Radar ∩ Torre', c.r_t + pct(c.r_t, c.radar)) + C.kcard('Radar ∩ OPDI', c.r_o + pct(c.r_o, c.radar)) + C.kcard('Torre ∩ OPDI', c.t_o + pct(c.t_o, c.torre)) + C.kcard('Nas 3', c.all3) +
       C.kcard('Com NMIR', c.nmir + pct(c.nmir, c.total)) + C.kcard('Discrepâncias', c.with_flags, `tipo ${c.type_mismatch} · ADEP/ADES ${c.apt_mismatch}`, c.with_flags ? 'warn' : 'ok') +

@@ -548,6 +548,16 @@ class Service:
     def export_rows(self, path: str, title: str, headers: list[str], rows: list[list]):
         return reports.write_excel(path, [(title[:28] or "Dados", headers, rows)])
 
+    def report_rows(self, title: str, headers: list[str], rows: list[list]) -> str:
+        html = reports.wrap(title, f"{self.airport} · {len(rows)} registo(s) · {', '.join(fmt_date(d) for d in sorted(self.dates)[:3])}{'…' if len(self.dates) > 3 else ''}",
+                            reports.table(headers, rows), landscape=len(headers) > 8)
+        out_dir = os.path.join(tempfile.gettempdir(), "flighttracker_relatorios"); os.makedirs(out_dir, exist_ok=True)
+        path = os.path.join(out_dir, f"dados_{time.strftime('%Y%m%d_%H%M%S')}.html")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(html)
+        webbrowser.open("file://" + path.replace("\\", "/"))
+        return path
+
     def panel_details(self, key: str, d0: str, d1: str):
         """Dados de origem dos cartões do Painel."""
         dates = [r["date"] for r in self.db.daily_series(self.airport, d0, d1)]
