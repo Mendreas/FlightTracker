@@ -53,20 +53,22 @@ class Service:
         return len(self.flights)
 
     def set_airport_only(self, on: bool) -> dict:
-        """Restringe a vista aos voos que o NMIR dá como ARR/DEP do aeroporto activo (ADEP/ADES)."""
+        """Retira da vista os voos que, segundo o NMIR/OPDI, têm origem e destino conhecidos e nenhum é o aeroporto activo.
+        Voos sem informação mantêm-se."""
+        base = [f for f in self.all_flights if f["airport"] == self.airport]
         if not on:
             self.airport_only_ids = None
-            self.flights = [f for f in self.all_flights if f["airport"] == self.airport]
+            self.flights = base
             self.reset_results()
             return {"on": False, "n": len(self.flights), "n_nmir": None}
         r = self.db.airport_nmir(self.airport, self.dates)
-        if r["n_nmir"] == 0:
+        if r["n_info"] == 0:
             return {"on": False, "n": len(self.flights), "n_nmir": 0}
-        ids = set(r["ids"])
-        self.airport_only_ids = ids
-        self.flights = [f for f in self.all_flights if f["airport"] == self.airport and f["flight_id"] in ids]
+        excl = set(r["exclude"])
+        self.airport_only_ids = excl
+        self.flights = [f for f in base if f["flight_id"] not in excl]
         self.reset_results()
-        return {"on": True, "n": len(self.flights), "n_nmir": r["n_nmir"], "ids": sorted(ids)}
+        return {"on": True, "n": len(self.flights), "n_nmir": r["n_info"], "excluded": len(excl), "ids": sorted(excl)}
 
     def _by_id(self, fid: int) -> dict | None:
         return next((f for f in self.flights if f["flight_id"] == fid), None)

@@ -182,16 +182,16 @@ async function applyAptOnly(on, silent) {
     const r = await call('set_airport_only', on);
     if (on && !r.on) {
       state.aptOnly = false; state.aptOnlyIds = null;
-      toast(`Não há dados NMIR com ADEP/ADES = ${state.airport} para as datas seleccionadas. Importa o Excel NMIR desse aeroporto/mês (botão NMIR…).`, 'err');
+      toast(`Não há dados NMIR/OPDI com origem e destino para as datas seleccionadas — nada para filtrar. Importa o Excel NMIR ou o OPDI desse mês.`, 'err');
     } else {
-      state.aptOnly = r.on; state.aptOnlyIds = r.on ? new Set(r.ids) : null;
-      if (r.on && !silent) toast(`${r.n} voo(s) com ARR/DEP ${state.airport} no NMIR (${fmt(r.n_nmir)} registos).`, 'ok');
+      state.aptOnly = r.on; state.aptOnlyIds = r.on ? new Set(r.ids) : null;   // ids = voos a EXCLUIR (origem e destino conhecidos e ≠ aeroporto)
+      if (r.on && !silent) toast(`${r.excluded} voo(s) retirados por terem origem e destino conhecidos fora de ${state.airport}; ficam ${r.n}.`, 'ok');
     }
   } catch (e) { state.aptOnly = false; state.aptOnlyIds = null; toast(e.message, 'err'); }
   $('btnAptOnly').classList.toggle('on', state.aptOnly);
 }
 function applyAirportView() {
-  state.flights = state.allFlights.filter(f => f.airport === state.airport && (!state.aptOnly || !state.aptOnlyIds || state.aptOnlyIds.has(f.flight_id)));
+  state.flights = state.allFlights.filter(f => f.airport === state.airport && (!state.aptOnly || !state.aptOnlyIds || !state.aptOnlyIds.has(f.flight_id)));
   state.byId = new Map(state.flights.map(f => [f.flight_id, f]));
   state.hidden.clear(); state.selected = null; closeDetail();
   applyClsView(); renderFlightList(); renderTable(); drawTracks();

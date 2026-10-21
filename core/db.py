@@ -1050,16 +1050,32 @@ class Database:
         return json.loads(r[0]) if r and r[0] else None
 
     def airport_nmir(self, airport: str, dates: list[str]) -> dict:
-        """Movimentos (flight_id) cujo voo tem, no NMIR, ADEP ou ADES = aeroporto, nas datas dadas.
-        n_nmir = registos NMIR com esse aeroporto nessas datas (0 → não há listagem para o aeroporto/mês)."""
+        """'Só ARR/DEP': devolve os flight_id a EXCLUIR — movimentos cuja origem E destino são conhecidos
+        (NMIR ou OPDI) e nenhum deles é o aeroporto. Voos sem informação ficam (não se retira o que não se sabe).
+        n_info = registos NMIR/OPDI com ADEP/ADES conhecidos nessas datas (0 → não há com que filtrar)."""
         if not dates:
-            return {"ids": [], "n_nmir": 0}
-        n = self.con.execute("SELECT count(*) FROM nmir WHERE (adep=? OR ades=?) AND date IN (SELECT unnest(?::VARCHAR[]))",
-                             [airport, airport, dates]).fetchone()[0]
-        ids = [r[0] for r in self.con.execute("""
-            SELECT DISTINCT f.flight_id FROM flights f JOIN nmir n ON n.csn=f.csn AND n.date=f.date
-            WHERE (n.adep=? OR n.ades=?) AND f.date IN (SELECT unnest(?::VARCHAR[]))""", [airport, airport, dates]).fetchall()]
-        return {"ids": ids, "n_nmir": int(n)}
+            return {"exclude": [], "n_info": 0}
+        n = self.con.execute("""SELECT count(*) FROM nmir WHERE date IN (SELECT unnest(?::VARCHAR[])) AND adep IS NOT NULL AND ades IS NOT NULL""", [dates]).fetchone()[0]
+        n += self.con.execute("""SELECT count(DISTINCT flight_id) FROM opdi_events WHERE airport=? AND adep IS NOT NULL AND ades IS NOT NULL
+                                 AND strftime(to_timestamp(t), '%y%m%d') IN (SELECT unnest(?::VARCHAR[]))""", [airport, dates]).fetchone()[0]
+        exclude = [r[0] for r in self.con.execute("""
+            WITH other AS (
+                SELECT csn, date FROM nmir WHERE date IN (SELECT unnest(?::VARCHAR[])) AND adep IS NOT NULL AND ades IS NOT NULL AND adep <> ? AND ades <> ?
+                UNION
+                SELECT csn, strftime(to_timestamp(min(t)), '%y%m%d') date FROM opdi_events
+                WHERE airport=? AND adep IS NOT NULL AND ades IS NOT NULL AND adep <> ? AND ades <> ?
+                      AND coalesce(adep_p,'') <> ? AND coalesce(ades_p,'') <> ?
+                GROUP BY flight_id, csn),
+            at_apt AS (   -- qualquer fonte que diga que é do aeroporto prevalece
+                SELECT csn, date FROM nmir WHERE date IN (SELECT unnest(?::VARCHAR[])) AND (adep = ? OR ades = ?)
+                UNION SELECT csn, date FROM ground WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[]))
+                UNION SELECT csn, strftime(to_timestamp(min(t)), '%y%m%d') FROM opdi_events WHERE airport=? AND (adep = ? OR ades = ?) GROUP BY flight_id, csn)
+            SELECT DISTINCT f.flight_id FROM flights f
+            JOIN other o ON o.csn = f.csn AND o.date = f.date
+            LEFT JOIN at_apt a ON a.csn = f.csn AND a.date = f.date
+            WHERE f.airport = ? AND f.date IN (SELECT unnest(?::VARCHAR[])) AND a.csn IS NULL""",
+            [dates, airport, airport, airport, airport, airport, airport, airport, dates, airport, airport, airport, dates, airport, airport, airport, airport, dates]).fetchall()]
+        return {"exclude": exclude, "n_info": int(n)}
 
     def close(self):
         self.con.close()

@@ -64,7 +64,7 @@
         "items": [
           "Calendário por mês com contagem de ficheiros por dia, dias da semana e blocos horários, como na versão 3.",
           "Ao escolher um dia carregam-se todos os aeroportos; o seletor Aeroporto centra o mapa e muda a vista sem perder os dados dos outros.",
-          "Botão ✈ Só ARR/DEP: mostra apenas os voos que o NMIR (ADEP/ADES) dá como chegada ou partida do aeroporto escolhido.",
+          "Botão ✈ Só ARR/DEP: retira os voos cuja origem e destino são conhecidos (NMIR/OPDI) e nenhum é o aeroporto escolhido; voos sem informação mantêm-se.",
           "As análises são pré-calculadas em segundo plano depois de aplicar o filtro — as abas abrem já com resultados.",
           "Clicar num voo em qualquer aba mostra só esse voo no mapa.",
           "Tema escuro e claro (botão no canto superior direito).",
