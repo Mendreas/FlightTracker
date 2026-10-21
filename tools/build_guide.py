@@ -124,7 +124,7 @@ def build():
                 if not all(re.fullmatch(r"-+", c) for c in cells): rows.append(cells)
                 i += 1
             n = len(rows[0])
-            widths = [W * 0.26, W * 0.74] if n == 2 else [W * 0.16, W * 0.17, W * 0.34, W * 0.33] if n == 4 else [W / n] * n
+            widths = [W * 0.26, W * 0.74] if n == 2 else [W * 0.16, W * 0.17, W * 0.34, W * 0.33] if n == 4 else [W * 0.3, W * 0.37, W * 0.33] if n == 3 else [W / n] * n
             story += [table(rows, widths), Spacer(1, 6)]; continue
         m = re.match(r"^(\d+)\. (.*)", ln)
         if ln.startswith("- ") or m:
@@ -132,8 +132,8 @@ def build():
             while i < len(lines) and (lines[i].startswith("- ") or re.match(r"^\d+\. ", lines[i])):
                 items.append(ListItem(Paragraph(inline(re.sub(r"^(- |\d+\. )", "", lines[i])), S["li"]), leftIndent=14))
                 i += 1
-            story += [ListFlowable(items, bulletType="1" if numbered else "bullet", start="1" if numbered else None,
-                                   bulletFontSize=8, leftIndent=14), Spacer(1, 5)]
+            kw = dict(bulletType="1", bulletFormat="%s.", bulletFontSize=9.8, bulletFontName=FONT) if numbered else dict(bulletType="bullet", bulletFontSize=7)
+            story += [ListFlowable(items, leftIndent=16, **kw), Spacer(1, 5)]
             continue
         if ln.strip():
             story += [Paragraph(inline(ln.strip()), S["p"])]
