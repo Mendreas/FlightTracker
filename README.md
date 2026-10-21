@@ -113,4 +113,4 @@ A data e o bloco vêm do nome do ficheiro (ou da pasta); o bloco é confirmado p
 
 ## Guia de utilização
 
-O PDF `ui/Guia_FlightTracker.pdf` é gerado a partir de `docs/guia_utilizacao.md` com `python tools/build_guide.py` (reportlab). Regenerar quando se altera o guia ou a versão.
+O texto do guia está em `docs/guia_utilizacao.md`. O PDF distribuído na app (`ui/Guia_FlightTracker.pdf`) é a versão formatada em Word pelo Paulo (capa NAV/GOPLIS); `python tools/build_guide.py` gera uma versão alternativa simples com reportlab quando não houver Word atualizado.
