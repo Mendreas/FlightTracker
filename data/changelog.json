@@ -1,9 +1,9 @@
 [
   {
     "version": "4.1.0",
-    "date": "em desenvolvimento",
-    "title": "Solo: taxi, ROT e dados da torre (LPPT)",
-    "summary": "Nova aba Solo com os movimentos no solo de Lisboa a partir do export operacional da torre (A-SMGCS): percurso stand ↔ pista reconstruído sobre a rede real de taxiways, animação do dia, tempos de ocupação de pista e de taxi.",
+    "date": "2026-10-21",
+    "title": "Solo (A-SMGCS), KPIs PRU, Painel e cruzamento de fontes",
+    "summary": "Versão 4.1: nova aba Solo com os movimentos no solo de Lisboa (export da torre A-SMGCS) — percurso stand ↔ pista, animação do dia, ROT e taxi; KPIs no estilo EUROCONTROL/PRU; Painel de evolução diária com mapa de calor; cruzamento radar + NMIR + torre + OPDI com correções; cartões clicáveis em todas as abas; ajuda contextual e guia de utilização em PDF.",
     "sections": [
       {
         "title": "KPIs e painéis (estilo EUROCONTROL / PRU)",
@@ -33,18 +33,21 @@
           "Aba Cruzamento: um registo por movimento com o que dizem o radar, o NMIR, o ficheiro da torre e o OPDI; cobertura de cada fonte, emparelhamento por callsign/data/instante e sinalização de discrepâncias (tipo, WTC, ADEP/ADES, desvios de tempo, go-arounds, fontes em falta).",
           "Excel com todas as fontes lado a lado (folhas Cruzamento, Discrepâncias e Cobertura).",
           "Correções: em cada linha do cruzamento pode registar-se o tipo/aeroporto correto ou marcar como verificado, com nota; fica na base de dados e aplica-se ao movimento radar e ao NMIR (os ficheiros de origem não são alterados).",
+          "Correção ao nível do tipo de aeronave: alterar a WTC de um tipo (ex.: CL35 → M) aplica-se a todos os movimentos desse tipo, passados e futuros.",
           "Importar pasta reconhece agora, pelo conteúdo, CSV do radar, CSV OPDI, export da torre e Excel NMIR, em qualquer subpasta — tudo numa só importação."
         ]
       },
       {
         "title": "Interface",
         "items": [
+          "Botão ✈ Só ARR/DEP com regras claras: só sai o voo cujos ADEP e ADES são ambos conhecidos e nenhum é o aeroporto escolhido (fontes: NMIR, OPDI e geometria do próprio radar); em caso de dúvida o voo fica. Igual para LPPR/LPFR/LPMA.",
           "Tema claro por omissão; mapa 'Ruas' por omissão no Mapa e 'OSM' no Solo.",
           "Na aba Solo a tabela fica à esquerda e o mapa à direita, com divisor arrastável; clicar num avião no mapa seleciona-o na tabela sem mexer no relógio.",
           "Modo rede local (atalho \"FlightTracker (acesso na rede local — iPad)\" ou FlightTracker.exe --lan): a app abre no Safari do iPad / noutro PC da mesma rede, no endereço mostrado em Preferências.",
           "Ajuda contextual: um ? junto a cada quadro, gráfico e conceito (ASMA, ROT, CDO, bunching, AD…A, etc.); ao passar o rato aparece a explicação.",
           "Guia de utilização em PDF (Preferências → Guia de utilização): manual completo, aba a aba, com capítulo de acrónimos.",
-          "Correção: o mapa é redesenhado ao fechar o painel de detalhe do voo (deixava uma faixa em branco à direita)."
+          "Correção: o mapa é redesenhado ao fechar o painel de detalhe do voo (deixava uma faixa em branco à direita).",
+          "Cartões sem tooltip nativo (sobrepunha-se à ajuda); a indicação 'clica para ver os dados de origem' aparece dentro da ajuda do ?."
         ]
       }
     ]
