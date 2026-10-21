@@ -286,9 +286,10 @@ async function selectFlight(id, zoom) {
     openDetail(f, d.points, d);
   } catch (e) { toast(e.message, 'err'); }
 }
-function closeDetail() { $('detail').classList.add('hidden'); }
+function closeDetail() { $('detail').classList.add('hidden'); redrawMaps(); }
+function redrawMaps() { setTimeout(() => { try { if (map) map.invalidateSize(); } catch (e) {} try { if (window.Ground && Ground.resize) Ground.resize(); } catch (e) {} }, 60); }
 function openDetail(f, pts, d) {
-  $('detail').classList.remove('hidden');
+  $('detail').classList.remove('hidden'); redrawMaps();
   $('dCsn').textContent = f.csn;
   $('dSub').textContent = `${f.date} · ${CLS_NAME[f.cls]} · ${f.actype || 'tipo ?'}${f.wtc ? ' / ' + f.wtc : ''} · Mode S ${f.modes || '—'}`;
   const dur = f.t_last - f.t_first;
@@ -435,6 +436,10 @@ document.addEventListener('DOMContentLoaded', () => {
   $('btnNmir').onclick = async () => { try { const n = await call('import_nmir'); if (n != null) { toast(`${fmt(n)} registo(s) NMIR adicionados.`, 'ok'); await refreshState(); applyFilter(); } } catch (e) { toast(e.message, 'err'); } };
   $('btnFolder').onclick = () => call('open_data_folder').catch(e => toast(e.message, 'err'));
   applyTheme(document.documentElement.dataset.theme || 'light');
+  $('prGuide').onclick = async () => {
+    if (window.pywebview && window.pywebview.api) { try { await call('guide_pdf'); toast('Guia aberto no leitor de PDF'); } catch (e) { toast(e.message, 'err'); } }
+    else window.open('Guia_FlightTracker.pdf', '_blank');
+  };
   $('btnAbout').onclick = () => { $('aboutVer').textContent = ($('ver').textContent || '').replace(/^v/, ''); $('about').classList.remove('hidden'); };
   $('aboutClose').onclick = () => $('about').classList.add('hidden');
   $('about').onclick = e => { if (e.target === $('about')) $('about').classList.add('hidden'); };

@@ -506,6 +506,7 @@ const Ground = (() => {
     $('pnRef').onchange = () => { $('pnRefCustom').classList.toggle('hidden', $('pnRef').value !== 'custom'); };
     $('pnExport').onclick = async () => { try { const p = await call('export', 'panel', { d0: ymd($('pnFrom').value), d1: ymd($('pnTo').value) }, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
   });
-  return { onTab, onFilter, onTabCross, onFilterCross, onTabPanel };
+  function resize() { if (map) map.invalidateSize(); }
+  return { onTab, onFilter, onTabCross, onFilterCross, onTabPanel, resize };
 })();
 window.Ground = Ground;

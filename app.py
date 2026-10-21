@@ -451,6 +451,18 @@ class Api:
         except Exception as e:  # noqa: BLE001
             return {"ok": False, "error": str(e)}
 
+    def guide_pdf(self):
+        """Copia o guia de utilização (PDF) para a pasta de dados e abre-o no leitor de PDF."""
+        import shutil
+        from core.db import resource_path
+        try:
+            src = resource_path("ui", "Guia_FlightTracker.pdf")
+            dst = data_dir() / f"FlightTracker_{VERSION}_Guia_de_utilizacao.pdf"
+            shutil.copyfile(src, dst)
+            return self._open_path(str(dst))
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+
     def open_data_folder(self):
         return self._open_path(str(data_dir()))
 

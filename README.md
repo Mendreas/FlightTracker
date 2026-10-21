@@ -110,3 +110,7 @@ Separador `;` ou `,`, cabeçalho na 1ª linha. Colunas reconhecidas (maiúsculas
 `CSN` (callsign), `TOD` (hh:mm:ss), `LATITUDE`/`LAT`, `LONGITUDE`/`LON`, `MODEC` ou `BAROH`
 (altitude; valores < 600 são FL ×100), `TAS`, `IAR`/`IAS`, `ROC`, `GSPA`, `MODES`, `MODEA`, `TRKNR`.
 A data e o bloco vêm do nome do ficheiro (ou da pasta); o bloco é confirmado pela hora mínima dos dados.
+
+## Guia de utilização
+
+O PDF `ui/Guia_FlightTracker.pdf` é gerado a partir de `docs/guia_utilizacao.md` com `python tools/build_guide.py` (reportlab). Regenerar quando se altera o guia ou a versão.
