@@ -1011,6 +1011,49 @@ class Database:
     def ground_dates(self) -> list[str]:
         return [d for (d,) in self.con.execute("SELECT DISTINCT date FROM ground ORDER BY 1").fetchall()]
 
+    def heatmap(self, airport: str, d0: str, d1: str) -> dict:
+        """Movimentos por dia da semana × hora (UTC). Torre (ATOT/ALDT) nos dias em que existe; radar nos restantes."""
+        c = self.con
+        g_days = {r[0] for r in c.execute("SELECT DISTINCT date FROM ground WHERE airport=? AND date BETWEEN ? AND ?", [airport, d0, d1]).fetchall()}
+        rows = c.execute("""
+            SELECT date, mt='DEPARTURE' AS dep, hour(to_timestamp(coalesce(CASE WHEN mt='DEPARTURE' THEN atot ELSE aldt END, aobt, aibt))) h, count(*) n
+            FROM ground WHERE airport=? AND date BETWEEN ? AND ? AND coalesce(CASE WHEN mt='DEPARTURE' THEN atot ELSE aldt END, aobt, aibt) IS NOT NULL
+            GROUP BY 1,2,3""", [airport, d0, d1]).fetchall()
+        rows += [r for r in c.execute("""
+            SELECT date, cls='dep' AS dep, hour(to_timestamp(CASE WHEN cls='dep' THEN t_first ELSE t_last END)) h, count(*) n
+            FROM flights WHERE airport=? AND date BETWEEN ? AND ? AND cls IN ('arr','dep') GROUP BY 1,2,3""", [airport, d0, d1]).fetchall() if r[0] not in g_days]
+        import datetime as _dt
+        grid = {k: [[0] * 24 for _ in range(7)] for k in ("all", "arr", "dep")}
+        days = {k: set() for k in range(7)}
+        for date, dep, h, n in rows:
+            dow = (_dt.date(2000 + int(date[:2]), int(date[2:4]), int(date[4:6])).weekday() + 1) % 7   # 0 = domingo
+            days[dow].add(date); h = int(h)
+            grid["all"][dow][h] += n; grid["dep" if dep else "arr"][dow][h] += n
+        return {"grid": grid, "days": {k: len(v) for k, v in days.items()}, "tower_days": len(g_days), "radar_days": len({r[0] for r in rows} - g_days)}
+
+    def heatmap_rows(self, airport: str, d0: str, d1: str, dow: int, hour: int, kind: str) -> list[dict]:
+        """Registos de uma célula do mapa de calor (dia da semana 0=domingo, hora UTC)."""
+        import datetime as _dt
+        dates = [r[0] for r in self.con.execute("SELECT DISTINCT date FROM flights WHERE airport=? AND date BETWEEN ? AND ? UNION SELECT DISTINCT date FROM ground WHERE airport=? AND date BETWEEN ? AND ?", [airport, d0, d1, airport, d0, d1]).fetchall()]
+        dates = [d for d in dates if (_dt.date(2000 + int(d[:2]), int(d[2:4]), int(d[4:6])).weekday() + 1) % 7 == dow]
+        g_days = {r[0] for r in self.con.execute("SELECT DISTINCT date FROM ground WHERE airport=? AND date BETWEEN ? AND ?", [airport, d0, d1]).fetchall()}
+        out = []
+        for r in self.ground_list(airport, [d for d in dates if d in g_days]):
+            t = r.get("atot") if r.get("mt") == "DEPARTURE" else r.get("aldt")
+            t = t or r.get("aobt") or r.get("aibt")
+            if t is None or int(_dt.datetime.utcfromtimestamp(t).hour) != hour: continue
+            if kind == "dep" and r.get("mt") != "DEPARTURE": continue
+            if kind == "arr" and r.get("mt") == "DEPARTURE": continue
+            out.append({**r, "src": "torre", "t_ref": t})
+        for r in self.flights_list(airport, [d for d in dates if d not in g_days], [], "", ""):
+            if r.get("cls") not in ("arr", "dep"): continue
+            t = r["t_first"] if r["cls"] == "dep" else r["t_last"]
+            if int(_dt.datetime.utcfromtimestamp(t).hour) != hour: continue
+            if kind == "dep" and r["cls"] != "dep": continue
+            if kind == "arr" and r["cls"] != "arr": continue
+            out.append({**r, "src": "radar", "t_ref": t})
+        return sorted(out, key=lambda x: (x["date"], x["t_ref"]))
+
     def ground_list(self, airport: str, dates: list[str]) -> list[dict]:
         """Movimentos no solo das datas, com o movimento radar mais próximo no tempo (flight_id), quando existe."""
         if not dates:

@@ -578,6 +578,9 @@ class Service:
             return sorted(out, key=lambda x: -x["dev_min"])
         if key == "mov_radar":
             return self.db.flights_list(self.airport, dates, [], "", "")
+        if key.startswith("heat:"):          # heat:<dow>:<hora>:<all|arr|dep>
+            _, dow, hour, kind = key.split(":")
+            return self.db.heatmap_rows(self.airport, d0, d1, int(dow), int(hour), kind)
         return []
 
     def set_capacity(self, airport: str, cap: int):
@@ -588,7 +591,7 @@ class Service:
         """Série diária para o painel: período principal e, opcionalmente, período de referência."""
         main = self.db.daily_series(self.airport, d0, d1)
         ref = self.db.daily_series(self.airport, r0, r1) if r0 and r1 else []
-        return {"main": main, "ref": ref, "top": self.db.top_lists(self.airport, d0, d1),
+        return {"main": main, "ref": ref, "top": self.db.top_lists(self.airport, d0, d1), "heat": self.db.heatmap(self.airport, d0, d1),
                 "top_ref": self.db.top_lists(self.airport, r0, r1) if r0 and r1 else None, "airport": self.airport}
 
     # ------------------------------------------------------------- Cruzamento de fontes

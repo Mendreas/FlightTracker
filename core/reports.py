@@ -450,6 +450,22 @@ def section_pru(d: dict) -> str:
     return body
 
 
+def heat_table(G) -> str:
+    """Tabela 7 × 24 colorida (amarelo → vermelho escuro)."""
+    dow = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
+    mx = max(1, max(v for row in G for v in row))
+    stops = [(255, 237, 160), (254, 178, 76), (240, 59, 32), (128, 0, 38)]
+    def col(v):
+        if not v: return ""
+        x = v / mx; i = min(2, int(x * 3)); k = x * 3 - i
+        c = [round(a + (b - a) * k) for a, b in zip(stops[i], stops[i + 1])]
+        return f"background:rgb({c[0]},{c[1]},{c[2]});color:{'#fff' if x > .55 else '#1f2937'}"
+    h = "<table class='heat' style='border-collapse:separate;border-spacing:2px;font-size:10px;width:100%;table-layout:fixed'><tr><th></th>" + "".join(f"<th>{i:02d}</th>" for i in range(24)) + "</tr>"
+    for d in range(7):
+        h += f"<tr><th style='text-align:right'>{dow[d]}</th>" + "".join(f"<td style='text-align:center;padding:4px 0;border-radius:3px;font-weight:600;{col(v)}'>{v or ''}</td>" for v in G[d]) + "</tr>"
+    return h + "</table>"
+
+
 def section_panel(pn: dict, title="Evolução diária") -> str:
     M = pn["main"]
     if not M:
@@ -463,6 +479,8 @@ def section_panel(pn: dict, title="Evolução diária") -> str:
     body += "<h3>Taxi mediano por dia (min)</h3>" + svg_lines([("taxi-out", [r["taxi_out"] / 60 if r["taxi_out"] else None for r in M], "#d97706"), ("taxi-in", [r["taxi_in"] / 60 if r["taxi_in"] else None for r in M], "#2563eb")], lab, dec=1)
     body += "<h3>Pontualidade à partida (%, NMIR) e atraso ATFM (min, torre)</h3>" + svg_lines([("OTP15 %", [r["p_ok"] / r["p_n"] * 100 if r["p_n"] else None for r in M], "#15803d")], lab) + \
             svg_bars([r["atfm_min"] or 0 for r in M], lab, color="#dc2626")
+    if pn.get("heat"):
+        body += "<h3>Mapa de calor — movimentos por hora (UTC) e dia da semana</h3>" + heat_table(pn["heat"]["grid"]["all"])
     top = pn.get("top") or {}
     if top:
         body += "<h3>Top 10</h3><div style=\"display:flex;gap:16px\">" + table(["Operador", "Mov."], [list(r) for r in top["operators"]]) + table(["Tipo", "Mov."], [list(r) for r in top["types"]]) + table(["Aeroporto", "Voos"], [list(r) for r in top["airports"]]) + "</div>"

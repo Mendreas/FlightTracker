@@ -10,6 +10,7 @@
         "items": [
           "Aba KPIs: secção de KPIs de aeroporto no estilo PRU — movimentos de pista e pico de 60 min com utilização da capacidade declarada (editável), go-arounds por 1 000 aterragens, taxi-out/taxi-in adicional (real − referência não-impedida por stand↔pista), ASMA adicional (anel de aproximação ajustado à cobertura radar, por setor de entrada), pontualidade à partida 15 min e atraso ATFM (NMIR e torre), CDO (OPDI). Excel PRU.",
           "Aba Painel: evolução diária de toda a base (movimentos, chegadas/partidas, ROT, taxi, ATFM, pontualidade, go-arounds) com média móvel de 7 dias e período de referência (ano anterior, período anterior ou personalizado); comparação A vs B; top 10 operadores/tipos/aeroportos; cobertura e qualidade dos dados por dia com alertas.",
+          "Painel: mapa de calor hora × dia da semana (movimentos, chegadas ou partidas; torre ou radar), com drill-down por célula; incluído no relatório mensal.",
           "Relatório mensal num clique (KPIs PRU + evolução diária + ROT/taxi + KPIs radar + cruzamento) e relatórios à medida: escolhe as secções, guarda como botão.",
           "NMIR: importa também ETOT/CTOT/ATOT/ETA/ATA e atraso ATFM.",
           "Solo: replay ar + solo — as trajetórias radar do dia animam-se no mesmo relógio; a chegada passa do radar para o percurso no solo ao aterrar e a partida o inverso.",

@@ -156,6 +156,7 @@ const HELP = {
   'Top 10 operadores (radar)': 'Operadores com mais movimentos (prefixo do callsign), com o valor da referência ao lado.',
   'Top 10 tipos (radar)': 'Tipos de aeronave com mais movimentos.',
   'Top 10 aeroportos origem/destino (NMIR)': 'Aeroportos de origem/destino mais frequentes segundo o NMIR.',
+  'Mapa de calor — hora × dia da semana': 'Número de movimentos por hora (UTC) e dia da semana, somados em todos os dias do período. Mais escuro = mais movimentos. Hora da descolagem (ATOT) e da aterragem (ALDT) da torre; nos dias sem ficheiro da torre, o radar. Clica numa célula para ver os voos.',
   'Qualidade / cobertura dos dados por dia': 'Para cada dia: blocos radar presentes (de 6), existência de dados da torre, NMIR e OPDI, e alertas automáticos (ROT, go-arounds, ATFM, pontualidade).',
   'ROT chegada': 'Tempo de ocupação de pista nas chegadas: da aterragem (ALDT) à saída da pista (RWY_VAC), medido pelo A-SMGCS.',
   'ROT partida': 'Tempo de ocupação de pista nas partidas: da entrada na pista (RWY_ENT) à descolagem (ATOT).',
