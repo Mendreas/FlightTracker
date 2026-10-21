@@ -1,147 +1,145 @@
-"""Gera ui/Guia_FlightTracker.pdf a partir de docs/guia_utilizacao.md (reportlab).
+"""Gera o guia de utilização (Word + PDF) a partir de docs/guia_utilizacao.md.
 
-    python tools/build_guide.py
+    python tools/build_guide.py            -> ui/Guia_FlightTracker.pdf + dist/Guia_FlightTracker_<versão>.docx
 
-Subconjunto de Markdown suportado: # ## ### títulos, parágrafos, listas "- " e "1. ",
-tabelas "| a | b |", **negrito** e `código`.
+Formato: o de docs/guia_modelo.docx (capa com logótipo NAV/GOPLIS, Calibri, índice em página própria).
+Precisa de: pandoc, python-docx, pypdf e LibreOffice (soffice) para o PDF.
+Passos: pandoc (markdown -> docx com os estilos do modelo) -> python-docx (capa, índice, quebras de página)
+-> LibreOffice (docx -> pdf) -> lê as páginas dos títulos no PDF e escreve o índice com números de página
+-> LibreOffice outra vez.
 """
 from __future__ import annotations
 
+import copy
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
-from reportlab.lib import colors
-from reportlab.lib.enums import TA_LEFT
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import mm
-from reportlab.platypus import (KeepTogether, ListFlowable, ListItem, PageBreak, Paragraph, SimpleDocTemplate,
-                                Spacer, Table, TableStyle)
-from reportlab.platypus.tableofcontents import TableOfContents
+from docx import Document
+from docx.enum.text import WD_BREAK, WD_TAB_ALIGNMENT, WD_TAB_LEADER
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Cm, Pt
+from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "docs" / "guia_utilizacao.md"
-OUT = ROOT / "ui" / "Guia_FlightTracker.pdf"
+MODEL = ROOT / "docs" / "guia_modelo.docx"
+LOGO = ROOT / "docs" / "nav_goplis_logo.png"
+OUT_PDF = ROOT / "ui" / "Guia_FlightTracker.pdf"
 VERSION = re.search(r'^VERSION\s*=\s*"([^"]+)"', (ROOT / "app.py").read_text(encoding="utf-8"), re.M).group(1)
-
-BLUE = colors.HexColor("#1d4ed8")
-GREY = colors.HexColor("#475569")
-
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-_FD = Path("/usr/share/fonts/truetype/dejavu")
-FONT, FONTB = "Helvetica", "Helvetica-Bold"
-if (_FD / "DejaVuSans.ttf").exists():
-    pdfmetrics.registerFont(TTFont("DejaVu", str(_FD / "DejaVuSans.ttf")))
-    pdfmetrics.registerFont(TTFont("DejaVu-Bold", str(_FD / "DejaVuSans-Bold.ttf")))
-    from reportlab.pdfbase.pdfmetrics import registerFontFamily
-    registerFontFamily("DejaVu", normal="DejaVu", bold="DejaVu-Bold", italic="DejaVu", boldItalic="DejaVu-Bold")
-    FONT, FONTB = "DejaVu", "DejaVu-Bold"
-# pictogramas (emoji) que nenhuma fonte PDF tem: retirados do texto
-EMOJI = re.compile("[\U0001F000-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF\uFE0F\u24D8]")
-
-ss = getSampleStyleSheet()
-S = {
-    "title": ParagraphStyle("t", parent=ss["Title"], fontSize=26, leading=32, textColor=BLUE, spaceAfter=6, alignment=TA_LEFT),
-    "sub": ParagraphStyle("sub", parent=ss["Normal"], fontSize=11, leading=15, textColor=GREY, spaceAfter=18),
-    "h1": ParagraphStyle("h1", parent=ss["Heading1"], fontSize=17, leading=22, textColor=BLUE, spaceBefore=16, spaceAfter=8),
-    "h2": ParagraphStyle("h2", parent=ss["Heading2"], fontSize=13, leading=17, textColor=colors.HexColor("#0f172a"), spaceBefore=12, spaceAfter=5),
-    "p": ParagraphStyle("p", parent=ss["Normal"], fontSize=9.8, leading=14, spaceAfter=6),
-    "li": ParagraphStyle("li", parent=ss["Normal"], fontSize=9.8, leading=14),
-    "cell": ParagraphStyle("cell", parent=ss["Normal"], fontSize=8.6, leading=11.5),
-    "cellh": ParagraphStyle("cellh", parent=ss["Normal"], fontSize=8.6, leading=11.5, fontName="Helvetica-Bold", textColor=colors.white),
-}
-for _k, _st in S.items():
-    _st.fontName = FONTB if _k in ("title", "h1", "h2", "cellh") else FONT
+OUT_DOCX = ROOT / "dist" / f"Guia_FlightTracker_{VERSION}.docx"
+BREAK_BEFORE = ("Índice", "1. ", "19. ")   # títulos de nível 1 que começam em página nova
 
 
-def inline(t: str) -> str:
-    t = EMOJI.sub("", t).replace("  ", " ")
-    t = re.sub(r"\*\*\s*\*\*", "", t)
-    t = t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
-    t = re.sub(r"`(.+?)`", r"<font face='Courier' size='8.8'>\1</font>", t)
-    t = re.sub(r"\((https?://[^\s)]+)\)", r"(<link href='\1' color='#1d4ed8'>\1</link>)", t)
-    return t
+def pandoc(md: Path, out: Path):
+    text = md.read_text(encoding="utf-8").split("\n")
+    title = text[0][2:].strip()
+    body = "\n".join(text[1:])
+    meta = f'---\ntitle: "{title}"\nsubtitle: "Versão {VERSION}"\nlang: pt-PT\n---\n'
+    tmp = out.with_suffix(".md")
+    tmp.write_text(meta + body, encoding="utf-8")
+    subprocess.run(["pandoc", str(tmp), "--shift-heading-level-by=-1", f"--reference-doc={MODEL}", "-o", str(out)], check=True)
+    tmp.unlink()
 
 
-class Doc(SimpleDocTemplate):
-    def afterFlowable(self, fl):
-        if isinstance(fl, Paragraph) and fl.style.name in ("h1", "h2"):
-            lvl = 0 if fl.style.name == "h1" else 1
-            txt = re.sub(r"<[^>]+>", "", fl.getPlainText())
-            key = f"h{self.seq.nextf('toc')}"
-            self.canv.bookmarkPage(key)
-            self.notify("TOCEntry", (lvl, txt, self.page, key))
+def page_break_before(p):
+    br = p.insert_paragraph_before("")
+    br.add_run().add_break(WD_BREAK.PAGE)
 
 
-def footer(canv, doc):
-    canv.saveState()
-    canv.setFont(FONT, 8); canv.setFillColor(GREY)
-    canv.drawString(18 * mm, 10 * mm, f"FlightTracker {VERSION} — Guia de utilização · NAV Portugal / GOPLIS")
-    canv.drawRightString(A4[0] - 18 * mm, 10 * mm, str(doc.page))
-    canv.restoreState()
+def add_cover(d):
+    """Logótipo NAV + 'GOPLIS' antes do título, como no modelo."""
+    title = next(p for p in d.paragraphs if p.style.name == "Title")
+    cover = title.insert_paragraph_before("")
+    cover.style = title.style
+    run = cover.add_run()
+    run.add_picture(str(LOGO), width=Cm(4.2))
+    cover.add_run(" GOPLIS")
 
 
-def table(rows: list[list[str]], widths):
-    data = [[Paragraph(inline(c), S["cellh"]) for c in rows[0]]] + [[Paragraph(inline(c), S["cell"]) for c in r] for r in rows[1:]]
-    t = Table(data, colWidths=widths, repeatRows=1)
-    t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), BLUE), ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
-        ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#cbd5e1")),
-        ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
-        ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-    ]))
-    return t
+def add_toc(d, entries: list[tuple[int, str, int]] | None):
+    """Índice: cabeçalho + (campo TOC para o Word) com o texto já preenchido com as páginas."""
+    first = next(p for p in d.paragraphs if p.style.name == "Heading 1")
+    h = first.insert_paragraph_before("Índice"); h.style = first.style
+    page_break_before(h)
+    styles = {1: d.styles["toc 1"], 2: d.styles["toc 2"]} if "toc 1" in [s.name for s in d.styles] else {1: d.styles["Normal"], 2: d.styles["Normal"]}
+    right = d.sections[0].page_width - d.sections[0].left_margin - d.sections[0].right_margin
+    for lvl, txt, page in (entries or [(1, "(índice: no Word, botão direito → Atualizar campo)", 0)]):
+        p = first.insert_paragraph_before("")
+        p.style = styles[lvl]
+        p.paragraph_format.tab_stops.add_tab_stop(right, WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+        if lvl == 2: p.paragraph_format.left_indent = Cm(0.5)
+        p.add_run(txt + ("\t" + str(page) if page else ""))
+
+
+def style_tables(d):
+    """Cabeçalho azul, grelha, 9 pt, linhas indivisíveis e tabela mantida junta (como no modelo)."""
+    from docx.shared import RGBColor
+    for t in d.tables:
+        tblPr = t._tbl.tblPr
+        b = OxmlElement("w:tblBorders")
+        for e in ("top", "left", "bottom", "right", "insideH", "insideV"):
+            el = OxmlElement(f"w:{e}"); el.set(qn("w:val"), "single"); el.set(qn("w:sz"), "4"); el.set(qn("w:color"), "999999"); b.append(el)
+        tblPr.append(b)
+        big = len(t.rows) > 25          # o glossário pode dividir-se; as pequenas ficam numa página
+        for i, row in enumerate(t.rows):
+            trPr = row._tr.get_or_add_trPr()
+            cs = OxmlElement("w:cantSplit"); trPr.append(cs)
+            if i == 0:
+                th = OxmlElement("w:tblHeader"); trPr.append(th)
+            for c in row.cells:
+                if i == 0:
+                    sh = OxmlElement("w:shd"); sh.set(qn("w:val"), "clear"); sh.set(qn("w:fill"), "1D4ED8"); c._tc.get_or_add_tcPr().append(sh)
+                for para in c.paragraphs:
+                    if not big and i < len(t.rows) - 1: para.paragraph_format.keep_with_next = True
+                    for r in para.runs:
+                        r.font.size = Pt(9)
+                        if i == 0: r.bold = True; r.font.color.rgb = RGBColor(255, 255, 255)
+
+
+def mark_breaks(d):
+    for p in d.paragraphs:
+        if p.style.name == "Heading 1" and p.text.startswith(BREAK_BEFORE[1:]):
+            page_break_before(p)
+
+
+def to_pdf(docx: Path, outdir: Path) -> Path:
+    subprocess.run(["soffice", "--headless", "--convert-to", "pdf", "--outdir", str(outdir), str(docx)],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return outdir / (docx.stem + ".pdf")
+
+
+def outline(pdf: Path) -> list[tuple[int, str, int]]:
+    r = PdfReader(str(pdf)); out = []
+    def walk(items, lvl):
+        for x in items:
+            if isinstance(x, list): walk(x, lvl + 1)
+            else:
+                if lvl <= 2 and x.title != "Índice": out.append((lvl, x.title, r.get_destination_page_number(x) + 1))
+    walk(r.outline, 1)
+    return out
 
 
 def build():
-    lines = SRC.read_text(encoding="utf-8").splitlines()
-    W = A4[0] - 36 * mm
-    story, i = [], 0
-    toc = TableOfContents()
-    toc.levelStyles = [ParagraphStyle("toc1", fontSize=10.5, leading=15, leftIndent=0, fontName=FONTB),
-                       ParagraphStyle("toc2", fontSize=9.5, leading=13, leftIndent=12, fontName=FONT)]
-    first_h1 = True
-    while i < len(lines):
-        ln = lines[i]
-        if ln.startswith("# "):
-            story += [Paragraph(inline(ln[2:]), S["title"])]
-            if VERSION: story += [Paragraph(f"Versão {VERSION}", S["sub"])]
-            i += 1; continue
-        if ln.startswith("## "):
-            if first_h1:
-                story += [Paragraph("Índice", S["h1"]), toc, PageBreak()]; first_h1 = False
-            story += [Paragraph(inline(ln[3:]), S["h1"])]; i += 1; continue
-        if ln.startswith("### "):
-            story += [Paragraph(inline(ln[4:]), S["h2"])]; i += 1; continue
-        if ln.startswith("|"):
-            rows = []
-            while i < len(lines) and lines[i].startswith("|"):
-                cells = [c.strip() for c in lines[i].strip().strip("|").split("|")]
-                if not all(re.fullmatch(r"-+", c) for c in cells): rows.append(cells)
-                i += 1
-            n = len(rows[0])
-            widths = [W * 0.26, W * 0.74] if n == 2 else [W * 0.16, W * 0.17, W * 0.34, W * 0.33] if n == 4 else [W * 0.3, W * 0.37, W * 0.33] if n == 3 else [W / n] * n
-            story += [table(rows, widths), Spacer(1, 6)]; continue
-        m = re.match(r"^(\d+)\. (.*)", ln)
-        if ln.startswith("- ") or m:
-            items, numbered = [], bool(m)
-            while i < len(lines) and (lines[i].startswith("- ") or re.match(r"^\d+\. ", lines[i])):
-                items.append(ListItem(Paragraph(inline(re.sub(r"^(- |\d+\. )", "", lines[i])), S["li"]), leftIndent=14))
-                i += 1
-            kw = dict(bulletType="1", bulletFormat="%s.", bulletFontSize=9.8, bulletFontName=FONT) if numbered else dict(bulletType="bullet", bulletFontSize=7)
-            story += [ListFlowable(items, leftIndent=16, **kw), Spacer(1, 5)]
-            continue
-        if ln.strip():
-            story += [Paragraph(inline(ln.strip()), S["p"])]
-        i += 1
-    doc = Doc(str(OUT), pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm, topMargin=18 * mm, bottomMargin=18 * mm,
-              title=f"FlightTracker {VERSION} — Guia de utilização", author="NAV Portugal · GOPLIS")
-    doc.multiBuild(story, onFirstPage=footer, onLaterPages=footer)
-    print("OK", OUT, OUT.stat().st_size // 1024, "KB")
+    OUT_DOCX.parent.mkdir(exist_ok=True)
+    tmpdir = Path(tempfile.mkdtemp())
+    base = tmpdir / "guia.docx"
+    pandoc(SRC, base)
+    entries = None
+    for _ in range(3):   # até as páginas do índice estabilizarem
+        d = Document(str(base))
+        add_cover(d); add_toc(d, entries); mark_breaks(d); style_tables(d)
+        d.save(str(OUT_DOCX))
+        pdf = to_pdf(OUT_DOCX, tmpdir)
+        new = outline(pdf)
+        if new == entries: break
+        entries = new
+    shutil.copyfile(pdf, OUT_PDF)
+    print("OK", OUT_PDF, OUT_PDF.stat().st_size // 1024, "KB;", OUT_DOCX, "; páginas:", len(PdfReader(str(pdf)).pages))
 
 
 if __name__ == "__main__":

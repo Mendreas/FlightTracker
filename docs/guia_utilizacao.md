@@ -1,6 +1,6 @@
 # Guia de utilização do FlightTracker
 
-NAV Portugal · GOPLIS · análise de trajetórias radar, dados da torre (A-SMGCS), NMIR e OPDI
+Análise de trajetórias radar, dados da torre (A-SMGCS), NMIR e OPDI
 
 Este guia foi escrito para quem nunca usou a aplicação e não precisa de ter conhecimentos de informática nem de análise de dados. Explica, passo a passo, o que a aplicação faz, como se instala, que ficheiros aceita, o que significa cada botão, cada aba e cada número que aparece no ecrã, e como se calculam os indicadores. O capítulo final lista todos os acrónimos e termos técnicos usados, com o respetivo significado. Sempre que aparecer um termo desconhecido, consulte esse capítulo.
 
