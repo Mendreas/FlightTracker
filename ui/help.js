@@ -208,7 +208,10 @@ function helpIcon(title) {
 document.addEventListener('DOMContentLoaded', () => {
   const tip = document.createElement('div'); tip.id = 'helpTip'; tip.className = 'help-tip hidden'; document.body.appendChild(tip);
   const show = el => {
-    tip.textContent = el.dataset.h; tip.classList.remove('hidden');
+    const clk = el.closest('.kcard.clk');
+    tip.innerHTML = ''; tip.appendChild(document.createTextNode(el.dataset.h));
+    if (clk) { const m = document.createElement('div'); m.className = 'help-clk'; m.textContent = '↗ Clica no cartão para ver os dados de origem'; tip.appendChild(m); }
+    tip.classList.remove('hidden');
     const r = el.getBoundingClientRect(); const w = Math.min(360, window.innerWidth - 24);
     tip.style.maxWidth = w + 'px';
     let x = r.left + r.width / 2 - w / 2; x = Math.max(12, Math.min(x, window.innerWidth - w - 12));

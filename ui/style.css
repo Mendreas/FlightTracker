@@ -273,3 +273,6 @@ tr.gd-row.sel td{background:var(--sel)}
 .kcard .hq{position:absolute;top:6px;right:6px;margin:0}.kcard{position:relative}
 .help-tip{position:fixed;z-index:3000;background:#0f172a;color:#f1f5f9;padding:10px 12px;border-radius:8px;font-size:12.5px;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.45);pointer-events:none;white-space:normal}
 :root[data-theme="light"] .help-tip{background:#1e293b}
+
+.help-clk{margin-top:6px;font-size:11px;opacity:.75}
+.kcard.clk{cursor:pointer}
