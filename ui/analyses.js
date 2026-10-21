@@ -457,7 +457,7 @@ const Analyses = (() => {
   function renderPru(d) {
     if (!d) return '';
     const t = d.throughput, a = d.asma, x = d.taxi, f = d.atfm, c = d.cdo;
-    let h = `<div class="card pru"><h3>KPIs de aeroporto — estilo PRU / EUROCONTROL (${esc(d.airport)})</h3>
+    let h = `<div class="card pru"><h3>KPIs de aeroporto — estilo PRU / EUROCONTROL (${esc(d.airport)})${helpIcon('KPIs de aeroporto — estilo PRU / EUROCONTROL')}</h3>
       <p class="hint">Fontes: radar ${d.sources.radar} · torre ${d.sources.torre} · NMIR ${d.sources.nmir} · OPDI ${d.sources.opdi}. Definições em <i>ansperformance.eu</i>: tempo adicional = real − referência não-impedida (percentil 20 do grupo).</p>`;
     h += '<div class="kgrid">';
     if (t) h += C.kcard('Movimentos de pista', fmt(t.n), `${t.source} · ${fmt(t.per_day, 0)}/dia`, '', 'pru.mov') + C.kcard('Pico 60 min', `${t.peak_roll60} mov.`, t.peak_when ? `${new Date(t.peak_when[1] * 1000).toISOString().slice(11, 16)} UTC · hora cheia máx. ${t.peak_hour_mov}` : '', '', 'pru.peak') +
