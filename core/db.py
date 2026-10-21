@@ -1072,16 +1072,19 @@ class Database:
                 SELECT csn, date FROM nmir WHERE date IN (SELECT unnest(?::VARCHAR[])) AND (adep = ? OR ades = ?)
                 UNION SELECT csn, date FROM ground WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[]))
                 UNION SELECT csn, strftime(to_timestamp(min(t)), '%y%m%d') FROM opdi_events WHERE airport=? AND (adep = ? OR ades = ?) GROUP BY flight_id, csn),
-            sel AS (SELECT flight_id, airport, date, csn, t_first, t_last, cls, alt_first, alt_last FROM flights
-                    WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[])) AND cls IN ('arr','dep')),
+            sel AS (SELECT flight_id, airport, date, csn, t_first, t_last, cls, alt_first, alt_last, alt_min FROM flights
+                    WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[]))),
             geo AS (   -- o próprio radar: chegada que termina baixa e longe do aeroporto / partida que começa baixa e longe = não é deste aeroporto
                 SELECT s.flight_id,
                        2*3440.065*asin(sqrt(pow(sin(radians(arg_min(p.lat,p.tod_sec)-{lat})/2),2)+cos(radians(arg_min(p.lat,p.tod_sec)))*cos(radians({lat}))*pow(sin(radians(arg_min(p.lon,p.tod_sec)-({lon}))/2),2))) d_first,
                        2*3440.065*asin(sqrt(pow(sin(radians(arg_max(p.lat,p.tod_sec)-{lat})/2),2)+cos(radians(arg_max(p.lat,p.tod_sec)))*cos(radians({lat}))*pow(sin(radians(arg_max(p.lon,p.tod_sec)-({lon}))/2),2))) d_last,
-                       any_value(s.cls) cls, any_value(s.alt_first) alt_first, any_value(s.alt_last) alt_last
+                       min(2*3440.065*asin(sqrt(pow(sin(radians(p.lat-{lat})/2),2)+cos(radians(p.lat))*cos(radians({lat}))*pow(sin(radians(p.lon-({lon}))/2),2)))) d_min,
+                       any_value(s.cls) cls, any_value(s.alt_first) alt_first, any_value(s.alt_last) alt_last, any_value(s.alt_min) alt_min
                 FROM sel s JOIN points p ON p.airport=s.airport AND p.date=s.date AND p.csn=s.csn AND p.tod_sec BETWEEN s.t_first AND s.t_last
                 GROUP BY s.flight_id),
-            geo_other AS (SELECT flight_id FROM geo WHERE (cls='arr' AND d_last > {rad} AND coalesce(alt_last, 0) < 3000) OR (cls='dep' AND d_first > {rad} AND coalesce(alt_first, 0) < 3000))
+            geo_other AS (SELECT flight_id FROM geo WHERE (cls='arr' AND d_last > {rad} AND coalesce(alt_last, 0) < 3000) OR (cls='dep' AND d_first > {rad} AND coalesce(alt_first, 0) < 3000)
+                              -- sobrevoo: nunca aterrou nem descolou aqui, excepto se desceu até perto da pista (circuitos / toque-e-arranque)
+                              OR (cls='lvl' AND NOT (d_min <= 2 AND coalesce(alt_min, 9999) < 1500)))
             SELECT DISTINCT f.flight_id FROM sel f
             LEFT JOIN other o ON o.csn = f.csn AND o.date = f.date
             LEFT JOIN geo_other g ON g.flight_id = f.flight_id
