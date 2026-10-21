@@ -1055,6 +1055,8 @@ class Database:
         n_info = registos NMIR/OPDI com ADEP/ADES conhecidos nessas datas (0 → não há com que filtrar)."""
         if not dates:
             return {"exclude": [], "n_info": 0}
+        from .geo import AIRPORTS
+        ctr = AIRPORTS.get(airport, {}).get("center", (38.7813, -9.1359))
         n = self.con.execute("""SELECT count(*) FROM nmir WHERE date IN (SELECT unnest(?::VARCHAR[])) AND adep IS NOT NULL AND ades IS NOT NULL""", [dates]).fetchone()[0]
         n += self.con.execute("""SELECT count(DISTINCT flight_id) FROM opdi_events WHERE airport=? AND adep IS NOT NULL AND ades IS NOT NULL
                                  AND strftime(to_timestamp(t), '%y%m%d') IN (SELECT unnest(?::VARCHAR[]))""", [airport, dates]).fetchone()[0]
@@ -1069,13 +1071,24 @@ class Database:
             at_apt AS (   -- qualquer fonte que diga que é do aeroporto prevalece
                 SELECT csn, date FROM nmir WHERE date IN (SELECT unnest(?::VARCHAR[])) AND (adep = ? OR ades = ?)
                 UNION SELECT csn, date FROM ground WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[]))
-                UNION SELECT csn, strftime(to_timestamp(min(t)), '%y%m%d') FROM opdi_events WHERE airport=? AND (adep = ? OR ades = ?) GROUP BY flight_id, csn)
-            SELECT DISTINCT f.flight_id FROM flights f
-            JOIN other o ON o.csn = f.csn AND o.date = f.date
+                UNION SELECT csn, strftime(to_timestamp(min(t)), '%y%m%d') FROM opdi_events WHERE airport=? AND (adep = ? OR ades = ?) GROUP BY flight_id, csn),
+            sel AS (SELECT flight_id, airport, date, csn, t_first, t_last, cls, alt_first, alt_last FROM flights
+                    WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[])) AND cls IN ('arr','dep')),
+            geo AS (   -- o próprio radar: chegada que termina baixa e longe do aeroporto / partida que começa baixa e longe = não é deste aeroporto
+                SELECT s.flight_id,
+                       2*3440.065*asin(sqrt(pow(sin(radians(arg_min(p.lat,p.tod_sec)-{lat})/2),2)+cos(radians(arg_min(p.lat,p.tod_sec)))*cos(radians({lat}))*pow(sin(radians(arg_min(p.lon,p.tod_sec)-({lon}))/2),2))) d_first,
+                       2*3440.065*asin(sqrt(pow(sin(radians(arg_max(p.lat,p.tod_sec)-{lat})/2),2)+cos(radians(arg_max(p.lat,p.tod_sec)))*cos(radians({lat}))*pow(sin(radians(arg_max(p.lon,p.tod_sec)-({lon}))/2),2))) d_last,
+                       any_value(s.cls) cls, any_value(s.alt_first) alt_first, any_value(s.alt_last) alt_last
+                FROM sel s JOIN points p ON p.airport=s.airport AND p.date=s.date AND p.csn=s.csn AND p.tod_sec BETWEEN s.t_first AND s.t_last
+                GROUP BY s.flight_id),
+            geo_other AS (SELECT flight_id FROM geo WHERE (cls='arr' AND d_last > {rad} AND coalesce(alt_last, 0) < 3000) OR (cls='dep' AND d_first > {rad} AND coalesce(alt_first, 0) < 3000))
+            SELECT DISTINCT f.flight_id FROM sel f
+            LEFT JOIN other o ON o.csn = f.csn AND o.date = f.date
+            LEFT JOIN geo_other g ON g.flight_id = f.flight_id
             LEFT JOIN at_apt a ON a.csn = f.csn AND a.date = f.date
-            WHERE f.airport = ? AND f.date IN (SELECT unnest(?::VARCHAR[])) AND a.csn IS NULL""",
+            WHERE (o.csn IS NOT NULL OR g.flight_id IS NOT NULL) AND a.csn IS NULL""".format(lat=ctr[0], lon=ctr[1], rad=4.0),
             [dates, airport, airport, airport, airport, airport, airport, airport, dates, airport, airport, airport, dates, airport, airport, airport, airport, dates]).fetchall()]
-        return {"exclude": exclude, "n_info": int(n)}
+        return {"exclude": exclude, "n_info": int(n) + 1}   # +1: o radar conta sempre como fonte
 
     def close(self):
         self.con.close()

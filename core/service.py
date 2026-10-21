@@ -62,8 +62,6 @@ class Service:
             self.reset_results()
             return {"on": False, "n": len(self.flights), "n_nmir": None}
         r = self.db.airport_nmir(self.airport, self.dates)
-        if r["n_info"] == 0:
-            return {"on": False, "n": len(self.flights), "n_nmir": 0}
         excl = set(r["exclude"])
         self.airport_only_ids = excl
         self.flights = [f for f in base if f["flight_id"] not in excl]
