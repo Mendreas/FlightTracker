@@ -388,6 +388,13 @@ const Ground = (() => {
   });
   /* ================================================================ Painel diário */
   let panel = null;
+  const DRILL_SRV = {};   // cartões cujos dados são pedidos ao servidor ao clicar
+  window.DrillSrv = DRILL_SRV;
+  document.addEventListener('click', async ev => {
+    const k = ev.target.closest('.kcard[data-drill]'); if (!k) return;
+    const d = DRILL_SRV[k.dataset.drill]; if (!d) return;
+    try { const rows = await call('panel_details', d.key, d.d0, d.d1); Drill.set(k.dataset.drill, d.title, d.cols, rows); Drill.open(k.dataset.drill); } catch (e) { toast(e.message, 'err'); }
+  }, true);
   const isoOf = d => `20${d.slice(0, 2)}-${d.slice(2, 4)}-${d.slice(4, 6)}`, ymd = iso => iso ? iso.slice(2, 4) + iso.slice(5, 7) + iso.slice(8, 10) : '';
   const addDays = (iso, n) => { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
   function panelDefaults() {
@@ -429,12 +436,24 @@ const Ground = (() => {
     const [f, t, r0, r1] = panel._range;
     const movM = sum(M, 'n') ? M.map(r => (r.g_dep + r.g_arr) || (r.arr + r.dep)) : mov;
     const tot = rows => rows.reduce((a, r) => a + ((r.g_dep + r.g_arr) || (r.arr + r.dep) || 0), 0);
-    let h = '<div class="kgrid">' + C.kcard('Movimentos', fmt(tot(M)), `${M.length} dias · ${fmt(tot(M) / M.length, 0)}/dia`) +
-      (R.length ? C.kcard('Referência', fmt(tot(R)), `${R.length} dias · ${fmt(tot(R) / R.length, 0)}/dia`) + C.kcard('Variação', (tot(R) ? (tot(M) / M.length) / (tot(R) / R.length) * 100 - 100 : 0).toFixed(1) + '%', 'média diária vs referência', (tot(M) / M.length) >= (tot(R) / R.length) ? 'ok' : 'warn') : '') +
-      C.kcard('Go-arounds', sum(M, 'ga') ?? 0) + C.kcard('ROT chegada', avg(M, 'rot_arr') ? s0(avg(M, 'rot_arr')) : '—', 'mediana diária média') + C.kcard('ROT partida', avg(M, 'rot_dep') ? s0(avg(M, 'rot_dep')) : '—') +
-      C.kcard('Taxi-out', avg(M, 'taxi_out') ? mn(avg(M, 'taxi_out')) : '—', 'mediana diária média') + C.kcard('Taxi-in', avg(M, 'taxi_in') ? mn(avg(M, 'taxi_in')) : '—') +
-      C.kcard('Atraso ATFM (torre)', sum(M, 'atfm_min') != null ? fmt(sum(M, 'atfm_min')) + ' min' : '—', `${sum(M, 'atfm_n') ?? 0} partidas atrasadas`) +
-      C.kcard('Pontualidade 15 min', sum(M, 'p_n') ? fmt(sum(M, 'p_ok') / sum(M, 'p_n') * 100, 1) + '%' : '—', `NMIR · ${fmt(sum(M, 'p_n') ?? 0)} partidas`) + '</div>';
+    // drill-down dos cartões: tabelas por dia (locais) e listas de voos (pedidas ao servidor ao clicar)
+    const dayCols = [{ k: 'date', label: 'Dia', fmt: fmtD }, { k: 'mov', label: 'Movimentos' }, { k: 'g_arr', label: 'Chegadas (torre)' }, { k: 'g_dep', label: 'Partidas (torre)' }, { k: 'arr', label: 'Chegadas (radar)' }, { k: 'dep', label: 'Partidas (radar)' }, { k: 'ga', label: 'GA' },
+      { k: 'rot_arr', label: 'ROT ARR (s)' }, { k: 'rot_dep', label: 'ROT DEP (s)' }, { k: 'taxi_out', label: 'Taxi-out (s)' }, { k: 'taxi_in', label: 'Taxi-in (s)' }, { k: 'atfm_min', label: 'ATFM (min)' }, { k: 'p_ok', label: 'Pont. ok' }, { k: 'p_n', label: 'Pont. n' }];
+    const dayRows = M.map(r => ({ ...r, mov: (r.g_dep + r.g_arr) || (r.arr + r.dep) || 0 }));
+    Drill.set('pn.days', `Valores por dia — ${f} → ${t}`, dayCols, dayRows);
+    if (R.length) Drill.set('pn.ref', `Referência por dia — ${r0} → ${r1}`, dayCols, R.map(r => ({ ...r, mov: (r.g_dep + r.g_arr) || (r.arr + r.dep) || 0 })));
+    const srv = (key, title, cols) => { Drill.set('pn.' + key, title, cols, []); DRILL_SRV['pn.' + key] = { key, title, cols, d0: ymd(f), d1: ymd(t) }; };
+    const T = v => v == null ? '—' : new Date(v * 1000).toISOString().slice(11, 19);
+    const csnC = { k: 'csn', label: 'Voo', fmt: (v, r) => r.flight_id ? `<a href="#" class="csn-link" data-fid="${r.flight_id}"><b>${esc(v)}</b></a>` : `<b>${esc(v || '')}</b>` };
+    srv('ga', 'Go-arounds (ficheiro da torre)', [{ k: 'date', label: 'Data', fmt: fmtD }, csnC, { k: 'actype', label: 'Tipo' }, { k: 'rwy', label: 'RWY' }, { k: 'aldt', label: 'ALDT', fmt: T }, { k: 'stand_a', label: 'Stand' }, { k: 'adep', label: 'ADEP' }]);
+    srv('atfm', 'Partidas com atraso ATFM (torre)', [{ k: 'date', label: 'Data', fmt: fmtD }, csnC, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'atfm_delay', label: 'Atraso (min)' }, { k: 'regulation', label: 'Regulação' }]);
+    srv('otp', 'Pontualidade à partida (NMIR)', [{ k: 'date', label: 'Data', fmt: fmtD }, { k: 'csn', label: 'Voo' }, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'etot', label: 'ETOT', fmt: T }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'dev_min', label: 'Desvio (min)' }, { k: 'ok', label: '≤ 15 min', fmt: v => v ? '✓' : '<span class="sep-r">✗</span>' }]);
+    let h = '<div class="kgrid">' + C.kcard('Movimentos', fmt(tot(M)), `${M.length} dias · ${fmt(tot(M) / M.length, 0)}/dia`, '', 'pn.days') +
+      (R.length ? C.kcard('Referência', fmt(tot(R)), `${R.length} dias · ${fmt(tot(R) / R.length, 0)}/dia`, '', 'pn.ref') + C.kcard('Variação', (tot(R) ? (tot(M) / M.length) / (tot(R) / R.length) * 100 - 100 : 0).toFixed(1) + '%', 'média diária vs referência', (tot(M) / M.length) >= (tot(R) / R.length) ? 'ok' : 'warn', 'pn.days') : '') +
+      C.kcard('Go-arounds', sum(M, 'ga') ?? 0, '', '', 'pn.ga') + C.kcard('ROT chegada', avg(M, 'rot_arr') ? s0(avg(M, 'rot_arr')) : '—', 'mediana diária média', '', 'pn.days') + C.kcard('ROT partida', avg(M, 'rot_dep') ? s0(avg(M, 'rot_dep')) : '—', '', '', 'pn.days') +
+      C.kcard('Taxi-out', avg(M, 'taxi_out') ? mn(avg(M, 'taxi_out')) : '—', 'mediana diária média', '', 'pn.days') + C.kcard('Taxi-in', avg(M, 'taxi_in') ? mn(avg(M, 'taxi_in')) : '—', '', '', 'pn.days') +
+      C.kcard('Atraso ATFM (torre)', sum(M, 'atfm_min') != null ? fmt(sum(M, 'atfm_min')) + ' min' : '—', `${sum(M, 'atfm_n') ?? 0} partidas atrasadas`, '', 'pn.atfm') +
+      C.kcard('Pontualidade 15 min', sum(M, 'p_n') ? fmt(sum(M, 'p_ok') / sum(M, 'p_n') * 100, 1) + '%' : '—', `NMIR · ${fmt(sum(M, 'p_n') ?? 0)} partidas`, '', 'pn.otp') + '</div>';
     h += C.card(`Movimentos por dia — ${f} → ${t}${r0 ? ` · referência ${r0} → ${r1} (cinzento)` : ''}`, C.lines(series(mov, movR, 'movimentos (torre, ou radar se não houver)', C.BLUE), lab, { dots: true }));
     h += '<div class="grid2">' +
       C.card('ROT mediano por dia (s)', C.lines([{ name: 'chegadas', values: M.map(r => r.rot_arr), color: C.BLUE }, { name: 'partidas', values: M.map(r => r.rot_dep), color: C.ORANGE }, ...(R.length ? [{ name: 'ref. chegadas', values: R.map(r => r.rot_arr), color: C.GREY, dash: true }] : [])], lab, { dots: true, band: 60, bandLabel: 'alerta 60 s' })) +

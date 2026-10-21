@@ -10,6 +10,7 @@ import json
 import logging
 import subprocess
 import os
+import re
 import socket
 import time
 import urllib.request
@@ -295,6 +296,17 @@ class Api:
 
     def panel(self, d0, d1, r0=None, r1=None):
         return self._safe(self.svc.panel, d0, d1, r0, r1)
+
+    def export_rows(self, title, headers, rows):
+        def f():
+            res = self.window.create_file_dialog(SAVE_DIALOG, save_filename=f"{re.sub(r'[^A-Za-z0-9_-]+', '_', title)[:40]}_{time.strftime('%Y-%m-%d')}.xlsx", file_types=("Excel (*.xlsx)",))
+            if not res: return None
+            path = res[0] if isinstance(res, (list, tuple)) else res
+            return self.svc.export_rows(path, title, headers, rows)
+        return self._safe(f)
+
+    def panel_details(self, key, d0, d1):
+        return self._safe(self.svc.panel_details, key, d0, d1)
 
     def report_sections(self):
         return {"ok": True, "data": self.svc.REPORT_SECTIONS}

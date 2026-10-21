@@ -12,7 +12,8 @@
           "Aba Painel: evolução diária de toda a base (movimentos, chegadas/partidas, ROT, taxi, ATFM, pontualidade, go-arounds) com média móvel de 7 dias e período de referência (ano anterior, período anterior ou personalizado); comparação A vs B; top 10 operadores/tipos/aeroportos; cobertura e qualidade dos dados por dia com alertas.",
           "Relatório mensal num clique (KPIs PRU + evolução diária + ROT/taxi + KPIs radar + cruzamento) e relatórios à medida: escolhe as secções, guarda como botão.",
           "NMIR: importa também ETOT/CTOT/ATOT/ETA/ATA e atraso ATFM.",
-          "Solo: replay ar + solo — as trajetórias radar do dia animam-se no mesmo relógio; a chegada passa do radar para o percurso no solo ao aterrar e a partida o inverso."
+          "Solo: replay ar + solo — as trajetórias radar do dia animam-se no mesmo relógio; a chegada passa do radar para o percurso no solo ao aterrar e a partida o inverso.",
+          "Cartões clicáveis: em KPIs e no Painel, clicar num cartão (movimentos, go-arounds, taxi adicional, pontualidade, ATFM, CDO…) abre a lista dos voos/dias que deram origem ao valor, com exportação para Excel."
         ]
       },
       {

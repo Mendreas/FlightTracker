@@ -137,7 +137,7 @@ const C = (() => {
     }, 0);
     return render(o.sortKey || null, o.sortAsc !== false);
   }
-  const kcard = (label, value, sub = '', cls = '') => `<div class="kcard ${cls}"><b>${esc(value)}</b><span>${esc(label)}</span>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>`;
+  const kcard = (label, value, sub = '', cls = '', drill = null) => `<div class="kcard ${cls} ${drill ? 'clk' : ''}" ${drill ? `data-drill="${esc(drill)}" title="Clica para ver os dados de origem"` : ''}><b>${esc(value)}</b><span>${esc(label)}</span>${sub ? `<div class="s">${esc(sub)}</div>` : ''}</div>`;
   const card = (title, body, note = '') => `<section class="card"><h3>${esc(title)}</h3>${note ? `<p class="note">${esc(note)}</p>` : ''}<div class="chart">${body}</div></section>`;
   /* séries temporais: series=[{name, values:[num|null], color, dash, width}], labels=[str] */
   function lines(series, labels, o = {}) {

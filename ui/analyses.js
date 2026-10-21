@@ -395,7 +395,40 @@ const Analyses = (() => {
     const el = $('kpiBody'); if (!hasFlights()) { empty(el, 'Sem dados.'); return; }
     busy(el);
     try { if (!R.final) await runFinal(false); if (!R.star && FP.state.flights.length < 4000) await runStar(false); R.kpis = await call('kpis'); renderKpis(); } catch (e) { empty(el, 'Erro: ' + e.message); toast(e.message, 'err'); }
-    try { R.pru = await call('pru_kpis'); el.insertAdjacentHTML('afterbegin', renderPru(R.pru)); wirePru(); } catch (e) { toast('KPIs PRU: ' + e.message, 'err'); }
+    try { R.pru = await call('pru_kpis'); registerPruDrills(R.pru); el.insertAdjacentHTML('afterbegin', renderPru(R.pru)); wirePru(); } catch (e) { toast('KPIs PRU: ' + e.message, 'err'); }
+  }
+  /* ---- drill-down: clicar num cartão mostra os dados de origem */
+  const DRILL = {};           // key -> {title, cols:[{k,label,fmt?}], rows}
+  function drillSet(key, title, cols, rows) { DRILL[key] = { title, cols, rows: rows || [] }; }
+  function drillOpen(key) {
+    const d = DRILL[key]; if (!d) { toast('Sem detalhe disponível para este valor.', 'err'); return; }
+    const cols = d.cols.map(c => ({ ...c, fmt: c.fmt || (v => v == null ? '—' : typeof v === 'number' ? fmt(v, Number.isInteger(v) ? 0 : 1) : esc(String(v))) }));
+    $('modalTitle').textContent = `${d.title} — ${d.rows.length} registo(s)`;
+    $('modalBody').innerHTML = `<div class="row" style="gap:8px;margin-bottom:8px"><button class="btn sm" id="drExport">⬇ Excel</button><span class="hint">Dados que deram origem ao valor do cartão.</span></div>` +
+      (d.rows.length ? C.table(cols, d.rows, { limit: 3000 }) : '<div class="empty">Sem registos.</div>');
+    wireCsn($('modalBody'));
+    $('drExport').onclick = async () => { try { const p = await call('export_rows', d.title, d.cols.map(c => c.label), d.rows.map(r => d.cols.map(c => r[c.k] == null ? '' : r[c.k]))); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    $('modal').classList.remove('hidden');
+  }
+  document.addEventListener('click', ev => { const k = ev.target.closest('.kcard[data-drill]'); if (k && !(window.DrillSrv && window.DrillSrv[k.dataset.drill])) drillOpen(k.dataset.drill); });
+  window.Drill = { set: drillSet, open: drillOpen };
+  const T = t => t == null ? '—' : new Date(t * 1000).toISOString().slice(11, 19);
+  const fd = d => d ? `${d.slice(4, 6)}/${d.slice(2, 4)}/20${d.slice(0, 2)}` : '—';
+  const csnCol = { k: 'csn', label: 'Voo', fmt: (v, r) => r.flight_id ? csnLink(v, r.flight_id) : `<b>${esc(v || '')}</b>` };
+  function registerPruDrills(d) {
+    const dd = d.details || {};
+    const movCols = [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'cls', label: 'Mov.' }, { k: 'actype', label: 'Tipo' }, { k: 'wtc', label: 'WTC' }, { k: 'rwy', label: 'RWY' }, { k: 't', label: 'Hora', fmt: T }, { k: 'stand', label: 'Stand' }];
+    drillSet('pru.mov', 'Movimentos de pista', movCols, dd.mov);
+    drillSet('pru.peak', 'Movimentos na hora de pico (60 min)', movCols, dd.peak);
+    drillSet('pru.ga', 'Go-arounds (ficheiro da torre)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'rwy', label: 'RWY' }, { k: 'aldt', label: 'ALDT', fmt: T }, { k: 'rwy_vac', label: 'RWY_VAC', fmt: T }, { k: 'stand_a', label: 'Stand' }, { k: 'adep', label: 'ADEP' }], dd.ga);
+    const taxiCols = [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'stand', label: 'Stand' }, { k: 'rwy', label: 'RWY' }, { k: 'route', label: 'Taxi' }, { k: 'taxi_s', label: 'Taxi (s)' }, { k: 'ref_s', label: 'Referência (s)' }, { k: 'add_s', label: 'Adicional (s)' }];
+    drillSet('pru.taxi_out', 'Taxi-out adicional por partida', taxiCols, dd.taxi_out);
+    drillSet('pru.taxi_in', 'Taxi-in adicional por chegada', taxiCols, dd.taxi_in);
+    drillSet('pru.asma', 'ASMA — tempo adicional por chegada', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'rwy', label: 'RWY' }, { k: 'sector', label: 'Setor' }, { k: 't', label: 'Trânsito (s)' }, { k: 'add', label: 'Adicional (s)' }], dd.asma);
+    drillSet('pru.otp', 'Pontualidade à partida (NMIR)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'etot', label: 'ETOT', fmt: T }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'dev_min', label: 'Desvio (min)' }, { k: 'ok', label: '≤ 15 min', fmt: v => v ? '✓' : '<span class="sep-r">✗</span>' }], dd.otp);
+    drillSet('pru.atfm_nmir', 'Partidas com atraso ATFM (NMIR)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'etot', label: 'ETOT', fmt: T }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atfm_delay', label: 'Atraso (min)' }], dd.atfm_nmir);
+    drillSet('pru.atfm_torre', 'Partidas com atraso ATFM (torre)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'atfm_delay', label: 'Atraso (min)' }, { k: 'regulation', label: 'Regulação' }], dd.atfm_torre);
+    drillSet('pru.cdo', 'Chegadas OPDI — patamares abaixo de FL100', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'typecode', label: 'Tipo' }, { k: 'adep', label: 'ADEP' }, { k: 't_tod', label: 'TOD', fmt: T }, { k: 'n_levels_low', label: 'Patamares < FL100' }, { k: 'cdo', label: 'CDO', fmt: v => v ? '✓' : '✗' }], dd.cdo);
   }
   /* ---- relatórios personalizados (botões) */
   let customReports = [];
@@ -427,16 +460,16 @@ const Analyses = (() => {
     let h = `<div class="card pru"><h3>KPIs de aeroporto — estilo PRU / EUROCONTROL (${esc(d.airport)})</h3>
       <p class="hint">Fontes: radar ${d.sources.radar} · torre ${d.sources.torre} · NMIR ${d.sources.nmir} · OPDI ${d.sources.opdi}. Definições em <i>ansperformance.eu</i>: tempo adicional = real − referência não-impedida (percentil 20 do grupo).</p>`;
     h += '<div class="kgrid">';
-    if (t) h += C.kcard('Movimentos de pista', fmt(t.n), `${t.source} · ${fmt(t.per_day, 0)}/dia`) + C.kcard('Pico 60 min', `${t.peak_roll60} mov.`, t.peak_when ? `${FP.fmt ? '' : ''}${new Date(t.peak_when[1] * 1000).toISOString().slice(11, 16)} UTC · hora cheia máx. ${t.peak_hour_mov}` : '') +
+    if (t) h += C.kcard('Movimentos de pista', fmt(t.n), `${t.source} · ${fmt(t.per_day, 0)}/dia`, '', 'pru.mov') + C.kcard('Pico 60 min', `${t.peak_roll60} mov.`, t.peak_when ? `${new Date(t.peak_when[1] * 1000).toISOString().slice(11, 16)} UTC · hora cheia máx. ${t.peak_hour_mov}` : '', '', 'pru.peak') +
       C.kcard('Utilização no pico', pc(t.util_peak), `capacidade declarada ${t.capacity}/h · ${t.hours_over_capacity} h acima`, t.util_peak > 100 ? 'warn' : 'ok') +
-      C.kcard('Go-arounds', t.ga, t.ga_rate != null ? `${fmt(t.ga_rate, 1)} por 1 000 aterragens` : 'sem ficheiro da torre', t.ga ? 'warn' : '');
-    if (x) h += C.kcard('Taxi-out adicional', x.taxi_out.n ? `${m1(x.taxi_out.mean_min)} min` : '—', `média por partida · n=${x.taxi_out.n}`) + C.kcard('Taxi-in adicional', x.taxi_in.n ? `${m1(x.taxi_in.mean_min)} min` : '—', `média por chegada · n=${x.taxi_in.n}`);
-    if (a && a.n) h += C.kcard(`ASMA adicional (${a.ring_nm} NM)`, `${m1(a.mean_min)} min`, `média por chegada · n=${a.n} · trânsito mediano ${s0(a.transit.median)}`);
+      C.kcard('Go-arounds', t.ga, t.ga_rate != null ? `${fmt(t.ga_rate, 1)} por 1 000 aterragens` : 'sem ficheiro da torre', t.ga ? 'warn' : '', 'pru.ga');
+    if (x) h += C.kcard('Taxi-out adicional', x.taxi_out.n ? `${m1(x.taxi_out.mean_min)} min` : '—', `média por partida · n=${x.taxi_out.n}`, '', 'pru.taxi_out') + C.kcard('Taxi-in adicional', x.taxi_in.n ? `${m1(x.taxi_in.mean_min)} min` : '—', `média por chegada · n=${x.taxi_in.n}`, '', 'pru.taxi_in');
+    if (a && a.n) h += C.kcard(`ASMA adicional (${a.ring_nm} NM)`, `${m1(a.mean_min)} min`, `média por chegada · n=${a.n} · trânsito mediano ${s0(a.transit.median)}`, '', 'pru.asma');
     else if (a) h += C.kcard('ASMA adicional', '—', a.note || '');
-    if (f) h += C.kcard('Pontualidade partida (15 min)', pc(f.otp.pct), `NMIR · ATOT vs ETOT/CTOT · n=${f.otp.n}`, f.otp.pct != null && f.otp.pct < 80 ? 'warn' : '') +
-      C.kcard('Atraso ATFM (NMIR)', f.atfm_nmir.n_dep ? `${m1(f.atfm_nmir.per_dep)} min/partida` : '—', `${fmt(f.atfm_nmir.minutes)} min · ${f.atfm_nmir.delayed} atrasados · ${f.atfm_nmir.regulated} regulados`) +
-      C.kcard('Atraso ATFM (torre)', f.atfm_torre.n_dep ? `${m1(f.atfm_torre.per_dep)} min/partida` : '—', `${fmt(f.atfm_torre.minutes)} min · ${f.atfm_torre.delayed} atrasados`);
-    if (c && c.n) h += C.kcard('CDO (OPDI)', pc(c.pct), `${c.cdo}/${c.n} chegadas sem patamar < FL100 · média ${fmt(c.levels_mean, 1)} patamares`);
+    if (f) h += C.kcard('Pontualidade partida (15 min)', pc(f.otp.pct), `NMIR · ATOT vs ETOT/CTOT · n=${f.otp.n}`, f.otp.pct != null && f.otp.pct < 80 ? 'warn' : '', 'pru.otp') +
+      C.kcard('Atraso ATFM (NMIR)', f.atfm_nmir.n_dep ? `${m1(f.atfm_nmir.per_dep)} min/partida` : '—', `${fmt(f.atfm_nmir.minutes)} min · ${f.atfm_nmir.delayed} atrasados · ${f.atfm_nmir.regulated} regulados`, '', 'pru.atfm_nmir') +
+      C.kcard('Atraso ATFM (torre)', f.atfm_torre.n_dep ? `${m1(f.atfm_torre.per_dep)} min/partida` : '—', `${fmt(f.atfm_torre.minutes)} min · ${f.atfm_torre.delayed} atrasados`, '', 'pru.atfm_torre');
+    if (c && c.n) h += C.kcard('CDO (OPDI)', pc(c.pct), `${c.cdo}/${c.n} chegadas sem patamar < FL100 · média ${fmt(c.levels_mean, 1)} patamares`, '', 'pru.cdo');
     h += `<div class="kcard"><b><input id="pruCap" class="inp tiny" type="number" value="${d.capacity}" style="width:70px"> <button class="btn sm" id="pruCapSave">ok</button></b><span>capacidade declarada (mov./h)</span></div>`;
     h += '</div><div class="grid2">';
     if (t) h += C.card('Movimentos por hora (média diária, chegadas + partidas)', C.grouped ? C.bars(t.avg_by_hour.map(v => v[0] + v[1]), [...Array(24).keys()].map(i => String(i).padStart(2, '0')), { color: C.BLUE, dec: 0 }) : '');
@@ -456,9 +489,11 @@ const Analyses = (() => {
   }
   function renderKpis() {
     const k = R.kpis, el = $('kpiBody'); if (!k) return;
+    const fl = FP.state.flights, fcols = [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'cls', label: 'Mov.', fmt: v => v.toUpperCase() }, { k: 'actype', label: 'Tipo' }, { k: 'wtc', label: 'WTC' }, { k: 'tod_first', label: 'Início' }, { k: 'tod_last', label: 'Fim' }, { k: 'alt_max', label: 'Alt máx' }, { k: 'n', label: 'Plots' }];
+    drillSet('kpi.all', 'Movimentos (radar)', fcols, fl); drillSet('kpi.arr', 'Chegadas (radar)', fcols, fl.filter(f => f.cls === 'arr')); drillSet('kpi.dep', 'Partidas (radar)', fcols, fl.filter(f => f.cls === 'dep')); drillSet('kpi.lvl', 'Sobrevoos (radar)', fcols, fl.filter(f => f.cls === 'lvl'));
     const p = v => k.total ? Math.round(v / k.total * 100) + '%' : '';
     $('kpiNote').textContent = [k.approach && `${k.approach.n} aproximações`, k.star && `${k.star.passes} passagens STAR`, k.star && `${k.star.viol} violações IAS`].filter(Boolean).join(' · ');
-    let h = C.card('Resumo Operacional', '<div class="kgrid">' + C.kcard('Movimentos', fmt(k.total)) + C.kcard('Chegadas (ARR)', k.arr, p(k.arr)) + C.kcard('Partidas (DEP)', k.dep, p(k.dep)) + C.kcard('Sobrevoos (LVL)', k.lvl, p(k.lvl)) + C.kcard('Dias de dados', k.days) +
+    let h = C.card('Resumo Operacional', '<div class="kgrid">' + C.kcard('Movimentos', fmt(k.total), '', '', 'kpi.all') + C.kcard('Chegadas (ARR)', k.arr, p(k.arr), '', 'kpi.arr') + C.kcard('Partidas (DEP)', k.dep, p(k.dep), '', 'kpi.dep') + C.kcard('Sobrevoos (LVL)', k.lvl, p(k.lvl), '', 'kpi.lvl') + C.kcard('Dias de dados', k.days) +
       C.kcard('Hora de pico', `${String(k.peakHour).padStart(2, '0')}:00`, `${k.peakN} mov.`) + C.kcard('Período (UTC)', k.period) + C.kcard('Amostras (radar)', fmt(k.pts)) + '</div>' + (k.days > 1 ? `<p class="hint">Contagem por (callsign, dia): ${k.total} movimentos em ${k.callsigns} callsigns distintos ao longo de ${k.days} dias.</p>` : ''));
     if (k.approach) { const a = k.approach; h += C.card(`Análise de Aproximações (${FP.state.airport})`, '<div class="kgrid">' + C.kcard('Aterragens', a.n, a.rate ? fmt(a.rate, 1) + ' aterr./h' : '') + Object.entries(a.byRwy).map(([r, n]) => C.kcard('RWY ' + r, n)).join('') +
       C.kcard('Estabilizadas', `${a.stab}/${a.n}`, Math.round(a.stab / a.n * 100) + '%') + C.kcard('IAS@FAF méd.', fmt(a.iasFAF) + ' kt') + C.kcard('Tempo FAF→THR méd.', fmt(a.durS) + ' s') + C.kcard('Sep. temporal méd.', sec(a.sepMean) + ' s') + C.kcard('Sep. temporal mín./máx.', `${sec(a.sepMin)} / ${sec(a.sepMax)} s`) + '</div>'); }

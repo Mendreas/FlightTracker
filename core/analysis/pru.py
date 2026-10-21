@@ -49,7 +49,7 @@ def additional_taxi(ground: list[dict], ref_rows: list[dict] | None = None) -> d
     out = {}
     for kind, key in (("DEPARTURE", "taxi_out"), ("ARRIVAL", "taxi_in")):
         by_pair, by_rwy, glob = refs(ref_rows, kind)
-        add = []; per_stand = defaultdict(list); per_hour = defaultdict(list)
+        add = []; per_stand = defaultdict(list); per_hour = defaultdict(list); recs = []
         for r in ground:
             if r["mt"] != kind or r.get("taxi_s") is None or not (30 < r["taxi_s"] < 7200):
                 continue
@@ -59,11 +59,13 @@ def additional_taxi(ground: list[dict], ref_rows: list[dict] | None = None) -> d
                 continue
             a = max(0.0, r["taxi_s"] - ref)
             add.append(a); per_stand[stand].append(a)
+            recs.append({"date": r.get("date"), "csn": r.get("csn"), "flight_id": r.get("flight_id"), "actype": r.get("actype"), "stand": stand, "rwy": r.get("rwy"),
+                         "route": r.get("taxi_out") if kind == "DEPARTURE" else r.get("taxi_in"), "taxi_s": round(r["taxi_s"]), "ref_s": round(ref), "add_s": round(a)})
             t = r.get("atot") if kind == "DEPARTURE" else r.get("aldt")
             if t:
                 per_hour[int((t % 86400) // 3600)].append(a)
         st = _stats(add)
-        out[key] = {**st, "mean_min": st["mean"] / 60 if st.get("mean") is not None else None,
+        out[key] = {**st, "mean_min": st["mean"] / 60 if st.get("mean") is not None else None, "records": sorted(recs, key=lambda x: -x["add_s"]),
                     "by_stand": sorted(({"key": k, "n": len(v), "mean": sum(v) / len(v)} for k, v in per_stand.items() if len(v) >= 3), key=lambda x: -x["mean"])[:12],
                     "by_hour": [sum(per_hour[h]) / len(per_hour[h]) if per_hour.get(h) else None for h in range(24)],
                     "n_refs": len(by_pair)}
@@ -125,12 +127,17 @@ def asma(db, flights: list[dict], airport: str) -> dict:
     return {**st, "mean_min": st["mean"] / 60, "ring_nm": ring, "transit": _stats([r["t"] for r in recs]),
             "by_sector": [{"key": names[s], "n": len(v), "mean": sum(v) / len(v), "ref": ref.get(next((k for k in ref if k[1] == s), None))} for s, v in sorted(per_sector.items())],
             "by_hour": [sum(per_hour[h]) / len(per_hour[h]) if per_hour.get(h) else None for h in range(24)],
-            "worst": sorted(recs, key=lambda r: -r["add"])[:15]}
+            "worst": sorted(recs, key=lambda r: -r["add"])[:15],
+            "records": [{"date": r["date"], "csn": r["csn"], "flight_id": r["flight_id"], "rwy": r["rwy"], "sector": names[r["sector"]], "t": round(r["t"]), "add": round(r["add"])} for r in sorted(recs, key=lambda r: -r["add"])]}
 
 
 def atfm_and_punctuality(nmir_rows: list[dict], ground: list[dict]) -> dict:
     deps = [r for r in nmir_rows if r.get("atot") and r.get("etot")]
     dev = [(r["atot"] - (r.get("ctot") or r["etot"])) / 60 for r in deps]
+    otp_recs = sorted(({"date": r["date"], "csn": r["csn"], "actype": r.get("actype"), "ades": r.get("ades"), "etot": r.get("etot"), "ctot": r.get("ctot"), "atot": r["atot"],
+                        "dev_min": round(d, 1), "ok": d <= 15} for r, d in zip(deps, dev)), key=lambda x: -x["dev_min"])
+    atfm_n_recs = sorted(({"date": r["date"], "csn": r["csn"], "actype": r.get("actype"), "ades": r.get("ades"), "etot": r.get("etot"), "ctot": r.get("ctot"), "atfm_delay": r["atfm_delay"]}
+                          for r in nmir_rows if r.get("atfm_delay")), key=lambda x: -x["atfm_delay"])
     otp = sum(1 for d in dev if d <= 15)
     early = sum(1 for d in dev if d < -5)
     regulated = [r for r in nmir_rows if r.get("ctot")]
@@ -141,13 +148,15 @@ def atfm_and_punctuality(nmir_rows: list[dict], ground: list[dict]) -> dict:
     for r in g_dep:
         if r.get("atfm_delay"):
             k = r.get("regulation") or "?"; regs[k][0] += 1; regs[k][1] += r["atfm_delay"]
+    atfm_g_recs = sorted(({"date": r.get("date"), "csn": r.get("csn"), "flight_id": r.get("flight_id"), "actype": r.get("actype"), "ades": r.get("ades"), "ctot": r.get("ctot"), "atot": r.get("atot"),
+                           "atfm_delay": r["atfm_delay"], "regulation": r.get("regulation")} for r in g_dep if r.get("atfm_delay")), key=lambda x: -x["atfm_delay"])
     return {"otp": {"n": len(dev), "ok": otp, "pct": otp / len(dev) * 100 if dev else None, "early": early,
                     "dev_mean": sum(dev) / len(dev) if dev else None, "dev_median": _p(dev, .5), "dev_p80": _p(dev, .8),
-                    "hist": _hist(dev, [-15, -5, 0, 5, 15, 30, 60, 120])},
+                    "hist": _hist(dev, [-15, -5, 0, 5, 15, 30, 60, 120]), "records": otp_recs},
             "atfm_nmir": {"regulated": len(regulated), "delayed": len(dly_n), "minutes": sum(dly_n), "per_dep": sum(dly_n) / len(nmir_rows) if nmir_rows else None,
-                          "mean_delayed": sum(dly_n) / len(dly_n) if dly_n else None, "n_dep": len(nmir_rows)},
+                          "mean_delayed": sum(dly_n) / len(dly_n) if dly_n else None, "n_dep": len(nmir_rows), "records": atfm_n_recs},
             "atfm_torre": {"delayed": len(dly_g), "minutes": sum(dly_g), "per_dep": sum(dly_g) / len(g_dep) if g_dep else None, "n_dep": len(g_dep),
-                           "by_regulation": sorted(({"key": k, "n": v[0], "minutes": v[1]} for k, v in regs.items()), key=lambda x: -x["minutes"])[:12]}}
+                           "by_regulation": sorted(({"key": k, "n": v[0], "minutes": v[1]} for k, v in regs.items()), key=lambda x: -x["minutes"])[:12], "records": atfm_g_recs}}
 
 
 def _hist(vals, edges):
@@ -166,10 +175,13 @@ def throughput(flights: list[dict], ground: list[dict], capacity: int) -> dict:
     sem torre usa o radar (chegadas/partidas detetadas, que incluem tráfego de aeródromos vizinhos)."""
     src = "torre" if ground else "radar"
     if ground:
-        mov = [{"date": g["date"], "cls": "dep" if g["mt"] == "DEPARTURE" else "arr", "t_first": g.get("atot") or 0, "t_last": g.get("aldt") or 0, "wtc": g.get("wtc")}
+        mov = [{"date": g["date"], "cls": "dep" if g["mt"] == "DEPARTURE" else "arr", "t_first": g.get("atot") or 0, "t_last": g.get("aldt") or 0, "wtc": g.get("wtc"),
+                "csn": g.get("csn"), "flight_id": g.get("flight_id"), "actype": g.get("actype"), "rwy": g.get("rwy"), "stand": g.get("stand_d") if g["mt"] == "DEPARTURE" else g.get("stand_a")}
                for g in ground if (g.get("atot") if g["mt"] == "DEPARTURE" else g.get("aldt"))]
     else:
-        mov = [f for f in flights if f["cls"] in ("arr", "dep")]
+        mov = [{**f, "stand": None, "rwy": None} for f in flights if f["cls"] in ("arr", "dep")]
+    for m in mov:
+        m["t"] = m["t_first"] if m["cls"] == "dep" else m["t_last"]
     days = sorted({f["date"] for f in mov})
     per = defaultdict(lambda: [0, 0])
     for f in mov:
@@ -191,13 +203,19 @@ def throughput(flights: list[dict], ground: list[dict], capacity: int) -> dict:
                 j += 1
             if i - j + 1 > peak_roll:
                 peak_roll = i - j + 1; peak_when = (d, t)
+    peak_rows = []
+    if peak_when:
+        d, t = peak_when
+        peak_rows = [m for m in mov if m["date"] == d and t - 3600 < (m["t"] % 86400) <= t]
     ga = sum(1 for r in ground if r.get("ga"))
     n_arr_g = sum(1 for r in ground if r["mt"] != "DEPARTURE")
     hours_over = sum(1 for v in hourly if v > capacity)
     return {"source": src, "n": len(mov), "days": len(days), "per_day": len(mov) / nd, "peak_hour_mov": max(hourly) if hourly else 0,
             "peak_roll60": peak_roll, "peak_when": peak_when, "capacity": capacity, "util_peak": (peak_roll / capacity * 100) if capacity else None,
             "hours_over_capacity": hours_over, "hours_total": len(hourly), "avg_by_hour": avg_hour,
-            "wtc": _wtc_mix(mov), "ga": ga, "ga_rate": (ga / n_arr_g * 1000) if n_arr_g else None, "n_arr_torre": n_arr_g}
+            "wtc": _wtc_mix(mov), "ga": ga, "ga_rate": (ga / n_arr_g * 1000) if n_arr_g else None, "n_arr_torre": n_arr_g,
+            "records": sorted(mov, key=lambda m: (m["date"], m["t"])), "peak_records": sorted(peak_rows, key=lambda m: m["t"]),
+            "ga_records": [{"date": r.get("date"), "csn": r.get("csn"), "flight_id": r.get("flight_id"), "actype": r.get("actype"), "rwy": r.get("rwy"), "aldt": r.get("aldt"), "rwy_vac": r.get("rwy_vac"), "stand_a": r.get("stand_a"), "adep": r.get("adep")} for r in ground if r.get("ga")]}
 
 
 def _wtc_mix(mov):
@@ -214,16 +232,26 @@ def cdo(opdi: list[dict]) -> dict:
     lv = [o.get("n_levels_low") or 0 for o in arr]
     full = sum(1 for x in lv if x == 0)
     return {"n": len(arr), "cdo": full, "pct": full / len(arr) * 100, "levels_mean": sum(lv) / len(lv),
-            "hist": _hist(lv, [1, 2, 3, 4])}
+            "hist": _hist(lv, [1, 2, 3, 4]),
+            "records": sorted(({"date": o.get("date"), "csn": o.get("csn"), "typecode": o.get("typecode"), "adep": o.get("adep"), "t_tod": o.get("t_tod"), "n_levels_low": o.get("n_levels_low") or 0, "cdo": (o.get("n_levels_low") or 0) == 0} for o in arr), key=lambda x: -x["n_levels_low"])}
 
 
 def compute(db, airport: str, flights: list[dict], ground: list[dict], opdi: list[dict], nmir_rows: list[dict], capacity: int | None = None,
             ref_ground: list[dict] | None = None) -> dict:
     cap = capacity or DECLARED_CAPACITY.get(airport, 40)
-    return {"airport": airport, "capacity": cap,
-            "taxi": additional_taxi(ground, ref_ground) if ground else None,
-            "asma": asma(db, flights, airport) if flights else None,
-            "atfm": atfm_and_punctuality(nmir_rows, ground),
-            "throughput": throughput(flights, ground, cap) if (flights or ground) else None,
-            "cdo": cdo(opdi) if opdi else None,
-            "sources": {"radar": len(flights), "torre": len(ground), "opdi": len(opdi), "nmir": len(nmir_rows)}}
+    out = {"airport": airport, "capacity": cap,
+           "taxi": additional_taxi(ground, ref_ground) if ground else None,
+           "asma": asma(db, flights, airport) if flights else None,
+           "atfm": atfm_and_punctuality(nmir_rows, ground),
+           "throughput": throughput(flights, ground, cap) if (flights or ground) else None,
+           "cdo": cdo(opdi) if opdi else None,
+           "sources": {"radar": len(flights), "torre": len(ground), "opdi": len(opdi), "nmir": len(nmir_rows)}}
+    # dados de origem de cada cartão (drill-down), separados para não pesar o resto
+    t, x, a, f, c = out["throughput"], out["taxi"], out["asma"], out["atfm"], out["cdo"]
+    out["details"] = {
+        "mov": (t or {}).pop("records", []), "peak": (t or {}).pop("peak_records", []), "ga": (t or {}).pop("ga_records", []),
+        "taxi_out": (x or {}).get("taxi_out", {}).pop("records", []) if x else [], "taxi_in": (x or {}).get("taxi_in", {}).pop("records", []) if x else [],
+        "asma": (a or {}).pop("records", []) if a else [],
+        "otp": f["otp"].pop("records", []), "atfm_nmir": f["atfm_nmir"].pop("records", []), "atfm_torre": f["atfm_torre"].pop("records", []),
+        "cdo": (c or {}).pop("records", []) if c else []}
+    return out

@@ -266,3 +266,4 @@ tr.gd-row.sel td{background:var(--sel)}
 .dq{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--err);vertical-align:middle;margin-right:4px}.dq.ok{background:var(--ok)}.dq.warn{background:var(--warn)}
 .card.pru{border-left:4px solid var(--accent)}
 .gd-ac.radar .lbl{color:#dbeafe}.gd-ac .alt{color:#ffd166;margin-left:3px;font-size:10px}
+.kcard.clk{cursor:pointer}.kcard.clk:hover{border-color:var(--accent);box-shadow:0 0 0 2px var(--sel)}
