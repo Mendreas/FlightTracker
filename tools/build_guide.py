@@ -26,12 +26,12 @@ from docx.shared import Cm, Pt
 from pypdf import PdfReader
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "docs" / "guia_utilizacao.md"
+SRC = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "docs" / "guia_utilizacao.md"
 MODEL = ROOT / "docs" / "guia_modelo.docx"
 LOGO = ROOT / "docs" / "nav_goplis_logo.png"
-OUT_PDF = ROOT / "ui" / "Guia_FlightTracker.pdf"
+OUT_PDF = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "ui" / "Guia_FlightTracker.pdf"
 VERSION = re.search(r'^VERSION\s*=\s*"([^"]+)"', (ROOT / "app.py").read_text(encoding="utf-8"), re.M).group(1)
-OUT_DOCX = ROOT / "dist" / f"Guia_FlightTracker_{VERSION}.docx"
+OUT_DOCX = Path(sys.argv[3]) if len(sys.argv) > 3 else ROOT / "dist" / f"Guia_FlightTracker_{VERSION}.docx"
 BREAK_BEFORE = ("Índice", "1. ", "19. ")   # títulos de nível 1 que começam em página nova
 
 
@@ -49,6 +49,14 @@ def pandoc(md: Path, out: Path):
 def page_break_before(p):
     br = p.insert_paragraph_before("")
     br.add_run().add_break(WD_BREAK.PAGE)
+
+
+def fix_footer(d, title: str):
+    for sec in d.sections:
+        for para in sec.footer.paragraphs:
+            for r in para.runs:
+                if "Guia de utilização" in r.text:
+                    r.text = r.text.replace("Guia de utilização", title)
 
 
 def add_cover(d):
@@ -86,6 +94,19 @@ def style_tables(d):
             el = OxmlElement(f"w:{e}"); el.set(qn("w:val"), "single"); el.set(qn("w:sz"), "4"); el.set(qn("w:color"), "999999"); b.append(el)
         tblPr.append(b)
         big = len(t.rows) > 25          # o glossário pode dividir-se; as pequenas ficam numa página
+        ncol = len(t.columns)
+        widths = {5: [3.4, 2.6, 2.0, 2.0, 7.0], 3: [3.6, 5.2, 8.2], 4: [2.6, 3.0, 5.7, 5.7], 2: [4.4, 12.6]}.get(ncol)
+        if widths:
+            t.autofit = False
+            for col, wcm in zip(t.columns, widths):
+                col.width = Cm(wcm)
+            for row in t.rows:
+                for c, wcm in zip(row.cells, widths):
+                    c.width = Cm(wcm)
+            tblPr = t._tbl.tblPr
+            for el in tblPr.findall(qn("w:tblW")): tblPr.remove(el)
+            tw = OxmlElement("w:tblW"); tw.set(qn("w:w"), str(int(sum(widths) * 567))); tw.set(qn("w:type"), "dxa"); tblPr.append(tw)
+            lay = OxmlElement("w:tblLayout"); lay.set(qn("w:type"), "fixed"); tblPr.append(lay)
         for i, row in enumerate(t.rows):
             trPr = row._tr.get_or_add_trPr()
             cs = OxmlElement("w:cantSplit"); trPr.append(cs)
@@ -133,6 +154,8 @@ def build():
     for _ in range(3):   # até as páginas do índice estabilizarem
         d = Document(str(base))
         add_cover(d); add_toc(d, entries); mark_breaks(d); style_tables(d)
+        title = SRC.read_text(encoding='utf-8').splitlines()[0][2:].strip()
+        if 'Guia de utiliza' not in title: fix_footer(d, title)
         d.save(str(OUT_DOCX))
         pdf = to_pdf(OUT_DOCX, tmpdir)
         new = outline(pdf)
