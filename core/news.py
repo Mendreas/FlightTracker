@@ -77,7 +77,7 @@ def email_html(e: dict) -> str:
 </td></tr>
 
 <tr><td style="padding:14px 40px;text-align:center;">
-  <p style="font-size:11px;margin:0;color:#64748b;">FlightTracker {h(e['version'])} &middot; NAV Portugal &middot; GOPLIS &middot; an&aacute;lise interna de trajet&oacute;rias radar &middot; <a href="{REPO}">github.com/Mendreas/FlightTracker</a></p>
+  <p style="font-size:11px;margin:0;color:#64748b;">FlightTracker {h(e['version'])} &middot; NAV Portugal &middot; GOPLIS &middot; an&aacute;lise interna de trajet&oacute;rias radar &middot; <a href="{REPO}">p&aacute;gina do projeto</a></p>
 </td></tr>
 </table></td></tr></table></body></html>"""
 

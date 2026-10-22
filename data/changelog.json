@@ -1,10 +1,19 @@
 [
   {
     "version": "4.1.2",
-    "date": "em desenvolvimento",
-    "title": "Borregos: radar e torre cruzados",
-    "summary": "",
+    "date": "2026-10-22",
+    "title": "Excel à medida, borregos cruzados radar/torre e pontualidade FSA/DEP",
+    "summary": "Esta versão traz um construtor de relatórios em Excel (Preferências) onde se escolhem as colunas de todas as fontes, os filtros e as contagens; corrige a contagem de borregos (um voo que borrega era contado como dois movimentos) cruzando radar e torre; alinha a pontualidade e a conformidade de slot com a EUROCONTROL (FSA/DEP do NMIR); unifica o ROT (torre como referência, radar ao lado) com a taxiway de saída/entrada; e mostra na caixa do voo tudo o que o radar, o NMIR, a torre e o OPDI sabem sobre ele.",
     "sections": [
+      {
+        "title": "Atenção — depois de instalar",
+        "items": [
+          "Na primeira abertura a base de dados é atualizada uma vez (barra de progresso, 1–3 min conforme o tamanho): é a nova regra que junta os movimentos de um borrego. Não é preciso reimportar os CSV do radar.",
+          "Reimportar o Excel NMIR (botão 📊 NMIR…, ficheiro LPPT_2026.xlsx): as colunas novas (FSA/DEP, janela e conformidade de slot, regulação, operador) só ficam preenchidas depois dessa reimportação; sem ela, a pontualidade cai no método antigo (ATOT) e o cartão de conformidade de slot fica vazio.",
+          "Os ficheiros da torre (ALL_LPPT_AAAA-MM-DD_….csv) e do OPDI (opdi_LPPT_AAAAMMDD.csv) têm de estar na pasta importada (📂 Importar pasta): sem eles não há aba Solo, ROT da torre, cruzamento de borregos nem as secções Torre/OPDI do Excel à medida — a app continua a funcionar só com radar e NMIR.",
+          "Windows: o download vem num ficheiro zip (a rede bloqueia .exe); abrir o zip e executar o FlightTracker-Setup.exe que está lá dentro. Instala por cima da versão anterior; a base de dados mantém-se."
+        ]
+      },
       {
         "title": "Preferências",
         "items": [
