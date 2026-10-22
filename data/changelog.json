@@ -1,5 +1,22 @@
 [
   {
+    "version": "4.1.2",
+    "date": "em desenvolvimento",
+    "title": "Borregos: radar e torre cruzados",
+    "summary": "",
+    "sections": [
+      {
+        "title": "Movimentos e go-arounds",
+        "items": [
+          "Um voo que borrega deixa de aparecer como dois movimentos (uma 'partida' e uma 'chegada'): se a aeronave estava no ar antes e depois de um buraco de plots e voltou em menos de 20 min, é o mesmo movimento. Na primeira abertura a base é atualizada uma vez (barra de progresso).",
+          "Deteção de borrego no radar: ponto abaixo de 1 500 ft a menos de 4 NM da soleira, depois de descer ≥ 1 000 ft e seguido de subida ≥ 600 ft. O movimento fica como chegada com a etiqueta ⟲ GA na lista, na tabela e no detalhe.",
+          "Go-arounds (KPIs e Painel): cada borrego da torre é cruzado com o radar — 'torre + radar' (confirmado), 'não visto no radar' ou 'sem plots'; borregos vistos só no radar também aparecem. O modal mostra a hora do borrego e a aterragem real.",
+          "Final: numa chegada com borrego, a aterragem analisada é o último cruzamento da soleira (a aterragem real), não a aproximação abortada."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.1.1",
     "date": "2026-10-21",
     "title": "Download em zip e email para Outlook na web",

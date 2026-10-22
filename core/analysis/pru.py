@@ -170,7 +170,7 @@ def _hist(vals, edges):
     return {"labels": labels, "counts": counts}
 
 
-def throughput(flights: list[dict], ground: list[dict], capacity: int) -> dict:
+def throughput(flights: list[dict], ground: list[dict], capacity: int, ga_list: list[dict] | None = None) -> dict:
     """Movimentos de pista por hora. Com ficheiro da torre usa ATOT/ALDT (movimentos reais de pista);
     sem torre usa o radar (chegadas/partidas detetadas, que incluem tráfego de aeródromos vizinhos)."""
     src = "torre" if ground else "radar"
@@ -207,7 +207,8 @@ def throughput(flights: list[dict], ground: list[dict], capacity: int) -> dict:
     if peak_when:
         d, t = peak_when
         peak_rows = [m for m in mov if m["date"] == d and t - 3600 < (m["t"] % 86400) <= t]
-    ga = sum(1 for r in ground if r.get("ga"))
+    # go-arounds: torre (registos GA=TRUE) e, nos dias sem torre, os detetados no radar; ga_list vem de db.go_arounds
+    ga = sum(1 for r in (ga_list or []) if r["src"] != "só radar") if ground else len(ga_list or [])
     n_arr_g = sum(1 for r in ground if r["mt"] != "DEPARTURE")
     hours_over = sum(1 for v in hourly if v > capacity)
     return {"source": src, "n": len(mov), "days": len(days), "per_day": len(mov) / nd, "peak_hour_mov": max(hourly) if hourly else 0,
@@ -215,7 +216,8 @@ def throughput(flights: list[dict], ground: list[dict], capacity: int) -> dict:
             "hours_over_capacity": hours_over, "hours_total": len(hourly), "avg_by_hour": avg_hour,
             "wtc": _wtc_mix(mov), "ga": ga, "ga_rate": (ga / n_arr_g * 1000) if n_arr_g else None, "n_arr_torre": n_arr_g,
             "records": sorted(mov, key=lambda m: (m["date"], m["t"])), "peak_records": sorted(peak_rows, key=lambda m: m["t"]),
-            "ga_records": [{"date": r.get("date"), "csn": r.get("csn"), "flight_id": r.get("flight_id"), "actype": r.get("actype"), "rwy": r.get("rwy"), "aldt": r.get("aldt"), "rwy_vac": r.get("rwy_vac"), "stand_a": r.get("stand_a"), "adep": r.get("adep")} for r in ground if r.get("ga")]}
+            "ga_records": ga_list or [], "ga_radar": sum(1 for r in (ga_list or []) if r["src"] != "só torre" and r["src"] != "sem radar"),
+            "ga_only_radar": sum(1 for r in (ga_list or []) if r["src"] == "só radar")}
 
 
 def _wtc_mix(mov):
@@ -243,7 +245,7 @@ def compute(db, airport: str, flights: list[dict], ground: list[dict], opdi: lis
            "taxi": additional_taxi(ground, ref_ground) if ground else None,
            "asma": asma(db, flights, airport) if flights else None,
            "atfm": atfm_and_punctuality(nmir_rows, ground),
-           "throughput": throughput(flights, ground, cap) if (flights or ground) else None,
+           "throughput": throughput(flights, ground, cap, db.go_arounds(airport, sorted({f["date"] for f in flights} | {g["date"] for g in ground}))) if (flights or ground) else None,
            "cdo": cdo(opdi) if opdi else None,
            "sources": {"radar": len(flights), "torre": len(ground), "opdi": len(opdi), "nmir": len(nmir_rows)}}
     # dados de origem de cada cartão (drill-down), separados para não pesar o resto

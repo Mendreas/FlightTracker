@@ -562,9 +562,9 @@ class Service:
         """Dados de origem dos cartões do Painel."""
         dates = [r["date"] for r in self.db.daily_series(self.airport, d0, d1)]
         if key in ("ga", "atfm", "mov_torre"):
-            rows = self.db.ground_list(self.airport, dates)
             if key == "ga":
-                return [r for r in rows if r.get("ga")]
+                return self.db.go_arounds(self.airport, dates)
+            rows = self.db.ground_list(self.airport, dates)
             if key == "atfm":
                 return sorted([r for r in rows if r.get("atfm_delay")], key=lambda r: -r["atfm_delay"])
             return rows

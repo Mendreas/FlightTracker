@@ -33,6 +33,9 @@ NEAREST_AIRPORT_SQL = ("CASE " + " ".join(
     f"WHEN d_{k} = least({', '.join(f'd_{a}' for a in AIRPORT_CENTERS)}) THEN '{k}'" for k in AIRPORT_CENTERS) + " END")
 
 GAP_SPLIT_S = 300          # buraco de tempo que separa dois movimentos do mesmo callsign
+GAP_REJOIN_S = 1200        # ... excepto se a aeronave continuou no ar (borrego / buraco de cobertura) e voltou em menos de 20 min
+GA_LOW_FT = 1500           # borrego: ponto baixo (ft) a menos de GA_NEAR_NM da soleira, depois de descer ≥ 1000 ft, seguido de subida ≥ 600 ft
+GA_NEAR_NM = 4.0
 MIN_POINTS_FLIGHT = 3      # movimentos com menos plots são ignorados
 
 # nome normalizado -> candidatos nos cabeçalhos dos CSV (minúsculas)
@@ -113,6 +116,8 @@ class Database:
             n INTEGER, t_first DOUBLE, t_last DOUBLE, tod_first VARCHAR, tod_last VARCHAR,
             alt_first INTEGER, alt_last INTEGER, alt_min INTEGER, alt_max INTEGER,
             cls VARCHAR, modes VARCHAR, actype VARCHAR, wtc VARCHAR, blocks VARCHAR)""")
+        c.execute("ALTER TABLE flights ADD COLUMN IF NOT EXISTS ga INTEGER")       # n.º de borregos detetados no radar
+        c.execute("ALTER TABLE flights ADD COLUMN IF NOT EXISTS ga_t DOUBLE")      # instante (tod_sec) do primeiro borrego
         c.execute("""
         CREATE TABLE IF NOT EXISTS nmir(
             csn VARCHAR, date VARCHAR, actype VARCHAR, wtc VARCHAR, adep VARCHAR, ades VARCHAR)""")
@@ -471,18 +476,27 @@ class Database:
         return len(gone)
 
     # ----------------------------------------------------------------- flights
+    def needs_flights_rebuild(self) -> bool:
+        """Bases criadas por versões anteriores à deteção de borregos (flights.ga) têm de reconstruir os movimentos uma vez."""
+        c = self.con
+        return bool(c.execute("SELECT count(*) FROM files").fetchone()[0]) and not c.execute("SELECT value FROM meta WHERE key='flights_ga_v1'").fetchone()
+
     def rebuild_flights(self):
         """Reconstrói a tabela de movimentos a partir de points (rápido: window functions)."""
+        self.con.execute("INSERT OR REPLACE INTO meta VALUES ('flights_ga_v1', '1')")
         self.con.execute("DELETE FROM flights")
         self.con.execute("DELETE FROM analysis_cache")
         self.con.execute(f"""
-        INSERT INTO flights
+        INSERT INTO flights (flight_id, airport, date, csn, leg, n, t_first, t_last, tod_first, tod_last, alt_first, alt_last, alt_min, alt_max, cls, modes, actype, wtc, blocks)
         WITH ordered AS (
             SELECT airport, date, csn, tod, tod_sec, alt, modes, block,
-                   tod_sec - lag(tod_sec) OVER (PARTITION BY airport, date, csn ORDER BY tod_sec) AS gap
+                   tod_sec - lag(tod_sec) OVER (PARTITION BY airport, date, csn ORDER BY tod_sec) AS gap,
+                   lag(alt) OVER (PARTITION BY airport, date, csn ORDER BY tod_sec) AS prev_alt
             FROM points WHERE tod_sec IS NOT NULL
         ), legs AS (
-            SELECT *, sum(CASE WHEN gap IS NULL OR gap > {GAP_SPLIT_S} THEN 1 ELSE 0 END)
+            -- novo movimento quando há um buraco > GAP_SPLIT_S, excepto se a aeronave estava no ar antes e depois do buraco
+            -- e voltou em menos de GAP_REJOIN_S (borrego com circuito fora da cobertura, buraco de radar): é o mesmo voo
+            SELECT *, sum(CASE WHEN gap IS NULL OR (gap > {GAP_SPLIT_S} AND NOT (gap <= {GAP_REJOIN_S} AND coalesce(prev_alt, 0) >= 300 AND coalesce(alt, 0) >= 300)) THEN 1 ELSE 0 END)
                       OVER (PARTITION BY airport, date, csn ORDER BY tod_sec ROWS UNBOUNDED PRECEDING) AS leg
             FROM ordered
         ), agg AS (
@@ -509,6 +523,7 @@ class Database:
                ON nm.csn = a.csn AND nm.date = a.date
         WHERE a.n >= {MIN_POINTS_FLIGHT}
         """)
+        self._detect_go_arounds()
         # Sem NMIR nesse dia: 2) tipo mais recente do mesmo callsign; 3) mesmo endereço Mode S (= mesma aeronave)
         self.con.execute("""
         UPDATE flights SET actype = nm.actype, wtc = nm.wtc
@@ -520,6 +535,33 @@ class Database:
               WHERE actype IS NOT NULL AND modes IS NOT NULL AND modes <> '' GROUP BY modes) m
         WHERE flights.actype IS NULL AND flights.modes IS NOT NULL AND flights.modes <> '' AND m.modes = flights.modes""")
         self.apply_type_overrides()
+
+    def _detect_go_arounds(self):
+        """Borrego no radar: ponto abaixo de GA_LOW_FT a menos de GA_NEAR_NM de uma soleira do aeroporto, depois de ter descido
+        pelo menos 1 000 ft (não é uma descolagem) e seguido de uma subida de pelo menos 600 ft. Episódios separados por > 120 s
+        contam como borregos distintos. Um movimento com borrego é sempre uma chegada."""
+        from .geo import AIRPORTS
+        thr = [(a, r["thr"][0], r["thr"][1]) for a, d in AIRPORTS.items() for r in d["rwys"].values()]
+        vals = ", ".join(f"('{a}', {la}, {lo})" for a, la, lo in thr)
+        self.con.execute(f"""
+        WITH thr(airport, tlat, tlon) AS (VALUES {vals}),
+        pts AS (
+            SELECT f.flight_id, p.tod_sec, p.alt,
+                   max(p.alt) OVER (PARTITION BY f.flight_id ORDER BY p.tod_sec ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS prev_max,
+                   max(p.alt) OVER (PARTITION BY f.flight_id ORDER BY p.tod_sec ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING) AS next_max,
+                   EXISTS (SELECT 1 FROM thr t WHERE t.airport = p.airport
+                           AND sqrt(pow((p.lat - t.tlat) * 60, 2) + pow((p.lon - t.tlon) * 60 * cos(radians(t.tlat)), 2)) < {GA_NEAR_NM}) AS near
+            FROM points p JOIN flights f ON f.airport = p.airport AND f.date = p.date AND f.csn = p.csn AND p.tod_sec BETWEEN f.t_first AND f.t_last
+            WHERE p.alt IS NOT NULL AND f.alt_min < {GA_LOW_FT} AND f.alt_max - f.alt_min >= 1000
+        ), low AS (
+            SELECT flight_id, tod_sec, alt FROM pts
+            WHERE alt < {GA_LOW_FT} AND near AND prev_max >= alt + 1000 AND next_max >= alt + 600
+        ), ep AS (
+            SELECT flight_id, tod_sec, alt,
+                   CASE WHEN tod_sec - lag(tod_sec) OVER (PARTITION BY flight_id ORDER BY tod_sec) > 120 OR lag(tod_sec) OVER (PARTITION BY flight_id ORDER BY tod_sec) IS NULL THEN 1 ELSE 0 END AS start
+            FROM low
+        ), agg AS (SELECT flight_id, sum(start) AS n_ga, arg_min(tod_sec, alt) AS ga_t FROM ep GROUP BY flight_id)
+        UPDATE flights SET ga = agg.n_ga, ga_t = agg.ga_t, cls = 'arr' FROM agg WHERE flights.flight_id = agg.flight_id""")
 
     # ----------------------------------------------------------------- queries
     def summary(self) -> dict:
@@ -563,11 +605,11 @@ class Database:
             params.append(cls)
         rows = self.con.execute(f"""
             SELECT flight_id, airport, date, csn, leg, n, tod_first, tod_last, t_first, t_last,
-                   alt_first, alt_last, alt_min, alt_max, cls, modes, actype, wtc, blocks
+                   alt_first, alt_last, alt_min, alt_max, cls, modes, actype, wtc, blocks, ga, ga_t
             FROM flights WHERE {' AND '.join(where)}
             ORDER BY date, airport, t_first""", params).fetchall()
         keys = ["flight_id", "airport", "date", "csn", "leg", "n", "tod_first", "tod_last", "t_first", "t_last",
-                "alt_first", "alt_last", "alt_min", "alt_max", "cls", "modes", "actype", "wtc", "blocks"]
+                "alt_first", "alt_last", "alt_min", "alt_max", "cls", "modes", "actype", "wtc", "blocks", "ga", "ga_t"]
         return [dict(zip(keys, r)) for r in rows]
 
     def tracks(self, flight_ids: Iterable[int], max_points: int = 120_000) -> dict:
@@ -1053,6 +1095,38 @@ class Database:
             if kind == "arr" and r["cls"] != "arr": continue
             out.append({**r, "src": "radar", "t_ref": t})
         return sorted(out, key=lambda x: (x["date"], x["t_ref"]))
+
+    def go_arounds(self, airport: str, dates: list[str]) -> list[dict]:
+        """Borregos das datas, cruzando torre (registo ARRIVAL com GA=TRUE) e radar (flights.ga): um registo por borrego com
+        src = 'torre+radar' | 'só torre' | 'só radar', o instante do borrego, a aterragem real (torre) e o movimento radar."""
+        dates = list(dates) or ["__none__"]
+        tower = self.con.execute("""
+            SELECT g.gid, g.date, g.csn, g.actype, g.rwy, g.aldt AS t_ga, g.adep, g.stand_a,
+                   (SELECT min(g2.aldt) FROM ground g2 WHERE g2.airport = g.airport AND g2.date = g.date AND g2.csn = g.csn
+                                                         AND NOT coalesce(g2.ga, false) AND g2.aldt > g.aldt) AS t_land
+            FROM ground g WHERE g.airport = ? AND g.date IN (SELECT unnest(?::VARCHAR[])) AND g.ga ORDER BY g.date, g.aldt""", [airport, dates]).fetchall()
+        radar = self.con.execute("""
+            SELECT flight_id, date, csn, actype, ga, ga_t, t_last, alt_last, tod_first, tod_last
+            FROM flights WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[])) AND ga > 0 ORDER BY date, ga_t""", [airport, dates]).fetchall()
+        any_flight = {(d, c): fid for fid, d, c in self.con.execute(
+            "SELECT flight_id, date, csn FROM flights WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[]))", [airport, dates]).fetchall()}
+        used = set(); out = []
+        for gid, date, csn, actype, rwy, t_ga, adep, stand_a, t_land in tower:
+            match = None
+            for r in radar:
+                if (r[0] not in used) and r[1] == date and r[2] == csn and t_ga is not None and r[5] is not None and abs(r[5] - (t_ga % 86400)) < 900:   # flights.ga_t é em segundos do dia; a torre em epoch
+                    match = r; break
+            if match: used.add(match[0])
+            fid = match[0] if match else any_flight.get((date, csn))
+            out.append({"gid": gid, "date": date, "csn": csn, "actype": actype or (match[3] if match else None), "rwy": rwy, "t_ga": t_ga, "t_land": t_land,
+                        "adep": adep, "flight_id": fid, "ga_radar_t": match[5] if match else None,
+                        "src": "torre+radar" if match else ("só torre" if fid else "sem radar"),
+                        "radar": "confirmado" if match else ("não visto no radar" if fid else "sem plots")})
+        for r in radar:
+            if r[0] in used: continue
+            out.append({"gid": None, "date": r[1], "csn": r[2], "actype": r[3], "rwy": None, "t_ga": r[5], "t_land": r[6] if (r[7] or 0) < 1500 else None,
+                        "adep": None, "flight_id": r[0], "ga_radar_t": r[5], "src": "só radar", "radar": f"{r[4]} borrego(s) no radar"})
+        return sorted(out, key=lambda x: (x["date"], x["t_ga"] or 0))
 
     def ground_list(self, airport: str, dates: list[str]) -> list[dict]:
         """Movimentos no solo das datas, com o movimento radar mais próximo no tempo (flight_id), quando existe."""

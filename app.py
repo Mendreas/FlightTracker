@@ -27,7 +27,7 @@ from core.httpapi import start_server
 from core.service import Service
 
 APP_NAME = "FlightTracker"
-VERSION = "4.1.1"
+VERSION = "4.1.2"
 
 
 def setup_logging(folder: Path):
@@ -76,6 +76,8 @@ class Api:
             self.db = Database(data_dir() / "flightplotter.duckdb")
             self.svc = Service(self.db)
             logging.info("Base aberta: %s", self.db.summary())
+            if self.db.needs_flights_rebuild():
+                self._rebuild_background()
         except Exception as e:  # noqa: BLE001
             logging.exception("Erro a abrir a base de dados")
             msg = str(e)
@@ -181,6 +183,26 @@ class Api:
 
         threading.Thread(target=run, daemon=True).start()
         return {"ok": True, "data": folder}
+
+    def _rebuild_background(self):
+        """Reconstrução única dos movimentos (nova versão da tabela flights) em thread, com a barra de progresso da importação."""
+        self._importing = True
+        self._import_state = {"importing": True, "done": 0, "total": 0, "name": "A atualizar os movimentos (deteção de borregos no radar) — só desta vez…", "result": None}
+
+        def run():
+            t0 = time.time()
+            try:
+                self.db.rebuild_flights()
+                logging.info("Movimentos reconstruídos (flights_ga_v1) em %.1f s", time.time() - t0)
+                self._import_state["result"] = {"ok": True, "data": {"found": 0, "new": 1, "imported": 0, "rows": 0, "ms": (time.time() - t0) * 1000, "migration": True}}
+            except Exception as e:  # noqa: BLE001
+                logging.exception("Erro na reconstrução dos movimentos")
+                self._import_state["result"] = {"ok": False, "error": str(e)}
+            finally:
+                self._importing = False
+                self._import_state["importing"] = False
+
+        threading.Thread(target=run, daemon=True).start()
 
     def import_status(self):
         """Estado da importação em curso (a interface consulta periodicamente)."""

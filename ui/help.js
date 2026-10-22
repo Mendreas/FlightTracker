@@ -3,7 +3,7 @@
 'use strict';
 const HELP = {
   // ---- conceitos gerais
-  'Movimentos': 'Número de movimentos (chegadas + partidas + sobrevoos) detetados no radar para os dias e blocos escolhidos. Um callsign no mesmo dia é separado em movimentos distintos quando há um intervalo sem plots superior a 5 min.',
+  'Movimentos': 'Número de movimentos (chegadas + partidas + sobrevoos) detetados no radar para os dias e blocos escolhidos. Um callsign no mesmo dia é separado em movimentos distintos quando há um intervalo sem plots superior a 5 min — excepto se a aeronave estava no ar antes e depois do intervalo e voltou em menos de 20 min (borrego, buraco de cobertura): continua a ser o mesmo movimento.',
   'Movimentos ARR+DEP': 'Chegadas e partidas detetadas no radar (sem sobrevoos).',
   'Chegadas (ARR)': 'Movimentos cuja altitude desce mais de 500 ft entre o primeiro e o último plot — classificação automática a partir do radar.',
   'Partidas (DEP)': 'Movimentos cuja altitude sobe mais de 500 ft entre o primeiro e o último plot.',
@@ -126,7 +126,7 @@ const HELP = {
   'Movimentos de pista': 'Chegadas + partidas reais na pista. Com ficheiro da torre usa ATOT/ALDT (movimentos de pista); sem torre usa o radar, que inclui tráfego de aeródromos vizinhos.',
   'Pico 60 min': 'Maior número de movimentos de pista em qualquer janela de 60 minutos (passos de 5 min). "Hora cheia" = maior contagem numa hora de relógio.',
   'Utilização no pico': 'Pico de 60 min dividido pela capacidade declarada da pista (movimentos/hora). Acima de 100 % a procura excedeu a capacidade declarada nessa hora. "h acima" = horas de relógio com mais movimentos do que a capacidade.',
-  'Go-arounds': 'Aproximações abortadas registadas pela torre (campo GA do ficheiro A-SMGCS), e taxa por 1 000 aterragens.',
+  'Go-arounds': 'Aproximações abortadas. Torre: o A-SMGCS cria um registo ARRIVAL com GA=TRUE no instante do borrego (sem saída de pista nem stand) e outro registo para a aterragem real. Radar: ponto abaixo de 1 500 ft a menos de 4 NM da soleira, depois de descer ≥ 1 000 ft e seguido de subida ≥ 600 ft. O cartão mostra os da torre (e quantos o radar confirma); sem ficheiro da torre, os do radar. Taxa por 1 000 aterragens.',
   'Taxi-out adicional': 'Tempo de taxi-out real (off-block → descolagem) menos a referência não-impedida: percentil 20 dos tempos observados para o mesmo stand e pista (ou só pista, se houver poucos casos). Indicador PRU "additional taxi-out time".',
   'Taxi-in adicional': 'Tempo de taxi-in real (saída de pista → on-block) menos a referência não-impedida (percentil 20 por stand e pista). Indicador PRU "additional taxi-in time".',
   'ASMA adicional': 'ASMA = Arrival Sequencing and Metering Area. Tempo desde a entrada no anel à volta do aeroporto até à aterragem, menos a referência não-impedida (percentil 20 por pista e setor de entrada). O PRU usa 40 NM; aqui o anel é o maior coberto pelo radar (indicado no título). Mede atrasos de sequenciamento, vectoração e esperas.',

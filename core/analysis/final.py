@@ -45,8 +45,7 @@ def analyze_flight_approach(flight: dict, pts_raw: list[tuple], ri: int, rwy_id:
         a, b = pts[i - 1], pts[i]
         if a["along"] > 0 and b["along"] <= 0.3:
             if min(a["alt"], b["alt"]) <= alt_abs_max and abs(a["cross"]) < corr_nm and abs(b["cross"]) < corr_nm:
-                thr_idx = i
-                break
+                thr_idx = i      # fica o último cruzamento: num borrego o primeiro é a aproximação abortada
     if thr_idx < 0:
         return None
     pa, pb = pts[thr_idx - 1], pts[thr_idx]

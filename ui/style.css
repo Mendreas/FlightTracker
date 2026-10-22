@@ -285,3 +285,5 @@ tr.gd-row.sel td{background:var(--sel)}
 .heat td.dk{color:#fff}
 .heat td:hover{outline:2px solid var(--accent)}
 .heat-tools{display:flex;gap:10px;align-items:center;margin-bottom:6px}
+
+.badge.ga{background:#7c3aed;color:#fff}

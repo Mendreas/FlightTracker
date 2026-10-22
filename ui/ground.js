@@ -461,7 +461,7 @@ const Ground = (() => {
     const srv = (key, title, cols) => { Drill.set('pn.' + key, title, cols, []); DRILL_SRV['pn.' + key] = { key, title, cols, d0: ymd(f), d1: ymd(t) }; };
     const T = v => v == null ? '—' : new Date(v * 1000).toISOString().slice(11, 19);
     const csnC = { k: 'csn', label: 'Voo', fmt: (v, r) => r.flight_id ? `<a href="#" class="csn-link" data-fid="${r.flight_id}"><b>${esc(v)}</b></a>` : `<b>${esc(v || '')}</b>` };
-    srv('ga', 'Go-arounds (ficheiro da torre)', [{ k: 'date', label: 'Data', fmt: fmtD }, csnC, { k: 'actype', label: 'Tipo' }, { k: 'rwy', label: 'RWY' }, { k: 'aldt', label: 'ALDT', fmt: T }, { k: 'stand_a', label: 'Stand' }, { k: 'adep', label: 'ADEP' }]);
+    srv('ga', 'Go-arounds — torre e radar', window.GA_COLS(fmtD, csnC, T));
     srv('atfm', 'Partidas com atraso ATFM (torre)', [{ k: 'date', label: 'Data', fmt: fmtD }, csnC, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'atfm_delay', label: 'Atraso (min)' }, { k: 'regulation', label: 'Regulação' }]);
     srv('otp', 'Pontualidade à partida (NMIR)', [{ k: 'date', label: 'Data', fmt: fmtD }, { k: 'csn', label: 'Voo' }, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'etot', label: 'ETOT', fmt: T }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'dev_min', label: 'Desvio (min)' }, { k: 'ok', label: '≤ 15 min', fmt: v => v ? '✓' : '<span class="sep-r">✗</span>' }]);
     let h = '<div class="kgrid">' + C.kcard('Movimentos', fmt(tot(M)), `${M.length} dias · ${fmt(tot(M) / M.length, 0)}/dia`, '', 'pn.days') +

@@ -235,7 +235,7 @@ function renderFlightList() {
     el.className = 'fl card2' + (state.selected === f.flight_id ? ' sel' : '') + (hid ? ' off' : '');
     el.dataset.id = f.flight_id;
     const arrow = f.cls === 'arr' ? '▼' : f.cls === 'dep' ? '▲' : '—';
-    el.innerHTML = `<div class="top"><span class="sw" style="background:${colorFor(f)}"></span><span class="csn">${f.csn}</span><span class="badge ${f.cls}">${arrow} ${f.cls.toUpperCase()}</span>${f.actype ? `<span class="typ">${f.actype}</span>` : ''}<input type="checkbox" ${hid ? '' : 'checked'} title="Mostrar no mapa"></div>` +
+    el.innerHTML = `<div class="top"><span class="sw" style="background:${colorFor(f)}"></span><span class="csn">${f.csn}</span><span class="badge ${f.cls}">${arrow} ${f.cls.toUpperCase()}</span>${f.ga ? `<span class="badge ga" title="${f.ga} borrego(s) detetado(s) no radar">⟲ GA${f.ga > 1 ? '×' + f.ga : ''}</span>` : ''}${f.actype ? `<span class="typ">${f.actype}</span>` : ''}<input type="checkbox" ${hid ? '' : 'checked'} title="Mostrar no mapa"></div>` +
       `<div class="meta">${f.n} pts · ${f.tod_first} → ${f.tod_last}${state.days.size > 1 ? ' · ' + f.date.slice(4, 6) + '/' + f.date.slice(2, 4) : ''}</div>`;
     el.querySelector('input').onclick = ev => { ev.stopPropagation(); toggleHidden(f.flight_id); };
     el.onclick = () => selectFlight(f.flight_id, true);
@@ -252,7 +252,7 @@ function renderTable() {
   for (const f of rows) {
     const tr = document.createElement('tr'); tr.dataset.id = f.flight_id;
     tr.innerHTML = `<td>${f.date}</td><td><b>${f.csn}</b></td><td>${f.actype || ''}</td><td>${f.wtc || ''}</td>` +
-      `<td><span class="badge ${f.cls}">${f.cls.toUpperCase()}</span></td><td>${f.tod_first}</td><td>${f.tod_last}</td>` +
+      `<td><span class="badge ${f.cls}">${f.cls.toUpperCase()}</span>${f.ga ? ' <span class="badge ga">⟲ GA</span>' : ''}</td><td>${f.tod_first}</td><td>${f.tod_last}</td>` +
       `<td>${fmt(f.alt_first)}</td><td>${fmt(f.alt_last)}</td><td>${fmt(f.alt_max)}</td><td>${f.n}</td><td>${f.blocks}</td>`;
     tr.onclick = () => focusFlight(f.flight_id);
     frag.appendChild(tr);
@@ -291,7 +291,7 @@ function redrawMaps() { setTimeout(() => { try { if (map) map.invalidateSize(); 
 function openDetail(f, pts, d) {
   $('detail').classList.remove('hidden'); redrawMaps();
   $('dCsn').textContent = f.csn;
-  $('dSub').textContent = `${f.date} · ${CLS_NAME[f.cls]} · ${f.actype || 'tipo ?'}${f.wtc ? ' / ' + f.wtc : ''} · Mode S ${f.modes || '—'}`;
+  $('dSub').textContent = `${f.date} · ${CLS_NAME[f.cls]}${f.ga ? ` com ${f.ga} borrego(s) (radar)` : ''} · ${f.actype || 'tipo ?'}${f.wtc ? ' / ' + f.wtc : ''} · Mode S ${f.modes || '—'}`;
   const dur = f.t_last - f.t_first;
   const thr = nearestThr(f.airport, [pts[pts.length - 1].lat, pts[pts.length - 1].lon]);
   const thr0 = nearestThr(f.airport, [pts[0].lat, pts[0].lon]);
@@ -353,7 +353,7 @@ window.onImportDone = async r => {
   if (!r.ok) { toast('Erro na importação: ' + r.error, 'err'); status('Erro na importação', 'err'); return; }
   const d = r.data;
   const aux = d.aux || {}; const auxTxt = [aux.nmir ? `${fmt(aux.nmir)} registos NMIR` : '', aux.opdi ? `${fmt(aux.opdi)} eventos OPDI` : '', aux.ground ? `${fmt(aux.ground)} movimentos da torre` : ''].filter(Boolean).join(', ');
-  let msg = d.new === 0 ? `Nada de novo: os ${d.found} ficheiros já estavam importados.`
+  let msg = d.migration ? `Movimentos atualizados (deteção de borregos no radar) em ${(d.ms / 1000).toFixed(0)} s.` : d.new === 0 ? `Nada de novo: os ${d.found} ficheiros já estavam importados.`
     : `${d.imported} ficheiro(s) novos importados (${fmt(d.rows)} plots${auxTxt ? '; ' + auxTxt : ''}) em ${(d.ms / 1000).toFixed(1)} s.`;
   if (d.errors) msg += `\n${d.errors} com erro:\n` + d.error_list.join('\n');
   toast(msg, d.errors ? 'err' : 'ok');

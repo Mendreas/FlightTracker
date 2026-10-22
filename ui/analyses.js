@@ -1,5 +1,8 @@
 /* FlightTracker 4 — abas de análise (Final, Velocidades, Análise Op., KPIs, Pontos, IA, Preferências) */
 'use strict';
+/* colunas do modal de go-arounds (KPIs e Painel): torre + radar cruzados */
+window.GA_COLS = (fd, csnCol, T) => [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'rwy', label: 'RWY' }, { k: 't_ga', label: 'Borrego (UTC)', fmt: T }, { k: 't_land', label: 'Aterragem real', fmt: T },
+  { k: 'src', label: 'Fonte', fmt: v => v === 'torre+radar' ? '<span class="sep-g">torre + radar</span>' : v === 'só radar' ? '<span class="sep-g">só radar</span>' : `<span class="sep-r">${v}</span>` }, { k: 'radar', label: 'Radar' }, { k: 'adep', label: 'ADEP' }];
 const Analyses = (() => {
   const { esc, fmt } = C;
   const $ = id => document.getElementById(id);
@@ -474,7 +477,7 @@ const Analyses = (() => {
     const movCols = [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'cls', label: 'Mov.' }, { k: 'actype', label: 'Tipo' }, { k: 'wtc', label: 'WTC' }, { k: 'rwy', label: 'RWY' }, { k: 't', label: 'Hora', fmt: T }, { k: 'stand', label: 'Stand' }];
     drillSet('pru.mov', 'Movimentos de pista', movCols, dd.mov);
     drillSet('pru.peak', 'Movimentos na hora de pico (60 min)', movCols, dd.peak);
-    drillSet('pru.ga', 'Go-arounds (ficheiro da torre)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'rwy', label: 'RWY' }, { k: 'aldt', label: 'ALDT', fmt: T }, { k: 'rwy_vac', label: 'RWY_VAC', fmt: T }, { k: 'stand_a', label: 'Stand' }, { k: 'adep', label: 'ADEP' }], dd.ga);
+    drillSet('pru.ga', 'Go-arounds — torre e radar', window.GA_COLS(fd, csnCol, T), dd.ga);
     const taxiCols = [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'stand', label: 'Stand' }, { k: 'rwy', label: 'RWY' }, { k: 'route', label: 'Taxi' }, { k: 'taxi_s', label: 'Taxi (s)' }, { k: 'ref_s', label: 'Referência (s)' }, { k: 'add_s', label: 'Adicional (s)' }];
     drillSet('pru.taxi_out', 'Taxi-out adicional por partida', taxiCols, dd.taxi_out);
     drillSet('pru.taxi_in', 'Taxi-in adicional por chegada', taxiCols, dd.taxi_in);
@@ -516,7 +519,7 @@ const Analyses = (() => {
     h += '<div class="kgrid">';
     if (t) h += C.kcard('Movimentos de pista', fmt(t.n), `${t.source} · ${fmt(t.per_day, 0)}/dia`, '', 'pru.mov') + C.kcard('Pico 60 min', `${t.peak_roll60} mov.`, t.peak_when ? `${new Date(t.peak_when[1] * 1000).toISOString().slice(11, 16)} UTC · hora cheia máx. ${t.peak_hour_mov}` : '', '', 'pru.peak') +
       C.kcard('Utilização no pico', pc(t.util_peak), `capacidade declarada ${t.capacity}/h · ${t.hours_over_capacity} h acima`, t.util_peak > 100 ? 'warn' : 'ok', 'pru.peak') +
-      C.kcard('Go-arounds', t.ga, t.ga_rate != null ? `${fmt(t.ga_rate, 1)} por 1 000 aterragens` : 'sem ficheiro da torre', t.ga ? 'warn' : '', 'pru.ga');
+      C.kcard('Go-arounds', t.ga, (t.ga_rate != null ? `${fmt(t.ga_rate, 1)} por 1 000 aterragens` : 'radar (sem ficheiro da torre)') + (t.ga_radar != null && t.ga_rate != null ? ` · ${t.ga_radar} confirmado(s) pelo radar${t.ga_only_radar ? ` · ${t.ga_only_radar} só radar` : ''}` : ''), t.ga ? 'warn' : '', 'pru.ga');
     if (x) h += C.kcard('Taxi-out adicional', x.taxi_out.n ? `${m1(x.taxi_out.mean_min)} min` : '—', `média por partida · n=${x.taxi_out.n}`, '', 'pru.taxi_out') + C.kcard('Taxi-in adicional', x.taxi_in.n ? `${m1(x.taxi_in.mean_min)} min` : '—', `média por chegada · n=${x.taxi_in.n}`, '', 'pru.taxi_in');
     if (a && a.n) h += C.kcard(`ASMA adicional (${a.ring_nm} NM)`, `${m1(a.mean_min)} min`, `média por chegada · n=${a.n} · trânsito mediano ${s0(a.transit.median)}`, '', 'pru.asma');
     else if (a) h += C.kcard('ASMA adicional', '—', a.note || '');
