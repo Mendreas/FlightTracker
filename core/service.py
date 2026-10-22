@@ -402,7 +402,7 @@ class Service:
         extra = extra or {}
         if kind == "voo":
             d = self.flight_detail(int(extra["flight_id"]))
-            html = reports.report_flight(d["flight"], d["points"], d["app"], d["star"], d["tol"])
+            html = reports.report_flight(d["flight"], d["points"], d["app"], d["star"], d["tol"], d.get("sources"), d.get("final"))
         elif kind == "kpis":
             html = reports.report_kpis(self.kpis(), self.airport)
         elif kind == "dados":

@@ -32,7 +32,8 @@
           "ROT (Análise Op.): com ficheiro da torre, o ROT de referência passa a ser o do A-SMGCS (chegada: ALDT → saída de pista; partida: entrada na pista → ATOT); o do radar fica ao lado para comparação. Movimentos da torre sem ROT radar (partidas vistas só no ar) entram na mesma. Ligação torre ↔ radar corrigida (comparava epoch com segundos do dia).",
           "Detalhe do voo: mostra tudo o que as outras fontes sabem — NMIR (ADEP/ADES, tipo, ETOT/CTOT/ATOT/ETA/ATA, atraso ATFM), torre (stand, rota no solo, ponto de espera / saída, AOBT, RWY_ENT, ATOT, ALDT, RWY_VAC, AIBT, ROT, taxi, SID/STAR, regulação, go-around) e OPDI (matrícula, icao24, pista, descolagem/aterragem, TOC/TOD, patamares).",
           "Detalhe do voo: 'pista provável' das chegadas corrigida (usava o último plot, já no fim da pista); com torre usa a pista do registo.",
-          "NMIR: importa também FSA/DEP, FSA/DEP − ETOT/CTOT, LOBT, MP Regulation, Departure Window, Departure Conformance, FLTTYP, Diverted ADES, Aircraft Operator e FLT_UID; aparecem no detalhe do voo. Reimportar o Excel NMIR (📊 NMIR…) para preencher nas bases existentes."
+          "NMIR: importa também FSA/DEP, FSA/DEP − ETOT/CTOT, LOBT, MP Regulation, Departure Window, Departure Conformance, FLTTYP, Diverted ADES, Aircraft Operator e FLT_UID; aparecem no detalhe do voo. Reimportar o Excel NMIR (📊 NMIR…) para preencher nas bases existentes.",
+          "Relatório de voo (📄 na caixa do voo): inclui tudo o que a caixa mostra — radar, NMIR, torre (com rota no solo) e OPDI — e a avaliação da Final."
         ]
       }
     ]

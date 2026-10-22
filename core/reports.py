@@ -5,7 +5,7 @@ import html
 import time
 from pathlib import Path
 
-from .geo import fmt_date
+from .geo import fmt_date, hhmmss
 
 
 # ------------------------------------------------------------------ Excel
@@ -161,7 +161,55 @@ def wrap(title: str, subtitle: str, body: str, landscape=False) -> str:
 
 
 # ---------------- relatórios concretos
-def report_flight(flight: dict, pts: list[dict], app_rec: dict | None, star_viol: list[dict], tol: float) -> str:
+def _hms(v):
+    if v is None: return None
+    import datetime as _dt
+    return _dt.datetime.fromtimestamp(v, _dt.timezone.utc).strftime("%H:%M:%S") if v > 86400 * 2 else hhmmss(v)
+
+
+def _sources_html(src: dict | None, flight: dict) -> str:
+    """Secção 'Fontes' do relatório de voo: NMIR, torre e OPDI — a mesma informação da caixa do voo."""
+    if not src:
+        return ""
+    def kv(title, pairs, extra=""):
+        rows = "".join(f"<tr><th style='width:34%'>{esc(k)}</th><td>{esc(str(v))}</td></tr>" for k, v in pairs if v not in (None, ""))
+        return f"<h3>{esc(title)}</h3><table>{rows}</table>{extra}" if rows else f"<h3>{esc(title)}</h3><p class='note'>sem registo</p>"
+    h = "<h2>Fontes de dados</h2>"
+    h += kv("Radar (CNS)", [("Movimento", {"arr": "chegada", "dep": "partida", "lvl": "sobrevoo"}.get(flight.get("cls"), flight.get("cls"))), ("Tipo / WTC", f"{flight.get('actype') or '?'} / {flight.get('wtc') or '?'}"),
+                            ("Mode S", flight.get("modes")), ("Plots", flight.get("n")), ("Primeiro → último plot", f"{flight.get('tod_first')} → {flight.get('tod_last')}"),
+                            ("Pista provável", flight.get("rwy_guess")), ("Borregos detetados", flight.get("ga") or None)])
+    n = src.get("nmir")
+    if n:
+        h += kv("NMIR · plano de voo" + (f" (tipo herdado do registo de {n['inherited_from']})" if n.get("inherited_from") else ""),
+                [("ADEP", n.get("adep")), ("ADES", n.get("ades")), ("ADES de desvio", n.get("diverted")), ("Tipo / WTC", f"{n.get('actype') or '?'} / {n.get('wtc') or '?'}"), ("Operador", n.get("operator")), ("Tipo de voo", n.get("flttyp")),
+                 ("LOBT", _hms(n.get("lobt"))), ("ETOT", _hms(n.get("etot"))), ("CTOT", _hms(n.get("ctot"))), ("ATOT", _hms(n.get("atot"))), ("FSA/DEP", _hms(n.get("fsa_dep"))),
+                 ("FSA/DEP − ETOT/CTOT", f"{n['fsa_dev']:+.0f} min" if n.get("fsa_dev") is not None else None), ("Janela de partida", n.get("dep_window")), ("Conformidade", n.get("dep_conformance")),
+                 ("Regulação (MP)", n.get("mp_regulation")), ("ETA", _hms(n.get("eta"))), ("ATA", _hms(n.get("ata"))), ("Atraso ATFM", f"{n['atfm_delay']:g} min" if n.get("atfm_delay") is not None else None), ("FLT_UID", n.get("flt_uid"))])
+    else:
+        h += kv("NMIR · plano de voo", [])
+    t = src.get("tower")
+    if t:
+        dep = t.get("mt") == "DEPARTURE"
+        route = t.get("taxi_out") if dep else t.get("taxi_in")
+        h += kv(f"Torre · A-SMGCS ({'partida' if dep else 'chegada'} RWY {t.get('rwy') or '?'})" + (" — GO-AROUND" if t.get("ga") else ""),
+                [("ADEP", t.get("adep")), ("ADES", t.get("ades")), ("Tipo / WTC", f"{t.get('actype') or '?'} / {t.get('wtc') or '?'}"), ("Matrícula", t.get("reg")), ("Operador", t.get("ao")), ("SID", t.get("sid")), ("STAR", t.get("star")),
+                 ("Stand", t.get("stand_d") if dep else t.get("stand_a")), ("Ponto de espera" if dep else "Saída de pista", t.get("hp") if dep else t.get("ep")),
+                 ("AOBT", _hms(t.get("aobt"))), ("Ponto de espera (hora)", _hms(t.get("hp_time"))), ("RWY_ENT", _hms(t.get("rwy_ent"))), ("ATOT", _hms(t.get("atot"))), ("ALDT", _hms(t.get("aldt"))), ("RWY_VAC", _hms(t.get("rwy_vac"))), ("AIBT", _hms(t.get("aibt"))), ("CTOT", _hms(t.get("ctot"))),
+                 ("ROT", f"{t['rot_s']:.0f} s" if t.get("rot_s") is not None else None), ("Taxi-out" if dep else "Taxi-in", f"{t['taxi_s'] / 60:.0f} min {t['taxi_s'] % 60:.0f} s" if t.get("taxi_s") is not None else None),
+                 ("Velocidade na saída", f"{t['spd_vac']:.0f} kt" if t.get("spd_vac") is not None else None), ("Atraso ATFM", f"{t['atfm_delay']:g} min" if t.get("atfm_delay") is not None else None), ("Regulação", t.get("regulation")), ("RTO", "sim" if t.get("rto") else None),
+                 ("Rota no solo", route)],
+                (f"<p class='note'>{len(src['tower_all'])} registos da torre neste dia: " + " · ".join(f"{'DEP' if x['mt'] == 'DEPARTURE' else 'ARR'} {_hms(x['t_ref']) or '?'}{' (GA)' if x.get('ga') else ''}" for x in src["tower_all"]) + "</p>") if len(src.get("tower_all") or []) > 1 else "")
+    else:
+        h += kv("Torre · A-SMGCS", [])
+    o = src.get("opdi")
+    if o:
+        h += kv("OPDI · ADS-B", [("ADEP", o.get("adep")), ("ADES", o.get("ades")), ("Tipo", o.get("typecode")), ("Matrícula", o.get("reg")), ("icao24", o.get("icao24")), ("Modelo", o.get("model")), ("Pista", o.get("rwy_ref")),
+                                 ("Entrada na pista", _hms(o.get("t_rwy_in"))), ("Saída da pista", _hms(o.get("t_rwy_out"))), ("Descolagem", _hms(o.get("t_takeoff"))), ("Aterragem", _hms(o.get("t_landing"))), ("TOC", _hms(o.get("t_toc"))), ("TOD", _hms(o.get("t_tod"))),
+                                 ("Patamares < FL100", o.get("n_levels_low")), ("Taxiways", o.get("twy")), ("Stand (entrada)", _hms(o.get("t_park_in"))), ("Stand (saída)", _hms(o.get("t_park_out")))])
+    return h
+
+
+def report_flight(flight: dict, pts: list[dict], app_rec: dict | None, star_viol: list[dict], tol: float, sources: dict | None = None, final: list[dict] | None = None) -> str:
     alts = [p["alt"] for p in pts if p["alt"] is not None]; ias = [p["ias"] for p in pts if p["ias"]]
     stats = [("Data", flight["date_fmt"]), ("Pontos", str(len(pts))), ("Alt máx", f"{max(alts)} ft" if alts else "—"), ("Alt mín", f"{min(alts)} ft" if alts else "—"),
              ("IAS máx", f"{max(ias):.0f} kt" if ias else "—"), ("IAS méd", f"{sum(ias) / len(ias):.0f} kt" if ias else "—"),
@@ -193,6 +241,9 @@ def report_flight(flight: dict, pts: list[dict], app_rec: dict | None, star_viol
     paras.append("Conclusão: Voo sem violações de velocidade detectadas." if n == 0 else
                  f"Conclusão: Registadas {n} violação(es). Recomenda-se revisão do perfil de desaceleração.")
     body = badge + kpi_grid(stats) + "".join(f"<p>{esc(p)}</p>" for p in paras)
+    if final:
+        body += "<h3>Final</h3>" + "".join(f"<p>Aterragem RWY {r['rwy']} · THR {r['tTHRstr']} · FAF {r['tFAFstr']} · IAS FAF {r['iasFAF']:.0f} kt · {'estabilizada' if r.get('stab') else 'não estabilizada'}</p>" for r in final if r.get("iasFAF") is not None)
+    body += _sources_html(sources, flight)
     # perfil IAS/altitude (SVG simples)
     prof = [(p["dist_thr"], p["ias"], p["alt"]) for p in pts if p.get("dist_thr") is not None and p["dist_thr"] <= 20]
     if prof:
