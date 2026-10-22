@@ -156,6 +156,7 @@ Estes campos não existem em nenhuma fonte — são calculados pela app ao cruza
 | **Conformidade de slot ATFM** | N | Classificação Within / Earlier / Later a partir de `dep_conformance`; agregada por regulação (`mp_regulation`) |
 | **Atraso ATFM / throughput** | N (+ T) | Agregações diárias de `atfm_delay`, `regulation` |
 | **Mapa de calor hora × dia da semana** | R (e T, por aeroporto) | Contagem de movimentos por combinação hora/dia da semana |
+| **Final e FAST** | R | Por chegada: hora/IAS/altitude na FAF e na soleira, estabilizada, CDO; par com a chegada anterior na mesma pista (≤ 600 s): separação (s/NM), n.º de partidas intercaladas → sequência **AA / ADA / ADDA / AD…A** |
 | **Separação ar / RRMS** | R | Distância/tempo entre movimentos sucessivos no ponto de 2 400 m e noutros pontos de referência |
 | **Violações de velocidade (STAR/APP)** | R | Comparação da IAS/TAS de cada plot com os limites definidos por waypoint/fix |
 | **Fontes do voo (`flight_sources`)** | R + N + T + O | Para um movimento, procura e devolve em conjunto o registo NMIR (com herança de tipo), o melhor registo de torre (+ todos os da torre nesse dia), e o registo OPDI — é o que a caixa de detalhe do voo mostra |

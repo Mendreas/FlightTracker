@@ -41,6 +41,26 @@ FIELDS: dict[str, tuple[str, list[tuple[str, str, str, str]]]] = {
         ("slot", "Conformidade slot", "txt", "Within / Earlier / Later (NMIR, só voos regulados)"),
         ("atfm_delay", "Atraso ATFM (min)", "num", "NMIR > torre"),
     ]),
+    "fast": ("Final e FAST (radar: aproximação, sequência AA/ADA/ADDA)", [
+        ("f_rwy", "Final: pista", "txt", "Pista detetada pela análise da final"),
+        ("f_t_faf", "Final: hora na FAF", "time", "7 NM da soleira"), ("f_t_thr", "Final: hora na soleira", "time", ""),
+        ("f_ias_faf", "Final: IAS na FAF (kt)", "num", ""), ("f_ias4", "Final: IAS a 4 NM (kt)", "num", ""), ("f_ias_thr", "Final: IAS na soleira (kt)", "num", ""),
+        ("f_alt_faf", "Final: alt. na FAF (ft)", "num", ""), ("f_alt_thr", "Final: alt. na soleira (ft)", "num", ""),
+        ("f_dur", "Final: FAF→soleira (s)", "num", ""), ("f_track", "Final: distância voada (NM)", "num", ""),
+        ("f_stab", "Final: estabilizada", "bool", ""), ("f_cdo", "Final: CDO", "bool", "Sem patamares na final"), ("f_level_offs", "Final: n.º patamares", "num", ""),
+        ("f_seq", "FAST: sequência", "txt", "Chegada como seguinte do par: AA (sem DEP entre as duas chegadas), ADA (1 DEP), ADDA (2 DEP), AD…A (3+)"),
+        ("f_sep_s", "FAST: separação à chegada anterior (s)", "num", "Entre soleiras, mesma pista, ≤ 600 s"),
+        ("f_sep_nm", "FAST: separação à chegada anterior (NM)", "num", "A 140 kt"),
+        ("f_lead", "FAST: chegada anterior", "txt", "Callsign da chegada que precede"),
+        ("f_dep_cnt", "FAST: n.º DEP intercalados", "num", "Descolagens entre a chegada anterior e esta"),
+        ("f_deps", "FAST: DEP intercalados", "txt", "Callsigns das descolagens intercaladas"),
+        ("f_first_dep", "FAST: 1.ª DEP intercalada", "txt", ""), ("f_b_sec", "FAST: soleira − 1.ª DEP (s)", "num", "Tempo entre a 1.ª descolagem intercalada e a soleira desta chegada"),
+        ("f_b_nm", "FAST: soleira − 1.ª DEP (NM)", "num", ""),
+        ("f_next", "FAST: chegada seguinte", "txt", "Callsign da chegada que se segue (quando esta é a primeira do par)"),
+        ("f_sep_next_s", "FAST: separação à chegada seguinte (s)", "num", ""),
+        ("f_in_pair", "FAST: DEP entre as chegadas", "txt", "Para uma partida: as duas chegadas entre as quais descolou (anterior → seguinte)"),
+        ("f_in_pair_seq", "FAST: sequência do par (DEP)", "txt", "Para uma partida: a sequência do par onde está intercalada"),
+    ]),
     "radar": ("Radar (CNS)", [
         ("r_t_first", "Radar: 1.º plot", "time", "Hora do primeiro plot"),
         ("r_t_last", "Radar: último plot", "time", "Hora do último plot"),
@@ -131,6 +151,20 @@ def build_rows(db, airport: str, dates: list[str]) -> list[dict]:
                                        "mp_regulation", "dep_window", "dep_conformance", "flttyp", "diverted", "operator", "flt_uid"), r[2:]))
     corr = db.corrections(dates); overrides = db.type_overrides()
     from .analysis.ops import nmir_lookup
+    from .analysis import final as finalmod, fast as fastmod
+    # Final + FAST (só radar): aproximações e pares de chegadas consecutivas na mesma pista
+    arrs = [f for f in flights if f["cls"] in ("arr", "dep")]
+    try:
+        final = finalmod.run_final(db, arrs, airport, "BOTH", 7.0, 2.0, 1000.0)
+        pairs = fastmod.build_pairs(final, fastmod.dep_events(arrs))
+    except Exception:  # noqa: BLE001 — sem análise da final não se perde o resto
+        final, pairs = [], []
+    fin_by = {r["flight_id"]: r for r in final}
+    trail_by, lead_by, dep_in = {}, {}, {}
+    for p in pairs:
+        trail_by[p["trail"]["flight_id"]] = p; lead_by[p["lead"]["flight_id"]] = p
+        for d in p["depsIn"]:
+            dep_in.setdefault((d["csn"], p["lead"]["_dateRaw"]), p)
     for g in ground:
         g["cls"] = "dep" if g["mt"] == "DEPARTURE" else "arr"
     # OPDI ↔ radar: primeiro por Mode S + dia + classe, depois por callsign (integrate._pair)
@@ -169,6 +203,25 @@ def build_rows(db, airport: str, dates: list[str]) -> list[dict]:
         r["r_dur"] = round(f["t_last"] - f["t_first"]) if f["t_last"] is not None and f["t_first"] is not None else None
         for k in ("alt_first", "alt_last", "alt_min", "alt_max", "actype", "wtc", "modes", "blocks", "ga", "ga_t"):
             r["r_" + k] = f.get(k)
+
+    def put_fast(r, f):
+        x = fin_by.get(f["flight_id"])
+        if x:
+            r["f_rwy"], r["f_t_faf"], r["f_t_thr"] = x["rwy"], x["epochFAF"], x["epochTHR"]
+            r["f_ias_faf"], r["f_ias4"], r["f_ias_thr"], r["f_alt_faf"], r["f_alt_thr"] = x["iasFAF"], x["ias4"], x["iasTHR"], x["altFAF"], x["altTHR"]
+            r["f_dur"], r["f_track"], r["f_stab"], r["f_cdo"], r["f_level_offs"] = x["durS"], x["trackNM"], x["stab"], x["cdo"], x["cdoLevelOffs"]
+        p = trail_by.get(f["flight_id"])
+        if p:
+            r["f_seq"], r["f_sep_s"], r["f_sep_nm"], r["f_lead"], r["f_dep_cnt"] = p["seq"], p["sep"], p["sepNm"], p["lead"]["csn"], p["depCnt"]
+            r["f_deps"] = " ".join(d["csn"] for d in p["depsIn"]) or None
+            r["f_first_dep"], r["f_b_sec"], r["f_b_nm"] = p["firstDep"], p["bSecAtDep"], p["bNmAtDep"]
+        p = lead_by.get(f["flight_id"])
+        if p:
+            r["f_next"], r["f_sep_next_s"] = p["trail"]["csn"], p["sep"]
+        if f["cls"] == "dep":
+            p = dep_in.get((f["csn"], f["date"]))
+            if p:
+                r["f_in_pair"] = f'{p["lead"]["csn"]} → {p["trail"]["csn"]}'; r["f_in_pair_seq"] = p["seq"]
 
     def put_nmir(r):
         n = nmir.get((r["csn"], r["date"]))
@@ -232,7 +285,7 @@ def build_rows(db, airport: str, dates: list[str]) -> list[dict]:
 
     rows = []
     for f in flights:
-        r = new(f["csn"], f["date"], f["cls"]); put_radar(r, f); put_nmir(r)
+        r = new(f["csn"], f["date"], f["cls"]); put_radar(r, f); put_fast(r, f); put_nmir(r)
         g = g_by_fid.get(f["flight_id"])
         if g: put_ground(r, g)
         o = o_by_fid.get(f["flight_id"]) or (o_by_gid.get(g["gid"]) if g else None)
@@ -324,6 +377,8 @@ def sheets(rows: list[dict], fields: list[str], filters: list[dict], groups: lis
     for lab, key in (("Com radar", "R"), ("Com NMIR", "N"), ("Com torre", "T"), ("Com OPDI", "O")):
         res.append([lab, sum(1 for r in rows if key in r["src"])])
     res.append(["Borregos (torre+radar / só torre / só radar)", f"{sum(1 for r in rows if r['ga']=='torre+radar')} / {sum(1 for r in rows if r['ga']=='só torre')} / {sum(1 for r in rows if r['ga']=='só radar')}"])
+    seqs = Counter(r["f_seq"] for r in rows if r.get("f_seq"))
+    if seqs: res.append(["Pares de chegadas FAST: AA / ADA / ADDA / AD…A", " / ".join(str(seqs.get(k, 0)) for k in ("AA", "ADA", "ADDA", "AD…A"))])
     rots = [r["rot_s"] for r in rows if r["rot_s"] is not None]
     if rots: res.append(["ROT médio (s) / n", f"{sum(rots)/len(rots):.0f} / {len(rots)}"])
     otp = [r["otp_ok"] for r in rows if r["otp_ok"] is not None]
@@ -341,7 +396,7 @@ def sheets(rows: list[dict], fields: list[str], filters: list[dict], groups: lis
             key = _fmt(ty, r.get(gk)); key = "(vazio)" if key is None else key
             cnt[key][0 if r["cls"] == "arr" else 1 if r["cls"] == "dep" else 2] += 1
         lines = sorted(cnt.items(), key=lambda kv: -sum(kv[1]))
-        out.append((f"Por {FIELD_LABEL[gk]}"[:31], [FIELD_LABEL[gk], "ARR", "DEP", "LVL", "Total", "%"],
+        out.append((re.sub(r"[\[\]:*?/\\]", " ", f"Por {FIELD_LABEL[gk]}")[:31], [FIELD_LABEL[gk], "ARR", "DEP", "LVL", "Total", "%"],
                     [[k, *v, sum(v), round(100 * sum(v) / len(rows), 1) if rows else 0] for k, v in lines]))
     # Parâmetros
     par = [["Aeroporto", airport], ["Período", f"{date_label(dates[0])} → {date_label(dates[-1])}" if dates else "—"], ["Dias com dados", len(dates)],

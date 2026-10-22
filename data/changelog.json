@@ -8,7 +8,7 @@
       {
         "title": "Preferências",
         "items": [
-          "Novo botão '🧩 Construir relatório…' com aeroporto e período (início/fim) próprios, sem depender do filtro das outras abas. Dois modos: Excel com os dados que escolher — colunas de todas as fontes (movimento, calculados, radar, NMIR, torre, OPDI) em secções expansíveis, filtros (ex.: ADES igual a EGLL, tipo um de A320/A321, ROT maior que 60, hora entre 06:00 e 07:00) e contagens por campo (tipo, aeroporto, hora, …), com folhas Dados, Resumo (ARR/DEP), Por dia e Parâmetros; ou relatório HTML por secções (→ PDF).",
+          "Novo botão '🧩 Construir relatório…' com aeroporto e período (início/fim) próprios, sem depender do filtro das outras abas. Dois modos: Excel com os dados que escolher — colunas de todas as fontes (movimento, calculados, Final/FAST com a sequência AA/ADA/ADDA por chegada, radar, NMIR, torre, OPDI) em secções expansíveis, filtros (ex.: ADES igual a EGLL, tipo um de A320/A321, ROT maior que 60, hora entre 06:00 e 07:00) e contagens por campo (tipo, aeroporto, hora, …), com folhas Dados, Resumo (ARR/DEP), Por dia e Parâmetros; ou relatório HTML por secções (→ PDF).",
           "Cruzamento: a ligação radar↔torre/OPDI por hora comparava segundos do dia com instantes absolutos — corrigido (passa a emparelhar como deve)."
         ]
       },
