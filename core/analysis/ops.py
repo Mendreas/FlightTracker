@@ -152,8 +152,70 @@ def rrms_stats(rows: list[dict]) -> dict | None:
 
 
 # ------------------------------------------------------------------ ROT
-def run_rot(db, flights: list[dict], airport: str) -> dict:
+_JUNC_CACHE: dict[str, list] = {}
+
+
+def runway_junctions(airport: str) -> list[dict]:
+    """Taxiways que ligam à pista (rede OSM embebida): [{name, lat, lon, side_lat, side_lon}], com um nó vizinho fora da pista
+    para saber de que lado da pista está. Só existe rede para LPPT por agora."""
+    if airport in _JUNC_CACHE:
+        return _JUNC_CACHE[airport]
+    out = []
+    try:
+        import json
+        from ..db import resource_path
+        f = resource_path("data", f"{airport.lower()}_airfield.json")
+        if f.exists():
+            d = json.loads(f.read_text(encoding="utf-8"))
+            nodes = {int(k): v for k, v in d["nodes"].items()}
+            rnodes = {n for w in d["ways"] if w["type"] == "runway" for n in w["nodes"]}
+            seen = set()
+            for w in d["ways"]:
+                if w["type"] == "runway" or not w.get("ref"):
+                    continue
+                ns = w["nodes"]
+                for i, n in enumerate(ns):
+                    if n in rnodes:
+                        nb = next((m for m in (ns[i - 1] if i > 0 else None, ns[i + 1] if i + 1 < len(ns) else None) if m and m not in rnodes), None)
+                        key = (w["ref"], n)
+                        if key in seen or nb is None:
+                            continue
+                        seen.add(key)
+                        out.append({"name": w["ref"], "lat": nodes[n][0], "lon": nodes[n][1], "side_lat": nodes[nb][0], "side_lon": nodes[nb][1]})
+            # pontos de espera (holding points) cujo taxiway não está ligado à pista na rede OSM (ex.: H6 — saída rápida)
+            have = {o["name"] for o in out}
+            hp = d.get("holding") or {}
+            for name, ll in (hp.items() if isinstance(hp, dict) else hp):
+                if name not in have:
+                    out.append({"name": name, "lat": ll[0], "lon": ll[1], "side_lat": ll[0], "side_lon": ll[1], "holding": True})
+    except Exception:  # noqa: BLE001 — sem rede, sem nomes de taxiway
+        out = []
+    _JUNC_CACHE[airport] = out
+    return out
+
+
+def _nearest_taxiway(juncs, thr, brg, along_m, cross_side, behind=False, max_m=250):
+    """Junção mais próxima da posição along_m (m desde a THR). behind=True: só junções até along_m+60 (entrada na pista).
+    cross_side: sinal do cross (lado da pista) para distinguir saídas opostas; None = qualquer."""
+    best = None
+    for j in juncs:
+        a, c0 = runway_coords_m(j["lat"], j["lon"], thr[0], thr[1], brg)
+        _, cs = runway_coords_m(j["side_lat"], j["side_lon"], thr[0], thr[1], brg)
+        if j.get("holding"):
+            cs = c0
+        if cross_side is not None and cs * cross_side < 0:
+            continue
+        if behind and a > along_m + 60:
+            continue
+        dist = abs(a - along_m)
+        if dist <= max_m and (best is None or dist < best[0]):
+            best = (dist, j["name"], a)
+    return best
+
+
+def run_rot(db, flights: list[dict], airport: str, ground: list[dict] | None = None) -> dict:
     cfg = AIRPORTS.get(airport, AIRPORTS["LPPT"])
+    juncs = runway_junctions(airport)
     arr = [f for f in flights if f["cls"] == "arr"]
     pts_all = db.points_bulk([f["flight_id"] for f in arr])
     res = []; dbg = Counter()
@@ -179,8 +241,14 @@ def run_rot(db, flights: list[dict], airport: str) -> dict:
                     rot = round(pts[last][T] - t_thr)
                     if not 20 <= rot <= 300:
                         dbg["tooShort"] += 1; found = True; break
+                    # taxiway de saída: junção mais próxima da última amostra na pista, do lado para onde a amostra seguinte virou
+                    side = None
+                    if last + 1 < len(pts) and abs(rc[last + 1][1]) > 30:
+                        side = 1 if rc[last + 1][1] > 0 else -1
+                    twy = _nearest_taxiway(juncs, thr, r["brg"], rc[last][0], side, max_m=350)
                     res.append({"flight_id": f["flight_id"], "rwy": rid, "csn": f["csn"], "date": fmt_date(f["date"]), "dateRaw": f["date"],
                                 "tTHRstr": hhmmss(t_thr), "epoch": epoch(f["date"], t_thr), "rotS": rot, "exitM": round(rc[last][0]),
+                                "twy": twy[1] if twy else None, "twyM": round(twy[2]) if twy else None, "tEventStr": hhmmss(pts[last][T]),
                                 "actype": f.get("actype"), "op": operator3(f["csn"])})
                     found = True; break
             if found: break
@@ -210,22 +278,40 @@ def run_rot(db, flights: list[dict], airport: str) -> dict:
             else:
                 t_off = pts[i1][T]
             rot = round(t_off - t_in)
+            # taxiway de entrada: se houver uma amostra anterior fora da pista (em taxi), a junção mais perto dela; senão, a junção
+            # imediatamente atrás da primeira amostra na pista
+            twy = None
+            if i0 > 0 and pts[i0][T] - pts[i0 - 1][T] <= 90 and abs(rc[i0 - 1][1]) > 30:
+                twy = _nearest_taxiway(juncs, thr, r["brg"], rc[i0 - 1][0], 1 if rc[i0 - 1][1] > 0 else -1, behind=True, max_m=400)
+            # sem amostra em taxi antes da pista, a entrada não é visível no radar (a aeronave já aparece em corrida): fica por identificar
             if best is None or len(on) > best[0]:
-                best = (len(on), rid, t_in, t_off, rot, rc[i0][0], rc[i1][0])
+                best = (len(on), rid, t_in, t_off, rot, rc[i0][0], rc[i1][0], twy)
         if best is None:
             dbg["dep_noRwy"] += 1; continue
-        _, rid, t_in, t_off, rot, m0, m1 = best
+        _, rid, t_in, t_off, rot, m0, m1, twy = best
         if not 15 <= rot <= 300:
             dbg["dep_invalid"] += 1; continue
         res.append({"flight_id": f["flight_id"], "rwy": rid, "cls": "dep", "csn": f["csn"], "date": fmt_date(f["date"]), "dateRaw": f["date"],
                     "tTHRstr": hhmmss(t_in), "tOffStr": hhmmss(t_off), "epoch": epoch(f["date"], t_in), "rotS": rot, "exitM": round(m1), "entryM": round(m0),
+                    "twy": twy[1] if twy else None, "twyM": round(twy[2]) if twy else None, "tEventStr": hhmmss(t_in),
                     "actype": f.get("actype"), "op": operator3(f["csn"])})
+    # ficheiro da torre (A-SMGCS), quando existe: taxiway de saída (EP) / ponto de espera de entrada (HP) e horas RWY_VAC / RWY_ENT
+    gmap = {g["flight_id"]: g for g in (ground or []) if g.get("flight_id")}
+    for x in res:
+        g = gmap.get(x["flight_id"])
+        if not g:
+            continue
+        if x["cls"] == "arr":
+            x["twyTower"] = g.get("ep"); t = g.get("rwy_vac"); x["rotTower"] = g.get("rot_s")
+        else:
+            x["twyTower"] = g.get("hp"); t = g.get("rwy_ent"); x["rotTower"] = g.get("rot_s")
+        x["tEventTowerStr"] = hhmmss(t % 86400) if t else None
     res.sort(key=lambda x: x["epoch"])
     vals = sorted(x["rotS"] for x in res)
     n = len(vals)
     return {"results": res, "dbg": dict(dbg), "n": n, "mean": sum(vals) / n if n else None,
             "p85": vals[min(int(n * 0.85), n - 1)] if n else None, "p95": vals[min(int(n * 0.95), n - 1)] if n else None,
-            "max": vals[-1] if n else None, "processed": len(arr), "processed_dep": len(dep),
+            "max": vals[-1] if n else None, "processed": len(arr), "processed_dep": len(dep), "tower": bool(gmap),
             "n_arr": sum(1 for x in res if x["cls"] == "arr"), "n_dep": sum(1 for x in res if x["cls"] == "dep")}
 
 

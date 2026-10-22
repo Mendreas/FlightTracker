@@ -20,7 +20,8 @@
           "Clicar num voo na lista de voos mostra só esse voo no mapa (como ao vir da Tabela ou das análises); voltar a clicar, ou fechar o detalhe, repõe os outros.",
           "Ao vir de outra aba para o Mapa, o zoom é feito depois de o mapa ter o tamanho certo (deixava de mostrar o mundo inteiro).",
           "Na aba Solo, clicar num voo na lista de voos seleciona o movimento da torre correspondente e mostra o percurso no solo.",
-          "Análise Op. → ROT: inclui as partidas (da primeira amostra na pista à descolagem) com filtro Tudo / Chegadas / Partidas e cartões separados; aviso de que o ROT de partida pelo radar é um mínimo."
+          "Análise Op. → ROT: inclui as partidas (da primeira amostra na pista à descolagem) com filtro Tudo / Chegadas / Partidas e cartões separados; aviso de que o ROT de partida pelo radar é um mínimo.",
+          "ROT: taxiway de saída (chegadas, pelo radar: junção da rede de taxiways mais próxima da última amostra na pista, do lado para onde virou — H6, U5, A7…) e hora do evento; com ficheiro da torre, também a saída (EP) / entrada (HP) e as horas RWY_VAC / RWY_ENT da torre, lado a lado. Cartão 'Saídas / entradas' com a contagem por taxiway."
         ]
       }
     ]

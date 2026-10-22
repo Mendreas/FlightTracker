@@ -118,6 +118,7 @@ const HELP = {
   'No ar vs Solo no ponto 2400m — por hora': 'Passagens de partidas no ponto a 2 400 m da soleira (TWY U6 / P): "no ar" quando já descolou (altitude ≥ 50 ft), "solo" quando ainda rola.',
   'Descolagens': 'Partidas analisadas no ponto de referência.',
   'ROT médio': 'Tempo médio de ocupação de pista.',
+  'Saídas / entradas': 'Taxiway por onde a chegada saiu da pista (radar: junção da rede de taxiways mais próxima da última amostra na pista, do lado para onde virou; torre: campo EP) ou por onde a partida entrou (só a torre consegue: ponto de espera HP — o radar vê a partida já em corrida). A hora ao lado é a do evento (saída / entrada na pista).',
   'Posição na pista': 'Distância ao longo da pista, em metros desde a soleira. Chegadas: onde a última amostra radar ainda estava na pista (≈ saída usada). Partidas: 1.ª amostra radar na pista (já em corrida) → ponto de descolagem (100 ft sobre a pista).',
   'N.º movimentos': 'Chegadas e partidas com ROT calculável a partir do radar: chegada = do cruzamento da soleira à última amostra na pista; partida = da primeira amostra na pista (no solo) à descolagem (primeira amostra acima de 100 ft sobre a pista). Só é possível quando há plots na rolagem.',
   'Total': 'Total de registos analisados.',

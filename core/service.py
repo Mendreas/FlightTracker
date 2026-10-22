@@ -134,7 +134,8 @@ class Service:
         return self.rrms
 
     def run_rot(self):
-        self.rot = ops.run_rot(self.db, self.flights, self.airport)
+        ground = self.db.ground_list(self.airport, self.dates) if self.dates else []
+        self.rot = ops.run_rot(self.db, self.flights, self.airport, ground)
         return self.rot
 
     # ------------------------------------------------------------- pontos
@@ -344,7 +345,8 @@ class Service:
                            [[h["csn"], h["cat"], h["acType"], h["rwy"], "No_ar" if h["airborne"] else "Solo", h["date"], h["tod"], h["altFt"], h["ias"], h["distNM"]] for h in rr["hits"]]))
         elif kind == "rot":
             rt = self.rot or self.run_rot()
-            sheets.append(("ROT", ["N", "Mov", "Pista", "Data", "Voo", "Tipo", "Hora_THR_ou_entrada", "Hora_descolagem", "ROT_s", "Dist_saida_m", "Entrada_m"], [[i + 1, "ARR" if r.get("cls", "arr") == "arr" else "DEP", r["rwy"], r["date"], r["csn"], r["actype"], r["tTHRstr"], r.get("tOffStr", ""), r["rotS"], r["exitM"], r.get("entryM", "")] for i, r in enumerate(rt["results"])]))
+            sheets.append(("ROT", ["N", "Mov", "Pista", "Data", "Voo", "Tipo", "Hora_THR_ou_1a_amostra", "Hora_descolagem", "ROT_radar_s", "Posicao_m", "TWY_radar", "Hora_evento_radar", "TWY_torre", "Hora_evento_torre", "ROT_torre_s"],
+                           [[i + 1, "ARR" if r.get("cls", "arr") == "arr" else "DEP", r["rwy"], r["date"], r["csn"], r["actype"], r["tTHRstr"], r.get("tOffStr", ""), r["rotS"], r["exitM"], r.get("twy") or "", r.get("tEventStr") or "", r.get("twyTower") or "", r.get("tEventTowerStr") or "", r.get("rotTower") or ""] for i, r in enumerate(rt["results"])]))
         elif kind == "pontos":
             rows = extra.get("rows", [])
             sheets.append(("Passagens", ["Hora", "Data", "Bloco", "Voo", "Tipo", "Dist_NM", "Altitude_ft", "IAS_kt", "ROC_fpm", "Latitude", "Longitude"],
