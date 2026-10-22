@@ -422,8 +422,8 @@ const Analyses = (() => {
     h += `<div class="hint" style="margin-bottom:8px">ARR processados: ${d.processed} · sem pontos: ${d.dbg.noPts || 0} · THR não detectada: ${d.dbg.noCross || 0} · sem saída de pista: ${d.dbg.noOnRwy || 0} · ROT inválido: ${d.dbg.tooShort || 0} · calculados: ${d.n_arr ?? d.n}
       &nbsp;|&nbsp; DEP processados: ${d.processed_dep ?? 0} · sem pontos: ${d.dbg.dep_noPts || 0} · sem amostras na pista: ${d.dbg.dep_noRwy || 0} · ROT inválido: ${d.dbg.dep_invalid || 0} · calculados: ${d.n_dep ?? 0}</div>`;
     h += C.table([{ k: 'i', label: 'N', fmt: (v, r, i) => i + 1 }, { k: 'cls', label: 'Mov.', fmt: v => `<span class="badge ${v || 'arr'}">${(v || 'arr').toUpperCase()}</span>` }, { k: 'rwy', label: 'Pista', fmt: v => rwyBadge(v) }, { k: 'date', label: 'Data' }, { k: 'csn', label: 'Voo', fmt: (v, r) => csnLink(v, r.flight_id) }, { k: 'actype', label: 'Tipo' },
-      { k: 'tTHRstr', label: 'THR / entrada', fmt: (v, r) => r.cls === 'dep' ? `${v} → ${r.tOffStr}` : v },
-      { k: 'rotS', label: 'ROT (s)', fmt: v => `<span class="${v <= 45 ? 'sep-g' : v <= 60 ? 'sep-o' : 'sep-r'}">${v}</span>` }, { k: 'exitM', label: 'Saída / descolagem (m)', fmt: (v, r) => r.cls === 'dep' ? `${r.entryM} → ${v}` : v }], rows, { id: 'rotTable' });
+      { k: 'tTHRstr', label: 'Hora (THR · ARR) / (1.ª amostra → descolagem · DEP)', fmt: (v, r) => r.cls === 'dep' ? `${v} → ${r.tOffStr}` : v },
+      { k: 'rotS', label: 'ROT (s)', fmt: v => `<span class="${v <= 45 ? 'sep-g' : v <= 60 ? 'sep-o' : 'sep-r'}">${v}</span>` }, { k: 'exitM', label: 'Posição na pista (m desde a THR)', fmt: (v, r) => r.cls === 'dep' ? `<span title="1.ª amostra radar na pista → ponto de descolagem, em metros desde a soleira">${r.entryM} → ${v}</span>` : `<span title="Ponto onde a última amostra ainda estava na pista ≈ saída usada, em metros desde a soleira">${v}</span>` }], rows, { id: 'rotTable' });
     el.innerHTML = h; wireCsn(el);
   }
 
