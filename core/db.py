@@ -125,6 +125,10 @@ class Database:
             c.execute(f"ALTER TABLE nmir ADD COLUMN IF NOT EXISTS {col} VARCHAR")
         for col in ("etot", "ctot", "atot", "eta", "ata", "atfm_delay"):
             c.execute(f"ALTER TABLE nmir ADD COLUMN IF NOT EXISTS {col} DOUBLE")
+        for col in ("fsa_dep", "fsa_dev", "lobt"):            # FSA/DEP (hora), FSA/DEP − ETOT/CTOT (min), LOBT
+            c.execute(f"ALTER TABLE nmir ADD COLUMN IF NOT EXISTS {col} DOUBLE")
+        for col in ("mp_regulation", "dep_window", "dep_conformance", "flttyp", "diverted", "operator", "flt_uid"):
+            c.execute(f'ALTER TABLE nmir ADD COLUMN IF NOT EXISTS "{col}" VARCHAR')
         c.execute("CREATE TABLE IF NOT EXISTS meta(key VARCHAR PRIMARY KEY, value VARCHAR)")
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
@@ -774,6 +778,9 @@ class Database:
             exact = lambda name: next((i for i, h in enumerate(header) if h == name), None)
             i_etot, i_ctot, i_atot, i_eta, i_ata = exact("etot"), exact("ctot"), exact("atot"), exact("eta"), exact("ata")
             i_dly = find("atfm delay", "atfm_delay")
+            i_fsa = exact("fsa/dep"); i_fsadev = find("fsa/dep-etot", "fsa/dep - etot"); i_lobt = exact("lobt")
+            i_mpreg = find("mp regulation"); i_dwin = find("departure window"); i_dconf = find("departure conformance")
+            i_fltt = exact("flttyp"); i_div = find("diverted"); i_oper = find("aircraft operator"); i_uid = exact("flt_uid")
             def ts(i):
                 if i is None or i >= len(row) or row[i] in (None, ""):
                     return None
@@ -818,21 +825,31 @@ class Database:
                 if i_dly is not None and i_dly < len(row) and row[i_dly] not in (None, ""):
                     try: dly = float(str(row[i_dly]).replace(",", "."))
                     except ValueError: dly = None
+                def num(i):
+                    if i is None or i >= len(row) or row[i] in (None, ""): return None
+                    try: return float(str(row[i]).replace(",", "."))
+                    except ValueError: return None
+                txt = lambda i: (str(row[i]).strip() or None) if i is not None and i < len(row) and row[i] not in (None, "") else None
                 rows_out.append((str(csn).strip().upper(), d, typ_s,
                                  str(wtc).strip().upper() if wtc else (wtc_from_type(typ_s) or None), cell(i_adep), cell(i_ades),
-                                 ts(i_etot), ts(i_ctot), ts(i_atot), ts(i_eta), ts(i_ata), dly))
+                                 ts(i_etot), ts(i_ctot), ts(i_atot), ts(i_eta), ts(i_ata), dly,
+                                 ts(i_fsa), num(i_fsadev), ts(i_lobt), txt(i_mpreg), txt(i_dwin), txt(i_dconf), txt(i_fltt), cell(i_div), txt(i_oper), txt(i_uid)))
         if not rows_out:
             raise RuntimeError("Excel sem colunas reconhecidas (callsign / aircraft type).")
         before = self.con.execute("SELECT count(*) FROM (SELECT DISTINCT csn, date FROM nmir)").fetchone()[0]
         cols = list(zip(*rows_out))
-        self.con.execute("INSERT INTO nmir SELECT * FROM (SELECT unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), "
-                         "unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]))",
+        self.con.execute("INSERT INTO nmir (csn, date, actype, wtc, adep, ades, etot, ctot, atot, eta, ata, atfm_delay, fsa_dep, fsa_dev, lobt, mp_regulation, dep_window, dep_conformance, flttyp, diverted, \"operator\", flt_uid) "
+                         "SELECT * FROM (SELECT unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), "
+                         "unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), "
+                         "unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::DOUBLE[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]), unnest(?::VARCHAR[]))",
                          [list(c) for c in cols])
         # a mesma (csn, data) pode já existir sem ADEP/ADES (base inicial): fica a versão mais completa
         self.con.execute("""CREATE OR REPLACE TABLE nmir AS
             SELECT csn, date, arg_max(actype, coalesce(adep,'')||coalesce(ades,'')) actype,
                    arg_max(wtc, coalesce(adep,'')||coalesce(ades,'')) wtc, max(adep) adep, max(ades) ades,
-                   max(etot) etot, max(ctot) ctot, max(atot) atot, max(eta) eta, max(ata) ata, max(atfm_delay) atfm_delay
+                   max(etot) etot, max(ctot) ctot, max(atot) atot, max(eta) eta, max(ata) ata, max(atfm_delay) atfm_delay,
+                   max(fsa_dep) fsa_dep, max(fsa_dev) fsa_dev, max(lobt) lobt, max(mp_regulation) mp_regulation, max(dep_window) dep_window,
+                   max(dep_conformance) dep_conformance, max(flttyp) flttyp, max(diverted) diverted, max("operator") "operator", max(flt_uid) flt_uid
             FROM nmir GROUP BY csn, date""")
         if rebuild:
             self.rebuild_flights()
@@ -1100,7 +1117,7 @@ class Database:
         """Tudo o que as outras fontes sabem sobre este movimento radar: NMIR (plano de voo), torre (A-SMGCS) e OPDI."""
         out = {"nmir": None, "tower": None, "opdi": None}
         csn, date, cls, apt = f["csn"], f["date"], f["cls"], f["airport"]
-        cur = self.con.execute("SELECT actype, wtc, adep, ades, etot, ctot, atot, eta, ata, atfm_delay FROM nmir WHERE csn=? AND date=? LIMIT 1", [csn, date])
+        cur = self.con.execute("SELECT actype, wtc, adep, ades, etot, ctot, atot, eta, ata, atfm_delay, fsa_dep, fsa_dev, lobt, mp_regulation, dep_window, dep_conformance, flttyp, diverted, \"operator\", flt_uid FROM nmir WHERE csn=? AND date=? LIMIT 1", [csn, date])
         r = cur.fetchone()
         if r:
             out["nmir"] = dict(zip([d[0] for d in cur.description], r))

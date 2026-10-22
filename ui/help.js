@@ -3,6 +3,7 @@
 'use strict';
 const HELP = {
   // ---- conceitos gerais
+  'FSA/DEP': 'First System Activation / DEP: hora em que o Network Manager recebeu a primeira mensagem de ativação do voo (DEP = mensagem de partida da torre, FSA = primeira posição radar). "FSA/DEP − ETOT/CTOT" é o desvio em minutos face à hora prevista ou ao slot.',
   'Movimentos': 'Número de movimentos (chegadas + partidas + sobrevoos) detetados no radar para os dias e blocos escolhidos. Um callsign no mesmo dia é separado em movimentos distintos quando há um intervalo sem plots superior a 5 min — excepto se a aeronave estava no ar antes e depois do intervalo e voltou em menos de 20 min (borrego, buraco de cobertura): continua a ser o mesmo movimento.',
   'Movimentos ARR+DEP': 'Chegadas e partidas detetadas no radar (sem sobrevoos).',
   'Chegadas (ARR)': 'Movimentos cuja altitude desce mais de 500 ft entre o primeiro e o último plot — classificação automática a partir do radar.',

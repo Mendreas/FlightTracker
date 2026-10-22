@@ -337,7 +337,7 @@ function renderDetailSources(src, f) {
   const n = src.nmir;
   if (n) {
     h += `<div class="d-src"><h5><span>NMIR · plano de voo</span>${n.inherited_from ? `<span title="Sem registo NMIR neste dia; tipo herdado do registo de ${n.inherited_from}">tipo herdado</span>` : ''}</h5>` +
-      kv([['ADEP', n.adep], ['ADES', n.ades], ['Tipo', n.actype], ['WTC', n.wtc], ['ETOT', T(n.etot)], ['CTOT', T(n.ctot)], ['ATOT', T(n.atot)], ['ETA', T(n.eta)], ['ATA', T(n.ata)], ['Atraso ATFM', n.atfm_delay != null ? `${n.atfm_delay} min` : null]]) + '</div>';
+      kv([['ADEP', n.adep], ['ADES', n.ades], ['ADES desvio', n.diverted], ['Tipo', n.actype], ['WTC', n.wtc], ['Operador', n.operator], ['Tipo de voo', n.flttyp], ['LOBT', T(n.lobt)], ['ETOT', T(n.etot)], ['CTOT', T(n.ctot)], ['ATOT', T(n.atot)], ['FSA/DEP', T(n.fsa_dep)], ['FSA/DEP − ETOT/CTOT', n.fsa_dev != null ? `${n.fsa_dev > 0 ? '+' : ''}${n.fsa_dev} min` : null], ['Janela de partida', n.dep_window], ['Conformidade', n.dep_conformance], ['Regulação (MP)', n.mp_regulation], ['ETA', T(n.eta)], ['ATA', T(n.ata)], ['Atraso ATFM', n.atfm_delay != null ? `${n.atfm_delay} min` : null], ['FLT_UID', n.flt_uid]]) + '</div>';
   } else h += '<div class="d-src"><h5><span>NMIR</span></h5><span class="muted">sem registo</span></div>';
   const t = src.tower;
   if (t) {
