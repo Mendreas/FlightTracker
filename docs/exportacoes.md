@@ -52,6 +52,7 @@ Todas as horas são UTC. Todas as exportações respeitam o filtro ativo (dias, 
 | Qualquer cartão | ⬇ Excel / 📄 PDF (modal) | Excel / HTML | depende do cartão | Registos de origem do valor |
 | Preferências | ✉ / ⬇ HTML / 📋 | .eml / HTML | — | Email de novidades |
 | Preferências | 📘 Guia | PDF | — | Guia de utilização |
+| Preferências | 🧩 Construir relatório… | HTML/PDF | R + N + T + O (conforme as secções) | Relatório à medida: aeroporto, início/fim e secções escolhidos na janela; independente do filtro ativo |
 
 ## 3. Exportações por aba (detalhe)
 
@@ -150,7 +151,9 @@ Fontes: **R + N + T + O** para um único movimento. Resumo de velocidades (APP e
 
 Fontes: as do cartão. Qualquer cartão com valor abre a lista dos registos que o originaram; os botões exportam exatamente essa lista (com as colunas visíveis). Exemplos úteis para cruzar fontes: **Go-arounds** (torre + radar: hora do borrego, aterragem real, confirmação radar), **Pontualidade** e **Conformidade do slot** (NMIR com FSA/DEP), **Movimentos de pista** (torre ou radar), **Taxi adicional** (torre), **ASMA** (radar), **CDO (OPDI)**, células do **Mapa de calor** (torre ou radar por dia), cartões de **cobertura do Cruzamento** (Radar ∩ Torre, Só OPDI, Δt…).
 
-### 3.21 Preferências — email de novidades e guia
+### 3.21 Preferências — relatório à medida, email de novidades e guia
+
+**🧩 Construir relatório…** — janela com aeroporto, data de início, data de fim, título opcional e as mesmas secções do relatório mensal (ver 3.13). Usa todos os dias com dados radar no intervalo e todos os blocos horários; o filtro das outras abas não é alterado. Fontes: as de cada secção escolhida.
 
 **✉ Email de novidades** (.eml para Outlook instalado), **📋 Copiar** (Outlook na web) e **⬇ Guardar HTML**: alterações da versão e links de download. **📘 Guia de utilização (PDF)**: manual completo.
 

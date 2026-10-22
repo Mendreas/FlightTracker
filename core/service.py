@@ -539,6 +539,25 @@ class Service:
                 parts.append(f"<h2>{reports.esc(self.REPORT_SECTIONS.get(s, s))}</h2><p class='note'>Sem dados: {reports.esc(str(e))}</p>")
         return reports.report_composed(title, sub, parts)
 
+    def custom_report_run(self, extra: dict) -> str:
+        """Relatório à medida com aeroporto e intervalo de datas escolhidos no momento (Preferências).
+        Não altera o filtro activo da aplicação: guarda o estado, gera o relatório e repõe tudo no fim."""
+        snap = (self.airport, self.dates, self.blocks, self.csn, self.cls, self.flights, self.all_flights,
+                getattr(self, "airport_only_ids", None))
+        try:
+            airport = extra.get("airport") or self.airport
+            dates = sorted(set(extra.get("dates") or []))
+            if not dates:
+                raise ValueError("Não há dias com dados radar nesse intervalo para esse aeroporto.")
+            self.set_filter(dates, [], "", "", airport)
+            rep = dict(extra); rep["d0"] = dates[0]; rep["d1"] = dates[-1]
+            rep.setdefault("title", f"Relatório {airport} · {fmt_date(dates[0])} → {fmt_date(dates[-1])}")
+            return self.report("custom", rep)
+        finally:
+            (self.airport, self.dates, self.blocks, self.csn, self.cls, self.flights, self.all_flights,
+             self.airport_only_ids) = snap
+            self.reset_results()
+
     def custom_reports(self) -> list[dict]:
         raw = self.db.setting_get("custom_reports")
         return json.loads(raw) if raw else []

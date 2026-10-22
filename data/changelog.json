@@ -6,6 +6,12 @@
     "summary": "",
     "sections": [
       {
+        "title": "Preferências",
+        "items": [
+          "Novo botão '🧩 Construir relatório…': escolhe-se o aeroporto, a data de início e de fim e as secções (KPIs PRU, evolução diária, pista/taxi, KPIs radar, FAST, diária, RRMS, cruzamento) e o relatório abre no navegador — sem depender do filtro ativo nas outras abas, que fica como estava."
+        ]
+      },
+      {
         "title": "KPIs (EUROCONTROL)",
         "items": [
           "Pontualidade à partida passa a usar o desvio FSA/DEP − ETOT/CTOT calculado pelo Network Manager (coluna do NMIR), como a EUROCONTROL; sem FSA/DEP usa ATOT − ETOT/CTOT (o cartão indica quantos).",

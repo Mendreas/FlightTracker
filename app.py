@@ -339,6 +339,9 @@ class Api:
     def report_sections(self):
         return {"ok": True, "data": self.svc.REPORT_SECTIONS}
 
+    def custom_report_run(self, extra=None):
+        return self._safe(self.svc.custom_report_run, extra or {})
+
     def custom_reports(self):
         return self._safe(self.svc.custom_reports)
 

@@ -454,6 +454,7 @@ Não há palavra-passe: qualquer pessoa na mesma rede com o endereço pode usar 
 - **Análise IA — fornecedor e chave:** fornecedor, modelo, chave API, endpoint Azure (só para Azure). **Guardar.**
 - **Base de dados:** caminho e tamanho; **🧹 Remover ficheiros que já não existem no disco**.
 - **Acesso a partir de outros dispositivos:** o endereço a usar no iPad (capítulo 15).
+- **Relatório à medida:** o botão **🧩 Construir relatório…** abre uma janela onde se escolhe o aeroporto, a data de início e de fim e as secções a incluir (KPIs PRU, evolução diária, pista/taxi A-SMGCS, KPIs radar, FAST, análise diária, RRMS, cruzamento de fontes). O relatório é gerado com todos os dias que têm dados radar nesse intervalo e abre no navegador (Imprimir → Guardar como PDF). Não altera o filtro das outras abas. Difere do botão 🧩 Relatórios… da aba KPIs, que usa o filtro ativo e permite guardar botões permanentes.
 - **Guia de utilização:** o botão **📘 Descarregar o guia de utilização (PDF)** abre este documento (no PC é copiado para a pasta de dados e aberto no leitor de PDF; no iPad abre num separador do Safari).
 - **Histórico de versões:** as novidades de cada versão. **✉ Email de novidades** abre no Outlook um rascunho já escrito com as alterações e os links de download para Windows e macOS — só falta pôr os destinatários. **⬇ Guardar HTML** guarda o mesmo texto num ficheiro.
 - **Sobre.**
