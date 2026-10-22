@@ -342,6 +342,22 @@ class Api:
     def custom_report_run(self, extra=None):
         return self._safe(self.svc.custom_report_run, extra or {})
 
+    def dataset_catalog(self):
+        return self._safe(self.svc.dataset_catalog)
+
+    def dataset_preview(self, extra=None):
+        return self._safe(self.svc.dataset_preview, extra or {})
+
+    def dataset_export(self, extra=None):
+        def f():
+            ex = extra or {}
+            name = f"dados_{ex.get('airport', 'LPPT')}_{time.strftime('%Y-%m-%d')}.xlsx"
+            res = self.window.create_file_dialog(SAVE_DIALOG, save_filename=name, file_types=("Excel (*.xlsx)",))
+            if not res: return None
+            path = res[0] if isinstance(res, (list, tuple)) else res
+            return self.svc.dataset_excel(path, ex)
+        return self._safe(f)
+
     def custom_reports(self):
         return self._safe(self.svc.custom_reports)
 

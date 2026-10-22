@@ -14,6 +14,17 @@ def _norm_csn(c: str | None) -> str:
     return re.sub(r"\s+", "", (c or "").upper())
 
 
+def _sod(t):
+    """Segundos do dia: o radar já vem assim; a torre e o OPDI vêm em epoch (UTC)."""
+    return None if t is None else (t % 86400 if t > 86400 else t)
+
+
+def _dt(a, b):
+    """Diferença a − b em segundos do dia, com volta à meia-noite (−43200 … 43200)."""
+    d = (_sod(a) - _sod(b) + 43200) % 86400 - 43200
+    return d
+
+
 def _pair(radar: list[dict], others: list[dict], t_radar, t_other) -> dict:
     """Emparelha cada registo de 'others' com o movimento radar mais próximo no tempo (csn+data+classe), 1-para-1."""
     by_key = defaultdict(list)
@@ -29,7 +40,7 @@ def _pair(radar: list[dict], others: list[dict], t_radar, t_other) -> dict:
             if to is None or tr is None:
                 dt = 10 ** 9
             else:
-                dt = abs(to - tr)
+                dt = abs(_dt(to, tr))
             if dt <= MATCH_WINDOW_S or dt == 10 ** 9:
                 cands.append((dt, id(o), o, f))
     for dt, _, o, f in sorted(cands, key=lambda x: x[0]):
@@ -116,7 +127,7 @@ def crosscheck(airport: str, flights: list[dict], ground: list[dict], opdi: list
             tt = r["t_atot"] if r["cls"] == "dep" else r["t_aldt"]
             tr = r["r_t_first"] if r["cls"] == "dep" else r["r_t_last"]
             if tt and tr:
-                r["dt_radar_torre"] = round(tr - tt)
+                r["dt_radar_torre"] = round(_dt(tr, tt))
                 if abs(r["dt_radar_torre"]) > 300:
                     r["flags"].append("Δt radar/torre > 5 min")
         if r["gid"] and r["o_id"]:

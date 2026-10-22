@@ -558,6 +558,49 @@ class Service:
              self.airport_only_ids) = snap
             self.reset_results()
 
+    # ------------------------------------------------------------- Excel à medida (Preferências)
+    def dataset_catalog(self) -> dict:
+        from . import dataset
+        return dataset.catalog()
+
+    def _dataset_rows(self, airport: str, dates: list[str]) -> list[dict]:
+        from . import dataset
+        key = (airport, tuple(sorted(set(dates))))
+        cache = getattr(self, "_ds_cache", None)
+        if cache and cache[0] == key:
+            return cache[1]
+        rows = dataset.build_rows(self.db, airport, sorted(set(dates)))
+        self._ds_cache = (key, rows)
+        return rows
+
+    def dataset_preview(self, extra: dict) -> dict:
+        """Nº de movimentos no período e após os filtros; valores mais frequentes de um campo (para ajudar a filtrar)."""
+        from . import dataset
+        dates = sorted(set(extra.get("dates") or []))
+        if not dates:
+            return {"total": 0, "n": 0, "values": []}
+        rows = self._dataset_rows(extra.get("airport") or self.airport, dates)
+        sel = dataset.apply_filters(rows, extra.get("filters") or [])
+        out = {"total": len(rows), "n": len(sel), "values": []}
+        fld = extra.get("field")
+        if fld in dataset.FIELD_TYPE:
+            from collections import Counter
+            ty = dataset.FIELD_TYPE[fld]
+            c = Counter(dataset._fmt(ty, r.get(fld)) for r in rows if r.get(fld) is not None)
+            out["values"] = [[str(k), n] for k, n in c.most_common(40)]
+        return out
+
+    def dataset_excel(self, path: str, extra: dict) -> str:
+        from . import dataset
+        dates = sorted(set(extra.get("dates") or []))
+        if not dates:
+            raise ValueError("Não há dias com dados nesse intervalo para esse aeroporto.")
+        airport = extra.get("airport") or self.airport
+        rows = self._dataset_rows(airport, dates)
+        sel = dataset.apply_filters(rows, extra.get("filters") or [])
+        reports.write_excel(path, dataset.sheets(sel, extra.get("fields") or [], extra.get("filters") or [], extra.get("groups") or [], airport, dates, len(rows)))
+        return path
+
     def custom_reports(self) -> list[dict]:
         raw = self.db.setting_get("custom_reports")
         return json.loads(raw) if raw else []

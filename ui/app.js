@@ -447,11 +447,11 @@ async function refreshState() {
 }
 async function loadFilters() { state.filters = await call('get_filters'); renderFilters(); }
 
-/* ---- Preferências → Relatório à medida (aeroporto + início/fim + secções; não mexe no filtro ativo) */
+/* ---- Preferências → Construir relatório: Excel com dados escolhidos (campos, filtros, contagens) ou relatório HTML por secções */
 async function openPrefReport() {
   const esc = C.esc;
   if (!state.filters) { try { await loadFilters(); } catch (e) { toast(e.message, 'err'); return; } }
-  const secs = await call('report_sections');
+  const [secs, cat] = await Promise.all([call('report_sections'), call('dataset_catalog')]);
   const iso = d => `20${d.slice(0, 2)}-${d.slice(2, 4)}-${d.slice(4, 6)}`;      // AAMMDD -> AAAA-MM-DD
   const ymd = s => s.replace(/-/g, '').slice(2);                                  // AAAA-MM-DD -> AAMMDD
   const airports = state.filters.airports.length ? state.filters.airports : ['LPPT'];
@@ -459,32 +459,89 @@ async function openPrefReport() {
   const datesOf = a => state.filters.dates.filter(d => d.airport === a).map(d => d.date).sort();
   const range = a => { const ds = datesOf(a); return ds.length ? [iso(ds[0]), iso(ds[ds.length - 1])] : ['', '']; };
   const [r0, r1] = range(apt0);
-  $('modalTitle').textContent = 'Relatório à medida';
+  const DEF = new Set(['date', 'csn', 'cls', 'src', 't_mov', 'actype', 'wtc', 'adep', 'ades', 'rwy', 'rot_s']);
+  const fieldOpts = sel => cat.sections.map(s => `<optgroup label="${esc(s.title)}">${s.fields.map(f => `<option value="${f.key}" ${f.key === sel ? 'selected' : ''}>${esc(f.label)}</option>`).join('')}</optgroup>`).join('');
+  const opOpts = () => Object.entries(cat.ops).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  $('modalTitle').textContent = 'Construir relatório';
   $('modalBody').innerHTML = `
-    <p class="hint">Escolhe o aeroporto, o período e as secções. O relatório usa os dias com dados radar dentro do intervalo (todos os blocos horários) e abre no navegador — para PDF: Imprimir → Guardar como PDF. O filtro das outras abas não é alterado.</p>
     <div class="row" style="gap:10px;flex-wrap:wrap;align-items:flex-end">
       <label>Aeroporto <select id="prrApt" class="inp">${airports.map(a => `<option value="${a}" ${a === apt0 ? 'selected' : ''}>${a}</option>`).join('')}</select></label>
       <label>Início <input id="prrD0" type="date" class="inp" value="${r0}" min="${r0}" max="${r1}"></label>
       <label>Fim <input id="prrD1" type="date" class="inp" value="${r1}" min="${r0}" max="${r1}"></label>
       <span id="prrN" class="muted"></span>
     </div>
-    <label style="display:block;margin-top:8px">Título <input id="prrTitle" class="inp" placeholder="(automático: aeroporto e período)"></label>
-    <div class="chips" style="margin:10px 0">${Object.entries(secs).map(([k, v]) => `<label class="chk" style="width:100%"><input type="checkbox" class="prrSec" value="${k}" ${['pru', 'painel', 'solo', 'kpis'].includes(k) ? 'checked' : ''}> <b>${k}</b> — ${esc(v)}</label>`).join('')}</div>
-    <div class="row" style="gap:8px"><button class="btn" id="prrAll">Todas</button><button class="btn" id="prrNone">Nenhuma</button><span class="spacer"></span><button class="btn primary" id="prrRun">📄 Gerar relatório</button></div>`;
+    <div class="row" style="gap:16px;margin:10px 0 6px"><label class="chk"><input type="radio" name="prrMode" value="xlsx" checked> <b>Excel com os dados que escolher</b> (colunas, filtros e contagens)</label><label class="chk"><input type="radio" name="prrMode" value="html"> <b>Relatório por secções</b> (HTML → PDF)</label></div>
+    <div id="prrXlsx">
+      <p class="hint">Abre cada secção e marca as colunas que quer no Excel. Os filtros limitam as linhas (ex.: ADES igual a EGLL; Tipo de aeronave um de A320, A321; ROT maior que 60). As contagens criam folhas com o n.º de movimentos por valor (ex.: por Tipo de aeronave, por Outro aeroporto, por Hora). O Excel tem sempre as folhas Dados, Resumo (totais ARR/DEP), Por dia e Parâmetros.</p>
+      <h3 class="mini">Colunas</h3>
+      ${cat.sections.map(s => `<details class="ds-sec" ${s.key === 'mov' || s.key === 'calc' ? 'open' : ''}><summary><b>${esc(s.title)}</b> <span class="muted ds-cnt" data-sec="${s.key}"></span> <a href="#" class="ds-all" data-sec="${s.key}">todas</a> · <a href="#" class="ds-none" data-sec="${s.key}">nenhuma</a></summary>
+        <div class="ds-fields">${s.fields.map(f => `<label class="chk" title="${esc(f.descr || '')}"><input type="checkbox" class="dsF" data-sec="${s.key}" value="${f.key}" ${DEF.has(f.key) ? 'checked' : ''}> ${esc(f.label)}</label>`).join('')}</div></details>`).join('')}
+      <h3 class="mini" style="margin-top:12px">Filtros <span class="muted">(todos têm de se cumprir)</span></h3>
+      <div id="dsFilters"></div><button class="btn sm" id="dsAddF">+ Adicionar filtro</button>
+      <h3 class="mini" style="margin-top:12px">Contagens <span class="muted">(uma folha por campo, com ARR/DEP/total e %)</span></h3>
+      <div id="dsGroups"></div><button class="btn sm" id="dsAddG">+ Adicionar contagem</button>
+      <div class="row" style="gap:8px;margin-top:14px;align-items:center"><span id="dsCount" class="muted"></span><span class="spacer"></span><button class="btn primary" id="dsRun">⬇ Gerar Excel</button></div>
+    </div>
+    <div id="prrHtml" class="hidden">
+      <p class="hint">O relatório usa os dias com dados radar dentro do intervalo (todos os blocos horários) e abre no navegador — para PDF: Imprimir → Guardar como PDF. O filtro das outras abas não é alterado.</p>
+      <label style="display:block;margin-top:8px">Título <input id="prrTitle" class="inp" placeholder="(automático: aeroporto e período)"></label>
+      <div class="chips" style="margin:10px 0">${Object.entries(secs).map(([k, v]) => `<label class="chk" style="width:100%"><input type="checkbox" class="prrSec" value="${k}" ${['pru', 'painel', 'solo', 'kpis'].includes(k) ? 'checked' : ''}> <b>${k}</b> — ${esc(v)}</label>`).join('')}</div>
+      <div class="row" style="gap:8px"><button class="btn" id="prrAll">Todas</button><button class="btn" id="prrNone">Nenhuma</button><span class="spacer"></span><button class="btn primary" id="prrRun">📄 Gerar relatório</button></div>
+    </div>`;
   $('modal').classList.remove('hidden');
-  const picked = () => [...document.querySelectorAll('.prrSec:checked')].map(x => x.value);
   const selDates = () => { const a = $('prrApt').value, d0 = ymd($('prrD0').value || ''), d1 = ymd($('prrD1').value || ''); return datesOf(a).filter(d => (!d0 || d >= d0) && (!d1 || d <= d1)); };
-  const refresh = () => { const n = selDates().length; $('prrN').textContent = n ? `${n} dia(s) com dados` : 'sem dias com dados neste intervalo'; };
-  $('prrApt').onchange = () => { const [a0, a1] = range($('prrApt').value); $('prrD0').value = a0; $('prrD1').value = a1; $('prrD0').min = $('prrD1').min = a0; $('prrD0').max = $('prrD1').max = a1; refresh(); };
-  $('prrD0').onchange = $('prrD1').onchange = refresh;
+  const filters = () => [...document.querySelectorAll('#dsFilters .ds-row')].map(r => ({ field: r.querySelector('.dsFld').value, op: r.querySelector('.dsOp').value, value: r.querySelector('.dsVal').value })).filter(f => f.field && (['empty', 'notempty'].includes(f.op) || f.value.trim() !== ''));
+  const groups = () => [...document.querySelectorAll('#dsGroups .dsGrp')].map(s => s.value).filter(Boolean);
+  const fields = () => [...document.querySelectorAll('.dsF:checked')].map(x => x.value);
+  const secCounts = () => cat.sections.forEach(s => { const n = document.querySelectorAll(`.dsF[data-sec="${s.key}"]:checked`).length; document.querySelector(`.ds-cnt[data-sec="${s.key}"]`).textContent = n ? `(${n} escolhida${n > 1 ? 's' : ''})` : ''; });
+  let tmr = null, seq = 0;
+  const preview = () => {
+    const ds = selDates(); $('prrN').textContent = ds.length ? `${ds.length} dia(s) com dados` : 'sem dias com dados neste intervalo';
+    if (!ds.length) { $('dsCount').textContent = ''; return; }
+    clearTimeout(tmr); const my = ++seq; $('dsCount').textContent = 'a contar…';
+    tmr = setTimeout(async () => { try { const r = await call('dataset_preview', { airport: $('prrApt').value, dates: ds, filters: filters() }); if (my === seq) $('dsCount').textContent = `${fmt(r.n)} de ${fmt(r.total)} movimento(s) passam os filtros`; } catch (e) { $('dsCount').textContent = e.message; } }, 350);
+  };
+  const suggest = async (row) => {   // valores mais frequentes do campo escolhido, como sugestões no campo de valor
+    const ds = selDates(); const fld = row.querySelector('.dsFld').value; const dl = row.querySelector('datalist'); dl.innerHTML = '';
+    if (!ds.length) return;
+    try { const r = await call('dataset_preview', { airport: $('prrApt').value, dates: ds, field: fld }); dl.innerHTML = r.values.map(([v, n]) => `<option value="${esc(v)}">${n} mov.</option>`).join(''); } catch (e) { /* sem sugestões */ }
+  };
+  const addFilter = (fld = 'ades', op = '=') => {
+    const id = 'dl' + Math.random().toString(36).slice(2, 8);
+    const div = document.createElement('div'); div.className = 'row ds-row'; div.style.cssText = 'gap:6px;margin:4px 0;flex-wrap:wrap';
+    div.innerHTML = `<select class="inp dsFld" style="width:auto">${fieldOpts(fld)}</select><select class="inp dsOp" style="width:auto">${opOpts()}</select><input class="inp dsVal" list="${id}" style="width:220px" placeholder="valor (ex.: EGLL, A320, 60, 06:30)"><datalist id="${id}"></datalist><button class="btn sm dsDel">✕</button>`;
+    $('dsFilters').appendChild(div); div.querySelector('.dsOp').value = op;
+    div.querySelector('.dsDel').onclick = () => { div.remove(); preview(); };
+    div.querySelector('.dsFld').onchange = () => { suggest(div); preview(); };
+    div.querySelector('.dsOp').onchange = preview; div.querySelector('.dsVal').oninput = preview;
+    suggest(div);
+  };
+  const addGroup = (fld = 'actype') => {
+    const div = document.createElement('div'); div.className = 'row'; div.style.cssText = 'gap:6px;margin:4px 0';
+    div.innerHTML = `<select class="inp dsGrp" style="width:auto">${fieldOpts(fld)}</select><button class="btn sm dsDel">✕</button>`;
+    $('dsGroups').appendChild(div); div.querySelector('.dsDel').onclick = () => div.remove();
+  };
+  document.querySelectorAll('input[name="prrMode"]').forEach(r => r.onchange = () => { const x = document.querySelector('input[name="prrMode"]:checked').value === 'xlsx'; $('prrXlsx').classList.toggle('hidden', !x); $('prrHtml').classList.toggle('hidden', x); });
+  document.querySelectorAll('.ds-all').forEach(a => a.onclick = e => { e.preventDefault(); document.querySelectorAll(`.dsF[data-sec="${a.dataset.sec}"]`).forEach(x => x.checked = true); secCounts(); });
+  document.querySelectorAll('.ds-none').forEach(a => a.onclick = e => { e.preventDefault(); document.querySelectorAll(`.dsF[data-sec="${a.dataset.sec}"]`).forEach(x => x.checked = false); secCounts(); });
+  document.querySelectorAll('.dsF').forEach(x => x.onchange = secCounts);
+  $('dsAddF').onclick = () => addFilter(); $('dsAddG').onclick = () => addGroup();
+  $('prrApt').onchange = () => { const [a0, a1] = range($('prrApt').value); $('prrD0').value = a0; $('prrD1').value = a1; $('prrD0').min = $('prrD1').min = a0; $('prrD0').max = $('prrD1').max = a1; preview(); document.querySelectorAll('#dsFilters .ds-row').forEach(suggest); };
+  $('prrD0').onchange = $('prrD1').onchange = () => { preview(); document.querySelectorAll('#dsFilters .ds-row').forEach(suggest); };
   $('prrAll').onclick = () => document.querySelectorAll('.prrSec').forEach(x => x.checked = true);
   $('prrNone').onclick = () => document.querySelectorAll('.prrSec').forEach(x => x.checked = false);
-  refresh();
+  secCounts(); preview();
+  const checkDates = () => { const ds = selDates(); if (!ds.length) { toast('Não há dias com dados nesse intervalo.', 'err'); return null; } if ($('prrD0').value > $('prrD1').value) { toast('A data de início é posterior à de fim.', 'err'); return null; } return ds; };
+  $('dsRun').onclick = async () => {
+    const ds = checkDates(); if (!ds) return;
+    const f = fields(); if (!f.length) { toast('Escolhe pelo menos uma coluna.', 'err'); return; }
+    toast('A gerar o Excel…', 'ok');
+    try { const p = await call('dataset_export', { airport: $('prrApt').value, dates: ds, fields: f, filters: filters(), groups: groups() }); if (p) { toast('Excel guardado: ' + p, 'ok'); $('modal').classList.add('hidden'); } } catch (e) { toast(e.message, 'err'); }
+  };
   $('prrRun').onclick = async () => {
-    const s = picked(), ds = selDates();
+    const ds = checkDates(); if (!ds) return;
+    const s = [...document.querySelectorAll('.prrSec:checked')].map(x => x.value);
     if (!s.length) { toast('Escolhe pelo menos uma secção.', 'err'); return; }
-    if (!ds.length) { toast('Não há dias com dados nesse intervalo.', 'err'); return; }
-    if ($('prrD0').value > $('prrD1').value) { toast('A data de início é posterior à de fim.', 'err'); return; }
     toast(`A gerar o relatório (${ds.length} dia(s))… abre no navegador quando estiver pronto.`, 'ok');
     const extra = { airport: $('prrApt').value, dates: ds, sections: s };
     if ($('prrTitle').value.trim()) extra.title = $('prrTitle').value.trim();

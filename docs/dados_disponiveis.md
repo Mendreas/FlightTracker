@@ -160,7 +160,11 @@ Estes campos não existem em nenhuma fonte — são calculados pela app ao cruza
 | **Violações de velocidade (STAR/APP)** | R | Comparação da IAS/TAS de cada plot com os limites definidos por waypoint/fix |
 | **Fontes do voo (`flight_sources`)** | R + N + T + O | Para um movimento, procura e devolve em conjunto o registo NMIR (com herança de tipo), o melhor registo de torre (+ todos os da torre nesse dia), e o registo OPDI — é o que a caixa de detalhe do voo mostra |
 
-## 8. Onde cada par de fontes se cruza (chave de ligação)
+## 8. Como extrair estes dados: Preferências → 🧩 Construir relatório…
+
+Todos os campos das secções 2 a 7 podem sair num único Excel, uma linha por movimento, em **Preferências → 🧩 Construir relatório… → Excel com os dados que escolher**: escolhe-se o aeroporto e o período, marcam-se as colunas (as secções da janela correspondem às secções deste documento: Movimento, Calculados, Radar, NMIR, Torre, OPDI), acrescentam-se filtros (ex.: ADES igual a EGLL; Tipo de aeronave um de A320, A321; ROT maior que 60) e contagens por campo (por tipo, por aeroporto, por hora, …). O ficheiro traz as folhas Dados, Resumo, Por dia, uma folha por contagem e Parâmetros.
+
+## 9. Onde cada par de fontes se cruza (chave de ligação)
 
 | Par | Chave de cruzamento | Observações |
 |---|---|---|
@@ -171,7 +175,7 @@ Estes campos não existem em nenhuma fonte — são calculados pela app ao cruza
 | Torre ↔ OPDI | callsign + dia | Ambas só existem para Lisboa; cobertura combinada ainda assim incompleta no solo |
 | Todas (R+N+T+O) | callsign + dia (+ Mode S quando disponível) | Usado no Cruzamento, no Painel, no Excel PRU, no relatório mensal e na caixa de detalhe do voo |
 
-## 9. Limitações a ter presentes
+## 10. Limitações a ter presentes
 
 - **Torre e OPDI só existem para Lisboa (LPPT)** e apenas nos dias com ficheiro importado; nos outros aeroportos e dias, só há Radar (+ NMIR se o tráfego for IFR).
 - **NMIR só cobre tráfego IFR** com plano de voo — sobrevoos VFR ou tráfego sem plano não aparecem.

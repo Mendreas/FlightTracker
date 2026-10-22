@@ -52,7 +52,8 @@ Todas as horas são UTC. Todas as exportações respeitam o filtro ativo (dias, 
 | Qualquer cartão | ⬇ Excel / 📄 PDF (modal) | Excel / HTML | depende do cartão | Registos de origem do valor |
 | Preferências | ✉ / ⬇ HTML / 📋 | .eml / HTML | — | Email de novidades |
 | Preferências | 📘 Guia | PDF | — | Guia de utilização |
-| Preferências | 🧩 Construir relatório… | HTML/PDF | R + N + T + O (conforme as secções) | Relatório à medida: aeroporto, início/fim e secções escolhidos na janela; independente do filtro ativo |
+| Preferências | 🧩 Construir relatório… → Excel | Excel | R + N + T + O | Uma linha por movimento com as colunas escolhidas de todas as fontes, filtros por campo e contagens; folhas Dados, Resumo, Por dia, Por <campo>, Parâmetros |
+| Preferências | 🧩 Construir relatório… → secções | HTML/PDF | R + N + T + O (conforme as secções) | Relatório por secções com aeroporto e início/fim próprios; independente do filtro ativo |
 
 ## 3. Exportações por aba (detalhe)
 
@@ -153,7 +154,10 @@ Fontes: as do cartão. Qualquer cartão com valor abre a lista dos registos que 
 
 ### 3.21 Preferências — relatório à medida, email de novidades e guia
 
-**🧩 Construir relatório…** — janela com aeroporto, data de início, data de fim, título opcional e as mesmas secções do relatório mensal (ver 3.13). Usa todos os dias com dados radar no intervalo e todos os blocos horários; o filtro das outras abas não é alterado. Fontes: as de cada secção escolhida.
+**🧩 Construir relatório…** — janela com aeroporto, data de início e de fim próprios (o filtro das outras abas não é alterado) e dois modos:
+
+- **Excel com os dados que escolher** — a exportação mais flexível da app: uma linha por movimento da união radar ∪ torre ∪ OPDI (NMIR ligado por callsign+dia), com as colunas marcadas nas secções Movimento, Calculados, Radar, NMIR, Torre e OPDI (o catálogo completo de campos está no documento "Dados disponíveis"), **filtros** por qualquer campo (igual a, diferente de, um de, contém, começa por, >, ≥, <, ≤, vazio, preenchido; horas em HH:MM) e **contagens** por campo. Folhas: *Dados* (colunas escolhidas), *Resumo* (movimentos, ARR/DEP/LVL, com radar/NMIR/torre/OPDI, borregos, ROT médio, pontualidade), *Por dia* (ARR/DEP/total por data), *Por <campo>* (uma por contagem pedida: valor, ARR, DEP, LVL, total, %), *Parâmetros* (aeroporto, período, colunas, filtros, contagens, data de geração).
+- **Relatório por secções** — as secções do relatório mensal (ver 3.13), título opcional, HTML → PDF.
 
 **✉ Email de novidades** (.eml para Outlook instalado), **📋 Copiar** (Outlook na web) e **⬇ Guardar HTML**: alterações da versão e links de download. **📘 Guia de utilização (PDF)**: manual completo.
 
