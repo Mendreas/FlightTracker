@@ -1025,8 +1025,8 @@ class Database:
                      sum(atfm_delay) atfm_min, count(*) FILTER (atfm_delay>0) atfm_n
               FROM ground WHERE airport=? GROUP BY date),
         n AS (SELECT date, count(*) FILTER (adep=?) n_dep, count(*) FILTER (ades=?) n_arr,
-                     count(*) FILTER (adep=? AND atot IS NOT NULL AND etot IS NOT NULL) p_n,
-                     count(*) FILTER (adep=? AND atot IS NOT NULL AND etot IS NOT NULL AND atot - coalesce(ctot, etot) <= 900) p_ok,
+                     count(*) FILTER (adep=? AND (fsa_dev IS NOT NULL OR (atot IS NOT NULL AND etot IS NOT NULL))) p_n,
+                     count(*) FILTER (adep=? AND coalesce(fsa_dev, (atot - coalesce(ctot, etot)) / 60.0) <= 15) p_ok,
                      sum(atfm_delay) FILTER (adep=?) n_atfm
               FROM nmir WHERE adep=? OR ades=? GROUP BY date),
         o AS (SELECT strftime(to_timestamp(min(t)), '%y%m%d') date, count(DISTINCT flight_id) o_n FROM opdi_events WHERE airport=? GROUP BY flight_id)
@@ -1043,7 +1043,7 @@ class Database:
     def nmir_departures(self, airport: str, dates: list[str]) -> list[dict]:
         if not dates:
             return []
-        cur = self.con.execute("SELECT csn, date, actype, wtc, adep, ades, etot, ctot, atot, eta, ata, atfm_delay FROM nmir WHERE adep=? AND date IN (SELECT unnest(?::VARCHAR[]))", [airport, dates])
+        cur = self.con.execute("SELECT csn, date, actype, wtc, adep, ades, etot, ctot, atot, eta, ata, atfm_delay, fsa_dep, fsa_dev, dep_window, dep_conformance, mp_regulation, flttyp FROM nmir WHERE adep=? AND date IN (SELECT unnest(?::VARCHAR[]))", [airport, dates])
         names = [c[0] for c in cur.description]
         return [dict(zip(names, r)) for r in cur.fetchall()]
 

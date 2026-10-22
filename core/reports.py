@@ -434,7 +434,7 @@ def section_pru(d: dict) -> str:
     if a and a.get("n"):
         items += [(f"ASMA adicional ({a['ring_nm']} NM)", f"{fnum(a['mean_min'], 1)} min/chegada")]
     if f:
-        items += [("Pontualidade partida 15 min", f"{fnum(f['otp']['pct'], 1)}% (n={f['otp']['n']})"), ("Atraso ATFM (NMIR)", f"{fnum(f['atfm_nmir']['per_dep'], 1)} min/partida · {fnum(f['atfm_nmir']['minutes'])} min"),
+        items += [("Pontualidade partida 15 min", f"{fnum(f['otp']['pct'], 1)}% (n={f['otp']['n']})"), ("Conformidade slot ATFM", f"{fnum((f.get('slot') or {}).get('pct'), 1)}% ({(f.get('slot') or {}).get('within', 0)}/{(f.get('slot') or {}).get('n', 0)})"), ("Atraso ATFM (NMIR)", f"{fnum(f['atfm_nmir']['per_dep'], 1)} min/partida · {fnum(f['atfm_nmir']['minutes'])} min"),
                   ("Atraso ATFM (torre)", f"{fnum(f['atfm_torre']['per_dep'], 1)} min/partida · {fnum(f['atfm_torre']['minutes'])} min")]
     if c and c.get("n"):
         items += [("CDO (OPDI)", f"{fnum(c['pct'], 1)}% ({c['cdo']}/{c['n']})")]
@@ -446,7 +446,7 @@ def section_pru(d: dict) -> str:
     if a and a.get("by_sector"):
         body += "<h3>ASMA por setor de entrada</h3>" + table(["Setor", "N", "Adicional médio (s)", "Referência (s)"], [[r["key"], r["n"], round(r["mean"]), round(r["ref"]) if r.get("ref") else "—"] for r in a["by_sector"]])
     if f and f["otp"]["n"]:
-        body += "<h3>Desvio ATOT − (CTOT/ETOT), min</h3>" + svg_bars(f["otp"]["hist"]["counts"], f["otp"]["hist"]["labels"], color="#d97706")
+        body += "<h3>Desvio FSA/DEP − (CTOT/ETOT), min</h3>" + svg_bars(f["otp"]["hist"]["counts"], f["otp"]["hist"]["labels"], color="#d97706")
     return body
 
 

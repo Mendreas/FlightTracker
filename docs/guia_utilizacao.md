@@ -361,7 +361,8 @@ Cartões (todos clicáveis):
 - **Taxi-out adicional:** taxi-out real (off-block → descolagem) menos a referência P20 para o mesmo stand e pista (ou só a pista, quando há poucos casos). Valor médio por partida, em minutos ou segundos.
 - **Taxi-in adicional:** taxi-in real (saída de pista → on-block) menos a referência P20 por stand e pista.
 - **ASMA adicional:** o ASMA é um anel à volta do aeroporto (40 NM no PRU). Mede-se o tempo desde que a chegada entra no anel até aterrar, e subtrai-se a referência P20 por pista e por **setor de entrada** (oito setores de 45°: N, NE, E, …). Como o radar do CNS não cobre 40 NM a toda a volta, a aplicação usa o maior anel coberto pelos dados (indicado no título; 13 NM para Lisboa). Este indicador mede atrasos de sequenciamento, vectoração e esperas.
-- **Pontualidade partida (15 min):** percentagem de partidas que descolaram até 15 minutos depois da hora prevista (ETOT, ou CTOT quando o voo foi regulado), segundo o NMIR. É uma aproximação ao indicador OTP15 da EUROCONTROL (que usa a hora de off-block, não a de descolagem).
+- **Pontualidade partida (15 min):** percentagem de partidas com desvio até 15 minutos face à hora prevista (ETOT) ou ao slot (CTOT). O desvio é o **FSA/DEP − ETOT/CTOT** que o Network Manager calcula e o NMIR exporta (FSA/DEP = hora da primeira ativação do voo no sistema: mensagem DEP da torre ou primeira posição radar); quando o NMIR não o traz, usa-se ATOT − ETOT/CTOT.
+- **Conformidade do slot ATFM:** entre as partidas reguladas (com CTOT), a percentagem que descolou dentro da janela do slot (−5 / +10 min), segundo a classificação do NMIR (Departure Conformance: Within / Earlier / Later). É o indicador de aderência ao slot da EUROCONTROL; a meta de rede é 80 %. Ao clicar vê cada voo com a regulação, o CTOT, o FSA/DEP e o desvio.
 - **Atraso ATFM (NMIR):** minutos de atraso ATFM atribuídos às partidas pelo Network Manager; "regulados" = voos que receberam CTOT.
 - **Atraso ATFM (torre):** o mesmo, mas registado no ficheiro da torre; inclui a tabela **por regulação**.
 - **CDO (OPDI):** percentagem de chegadas sem nenhum patamar abaixo de FL100, segundo os eventos "level-start" do OPDI.
@@ -515,6 +516,7 @@ Outras exportações: **⬇ Excel** e **⬇ CSV** nas tabelas; **⬇ Excel PRU**
 | ETA / ATA | Estimated / Actual Time of Arrival — hora prevista / real de chegada (NMIR). |
 | ETOT | Estimated Take-Off Time — hora prevista de descolagem segundo o plano de voo. |
 | EUROCONTROL | Organização europeia para a segurança da navegação aérea; gere o Network Manager e a PRU. |
+| FSA/DEP | First System Activation / Departure message — hora em que o Network Manager recebeu a primeira ativação do voo (mensagem DEP da torre ou primeira posição radar); usada pela EUROCONTROL para medir desvios à partida. |
 | FAF | Final Approach Fix — ponto onde começa a aproximação final. O "FAF virtual" da aplicação é um ponto a distância fixa da soleira (7 NM por omissão) usado para detetar e medir aterragens. |
 | FAST | Final Approach Spacing Tool — nome da análise de separação entre chegadas consecutivas. |
 | FL | Flight Level — nível de voo: altitude em centenas de pés com pressão padrão (FL100 = 10 000 ft). |

@@ -219,8 +219,10 @@ class Service:
             for k in ("n", "ring_nm", "mean", "median", "p80", "max", "mean_min"):
                 add("ASMA", k, a.get(k))
             f = d.get("atfm") or {}
-            for k in ("n", "ok", "pct", "early", "dev_mean", "dev_median", "dev_p80"):
-                add("Pontualidade (NMIR)", k, (f.get("otp") or {}).get(k))
+            for k in ("n", "ok", "pct", "early", "n_fsa", "dev_mean", "dev_median", "dev_p80"):
+                add("Pontualidade (NMIR, FSA/DEP)", k, (f.get("otp") or {}).get(k))
+            for k in ("n", "within", "pct"):
+                add("Conformidade slot ATFM", k, (f.get("slot") or {}).get(k))
             for src in ("atfm_nmir", "atfm_torre"):
                 for k, v in (f.get(src) or {}).items():
                     if not isinstance(v, (list, dict)):
@@ -579,14 +581,10 @@ class Service:
             if key == "atfm":
                 return sorted([r for r in rows if r.get("atfm_delay")], key=lambda r: -r["atfm_delay"])
             return rows
-        if key == "otp":
-            rows = self.db.nmir_departures(self.airport, dates)
-            out = []
-            for r in rows:
-                if r.get("atot") and r.get("etot"):
-                    d = (r["atot"] - (r.get("ctot") or r["etot"])) / 60
-                    out.append({**r, "dev_min": round(d, 1), "ok": d <= 15})
-            return sorted(out, key=lambda x: -x["dev_min"])
+        if key in ("otp", "slot"):
+            from .analysis import pru
+            f = pru.atfm_and_punctuality(self.db.nmir_departures(self.airport, dates), [])
+            return f[key]["records"]
         if key == "mov_radar":
             return self.db.flights_list(self.airport, dates, [], "", "")
         if key.startswith("heat:"):          # heat:<dow>:<hora>:<all|arr|dep>[:<aeroporto>]

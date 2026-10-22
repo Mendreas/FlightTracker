@@ -131,17 +131,46 @@ def asma(db, flights: list[dict], airport: str) -> dict:
             "records": [{"date": r["date"], "csn": r["csn"], "flight_id": r["flight_id"], "rwy": r["rwy"], "sector": names[r["sector"]], "t": round(r["t"]), "add": round(r["add"])} for r in sorted(recs, key=lambda r: -r["add"])]}
 
 
+def _dev_min(r: dict):
+    """Desvio à partida em minutos, como o NMIR/EUROCONTROL: FSA/DEP − (CTOT ou ETOT) quando o NMIR o traz;
+    senão ATOT − (CTOT ou ETOT) calculado por nós."""
+    if r.get("fsa_dev") is not None:
+        return float(r["fsa_dev"]), "FSA/DEP"
+    if r.get("atot") and r.get("etot"):
+        return (r["atot"] - (r.get("ctot") or r["etot"])) / 60, "ATOT"
+    return None, None
+
+
 def atfm_and_punctuality(nmir_rows: list[dict], ground: list[dict]) -> dict:
-    deps = [r for r in nmir_rows if r.get("atot") and r.get("etot")]
-    dev = [(r["atot"] - (r.get("ctot") or r["etot"])) / 60 for r in deps]
+    devs = []
+    for r in nmir_rows:
+        d, src = _dev_min(r)
+        if d is not None:
+            devs.append((r, d, src))
+    dev = [d for _, d, _ in devs]
     otp_recs = sorted(({"date": r["date"], "csn": r["csn"], "actype": r.get("actype"), "ades": r.get("ades"), "etot": r.get("etot"), "ctot": r.get("ctot"), "atot": r["atot"],
-                        "dev_min": round(d, 1), "ok": d <= 15} for r, d in zip(deps, dev)), key=lambda x: -x["dev_min"])
-    atfm_n_recs = sorted(({"date": r["date"], "csn": r["csn"], "actype": r.get("actype"), "ades": r.get("ades"), "etot": r.get("etot"), "ctot": r.get("ctot"), "atfm_delay": r["atfm_delay"]}
+                        "fsa_dep": r.get("fsa_dep"), "src": src, "dev_min": round(d, 1), "ok": d <= 15, "dep_window": r.get("dep_window"), "dep_conformance": r.get("dep_conformance"), "mp_regulation": r.get("mp_regulation")}
+                       for r, d, src in devs), key=lambda x: -x["dev_min"])
+    n_fsa = sum(1 for _, _, src in devs if src == "FSA/DEP")
+    atfm_n_recs = sorted(({"date": r["date"], "csn": r["csn"], "actype": r.get("actype"), "ades": r.get("ades"), "etot": r.get("etot"), "ctot": r.get("ctot"), "atfm_delay": r["atfm_delay"], "mp_regulation": r.get("mp_regulation")}
                           for r in nmir_rows if r.get("atfm_delay")), key=lambda x: -x["atfm_delay"])
     otp = sum(1 for d in dev if d <= 15)
     early = sum(1 for d in dev if d < -5)
     regulated = [r for r in nmir_rows if r.get("ctot")]
     dly_n = [r["atfm_delay"] for r in nmir_rows if r.get("atfm_delay")]
+    # conformidade do slot ATFM (Departure Window / Departure Conformance do NMIR): só voos com slot (CTOT)
+    conf_rows = [r for r in nmir_rows if r.get("dep_conformance") and (r.get("dep_window") or "").lower().startswith("slot")]
+    conf = defaultdict(int)
+    for r in conf_rows:
+        conf[r["dep_conformance"]] += 1
+    by_reg = defaultdict(lambda: [0, 0])
+    for r in conf_rows:
+        k = r.get("mp_regulation") or "?"; by_reg[k][0] += 1
+        if r["dep_conformance"].lower() == "within": by_reg[k][1] += 1
+    conf_recs = sorted(({"date": r["date"], "csn": r["csn"], "actype": r.get("actype"), "ades": r.get("ades"), "etot": r.get("etot"), "ctot": r.get("ctot"), "fsa_dep": r.get("fsa_dep"), "dev_min": r.get("fsa_dev"),
+                         "dep_window": r.get("dep_window"), "dep_conformance": r.get("dep_conformance"), "mp_regulation": r.get("mp_regulation")} for r in conf_rows),
+                       key=lambda x: (x["dep_conformance"].lower() == "within", -(abs(x["dev_min"]) if x["dev_min"] is not None else 0)))
+    within = conf.get("Within", 0)
     g_dep = [r for r in ground if r["mt"] == "DEPARTURE"]
     dly_g = [r["atfm_delay"] for r in g_dep if r.get("atfm_delay")]
     regs = defaultdict(lambda: [0, 0.0])
@@ -150,9 +179,13 @@ def atfm_and_punctuality(nmir_rows: list[dict], ground: list[dict]) -> dict:
             k = r.get("regulation") or "?"; regs[k][0] += 1; regs[k][1] += r["atfm_delay"]
     atfm_g_recs = sorted(({"date": r.get("date"), "csn": r.get("csn"), "flight_id": r.get("flight_id"), "actype": r.get("actype"), "ades": r.get("ades"), "ctot": r.get("ctot"), "atot": r.get("atot"),
                            "atfm_delay": r["atfm_delay"], "regulation": r.get("regulation")} for r in g_dep if r.get("atfm_delay")), key=lambda x: -x["atfm_delay"])
-    return {"otp": {"n": len(dev), "ok": otp, "pct": otp / len(dev) * 100 if dev else None, "early": early,
+    return {"otp": {"n": len(dev), "ok": otp, "pct": otp / len(dev) * 100 if dev else None, "early": early, "n_fsa": n_fsa,
                     "dev_mean": sum(dev) / len(dev) if dev else None, "dev_median": _p(dev, .5), "dev_p80": _p(dev, .8),
                     "hist": _hist(dev, [-15, -5, 0, 5, 15, 30, 60, 120]), "records": otp_recs},
+            "slot": {"n": len(conf_rows), "within": within, "pct": within / len(conf_rows) * 100 if conf_rows else None,
+                     "by_status": sorted(({"key": k, "n": v} for k, v in conf.items()), key=lambda x: -x["n"]),
+                     "by_regulation": sorted(({"key": k, "n": v[0], "within": v[1], "pct": v[1] / v[0] * 100} for k, v in by_reg.items()), key=lambda x: -x["n"])[:12],
+                     "records": conf_recs},
             "atfm_nmir": {"regulated": len(regulated), "delayed": len(dly_n), "minutes": sum(dly_n), "per_dep": sum(dly_n) / len(nmir_rows) if nmir_rows else None,
                           "mean_delayed": sum(dly_n) / len(dly_n) if dly_n else None, "n_dep": len(nmir_rows), "records": atfm_n_recs},
             "atfm_torre": {"delayed": len(dly_g), "minutes": sum(dly_g), "per_dep": sum(dly_g) / len(g_dep) if g_dep else None, "n_dep": len(g_dep),
@@ -254,6 +287,6 @@ def compute(db, airport: str, flights: list[dict], ground: list[dict], opdi: lis
         "mov": (t or {}).pop("records", []), "peak": (t or {}).pop("peak_records", []), "ga": (t or {}).pop("ga_records", []),
         "taxi_out": (x or {}).get("taxi_out", {}).pop("records", []) if x else [], "taxi_in": (x or {}).get("taxi_in", {}).pop("records", []) if x else [],
         "asma": (a or {}).pop("records", []) if a else [],
-        "otp": f["otp"].pop("records", []), "atfm_nmir": f["atfm_nmir"].pop("records", []), "atfm_torre": f["atfm_torre"].pop("records", []),
+        "otp": f["otp"].pop("records", []), "slot": f["slot"].pop("records", []), "atfm_nmir": f["atfm_nmir"].pop("records", []), "atfm_torre": f["atfm_torre"].pop("records", []),
         "cdo": (c or {}).pop("records", []) if c else []}
     return out

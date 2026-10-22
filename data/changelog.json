@@ -6,6 +6,13 @@
     "summary": "",
     "sections": [
       {
+        "title": "KPIs (EUROCONTROL)",
+        "items": [
+          "Pontualidade à partida passa a usar o desvio FSA/DEP − ETOT/CTOT calculado pelo Network Manager (coluna do NMIR), como a EUROCONTROL; sem FSA/DEP usa ATOT − ETOT/CTOT (o cartão indica quantos).",
+          "Novo cartão 'Conformidade do slot ATFM': partidas reguladas dentro da janela do slot (−5/+10 min) segundo a classificação do NMIR (Within / Earlier / Later), com modal por voo e regulação; no Excel PRU e no relatório mensal."
+        ]
+      },
+      {
         "title": "Movimentos e go-arounds",
         "items": [
           "Um voo que borrega deixa de aparecer como dois movimentos (uma 'partida' e uma 'chegada'): se a aeronave estava no ar antes e depois de um buraco de plots e voltou em menos de 20 min, é o mesmo movimento. Na primeira abertura a base é atualizada uma vez (barra de progresso).",

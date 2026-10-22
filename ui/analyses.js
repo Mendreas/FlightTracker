@@ -1,6 +1,7 @@
 /* FlightTracker 4 — abas de análise (Final, Velocidades, Análise Op., KPIs, Pontos, IA, Preferências) */
 'use strict';
 /* colunas do modal de go-arounds (KPIs e Painel): torre + radar cruzados */
+window.OTP_COLS = (fd, csnCol, T) => [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'etot', label: 'ETOT', fmt: T }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'fsa_dep', label: 'FSA/DEP', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'src', label: 'Base' }, { k: 'dev_min', label: 'Desvio (min)' }, { k: 'ok', label: '≤ 15 min', fmt: v => v ? '✓' : '<span class="sep-r">✗</span>' }, { k: 'dep_window', label: 'Janela' }, { k: 'dep_conformance', label: 'Conformidade' }];
 window.GA_COLS = (fd, csnCol, T) => [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'rwy', label: 'RWY' }, { k: 't_ga', label: 'Borrego (UTC)', fmt: T }, { k: 't_land', label: 'Aterragem real', fmt: T },
   { k: 'src', label: 'Fonte', fmt: v => v === 'torre+radar' ? '<span class="sep-g">torre + radar</span>' : v === 'só radar' ? '<span class="sep-g">só radar</span>' : `<span class="sep-r">${v}</span>` }, { k: 'radar', label: 'Radar' }, { k: 'adep', label: 'ADEP' }];
 const Analyses = (() => {
@@ -495,7 +496,8 @@ const Analyses = (() => {
     drillSet('pru.taxi_out', 'Taxi-out adicional por partida', taxiCols, dd.taxi_out);
     drillSet('pru.taxi_in', 'Taxi-in adicional por chegada', taxiCols, dd.taxi_in);
     drillSet('pru.asma', 'ASMA — tempo adicional por chegada', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'rwy', label: 'RWY' }, { k: 'sector', label: 'Setor' }, { k: 't', label: 'Trânsito (s)' }, { k: 'add', label: 'Adicional (s)' }], dd.asma);
-    drillSet('pru.otp', 'Pontualidade à partida (NMIR)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'etot', label: 'ETOT', fmt: T }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'dev_min', label: 'Desvio (min)' }, { k: 'ok', label: '≤ 15 min', fmt: v => v ? '✓' : '<span class="sep-r">✗</span>' }], dd.otp);
+    drillSet('pru.otp', 'Pontualidade à partida (NMIR)', window.OTP_COLS(fd, csnCol, T), dd.otp);
+    drillSet('pru.slot', 'Conformidade do slot ATFM (NMIR: voos com slot)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'mp_regulation', label: 'Regulação' }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'fsa_dep', label: 'FSA/DEP', fmt: T }, { k: 'dev_min', label: 'Desvio (min)' }, { k: 'dep_conformance', label: 'Conformidade', fmt: v => v === 'Within' ? '<span class="sep-g">Within</span>' : `<span class="sep-r">${esc(v)}</span>` }], dd.slot);
     drillSet('pru.atfm_nmir', 'Partidas com atraso ATFM (NMIR)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'etot', label: 'ETOT', fmt: T }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atfm_delay', label: 'Atraso (min)' }], dd.atfm_nmir);
     drillSet('pru.atfm_torre', 'Partidas com atraso ATFM (torre)', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'actype', label: 'Tipo' }, { k: 'ades', label: 'ADES' }, { k: 'ctot', label: 'CTOT', fmt: T }, { k: 'atot', label: 'ATOT', fmt: T }, { k: 'atfm_delay', label: 'Atraso (min)' }, { k: 'regulation', label: 'Regulação' }], dd.atfm_torre);
     drillSet('pru.cdo', 'Chegadas OPDI — patamares abaixo de FL100', [{ k: 'date', label: 'Data', fmt: fd }, csnCol, { k: 'typecode', label: 'Tipo' }, { k: 'adep', label: 'ADEP' }, { k: 't_tod', label: 'TOD', fmt: T }, { k: 'n_levels_low', label: 'Patamares < FL100' }, { k: 'cdo', label: 'CDO', fmt: v => v ? '✓' : '✗' }], dd.cdo);
@@ -536,7 +538,8 @@ const Analyses = (() => {
     if (x) h += C.kcard('Taxi-out adicional', x.taxi_out.n ? `${m1(x.taxi_out.mean_min)} min` : '—', `média por partida · n=${x.taxi_out.n}`, '', 'pru.taxi_out') + C.kcard('Taxi-in adicional', x.taxi_in.n ? `${m1(x.taxi_in.mean_min)} min` : '—', `média por chegada · n=${x.taxi_in.n}`, '', 'pru.taxi_in');
     if (a && a.n) h += C.kcard(`ASMA adicional (${a.ring_nm} NM)`, `${m1(a.mean_min)} min`, `média por chegada · n=${a.n} · trânsito mediano ${s0(a.transit.median)}`, '', 'pru.asma');
     else if (a) h += C.kcard('ASMA adicional', '—', a.note || '');
-    if (f) h += C.kcard('Pontualidade partida (15 min)', pc(f.otp.pct), `NMIR · ATOT vs ETOT/CTOT · n=${f.otp.n}`, f.otp.pct != null && f.otp.pct < 80 ? 'warn' : '', 'pru.otp') +
+    if (f) h += C.kcard('Pontualidade partida (15 min)', pc(f.otp.pct), `NMIR · FSA/DEP − ETOT/CTOT · n=${f.otp.n}${f.otp.n_fsa < f.otp.n ? ` (${f.otp.n - f.otp.n_fsa} por ATOT)` : ''}`, f.otp.pct != null && f.otp.pct < 80 ? 'warn' : '', 'pru.otp') +
+      (f.slot && f.slot.n ? C.kcard('Conformidade do slot ATFM', pc(f.slot.pct), `${f.slot.within}/${f.slot.n} partidas reguladas dentro da janela (−5/+10 min) · ${f.slot.by_status.filter(x => x.key !== 'Within').map(x => `${x.key} ${x.n}`).join(' · ') || 'sem desvios'}`, f.slot.pct != null && f.slot.pct < 80 ? 'warn' : 'ok', 'pru.slot') : '') +
       C.kcard('Atraso ATFM (NMIR)', f.atfm_nmir.n_dep ? `${m1(f.atfm_nmir.per_dep)} min/partida` : '—', `${fmt(f.atfm_nmir.minutes)} min · ${f.atfm_nmir.delayed} atrasados · ${f.atfm_nmir.regulated} regulados`, '', 'pru.atfm_nmir') +
       C.kcard('Atraso ATFM (torre)', f.atfm_torre.n_dep ? `${m1(f.atfm_torre.per_dep)} min/partida` : '—', `${fmt(f.atfm_torre.minutes)} min · ${f.atfm_torre.delayed} atrasados`, '', 'pru.atfm_torre');
     if (c && c.n) h += C.kcard('CDO (OPDI)', pc(c.pct), `${c.cdo}/${c.n} chegadas sem patamar < FL100 · média ${fmt(c.levels_mean, 1)} patamares`, '', 'pru.cdo');
@@ -547,7 +550,7 @@ const Analyses = (() => {
       C.card('Taxi-in adicional por stand (média, s)', tblKey(x.taxi_in.by_stand, 'Stand', [{ k: 'n', label: 'N' }, { k: 'mean', label: 'Adicional médio (s)', fmt: v => Math.round(v) }]));
     if (a && a.n) h += C.card(`ASMA por setor de entrada (anel ${a.ring_nm} NM)`, tblKey(a.by_sector, 'Setor', [{ k: 'n', label: 'N' }, { k: 'mean', label: 'Adicional médio (s)', fmt: v => Math.round(v) }, { k: 'ref', label: 'Ref. não-impedida (s)', fmt: v => v == null ? '—' : Math.round(v) }])) +
       C.card('ASMA — chegadas com mais tempo adicional', C.table([{ k: 'csn', label: 'Voo', fmt: (v, r) => csnLink(v, r.flight_id) }, { k: 'rwy', label: 'RWY' }, { k: 't', label: 'Trânsito (s)', fmt: v => Math.round(v) }, { k: 'add', label: 'Adicional (s)', fmt: v => `<span class="sep-r">${Math.round(v)}</span>` }], a.worst));
-    if (f && f.otp.n) h += C.card('Desvio ATOT − (CTOT ou ETOT), min', C.bars(f.otp.hist.counts, f.otp.hist.labels, { color: C.ORANGE }));
+    if (f && f.otp.n) h += C.card('Desvio FSA/DEP − (CTOT ou ETOT), min', C.bars(f.otp.hist.counts, f.otp.hist.labels, { color: C.ORANGE }));
     if (f && f.atfm_torre.by_regulation.length) h += C.card('Atraso ATFM por regulação (torre)', tblKey(f.atfm_torre.by_regulation, 'Regulação', [{ k: 'n', label: 'Voos' }, { k: 'minutes', label: 'Minutos', fmt: v => Math.round(v) }]));
     if (c && c.n) h += C.card('Patamares abaixo de FL100 por chegada (OPDI)', C.bars(c.hist.counts, c.hist.labels, { color: C.GREEN }));
     return h + '</div></div>';
