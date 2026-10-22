@@ -170,8 +170,17 @@ class Service:
         pts = self.db.flight_points(fid)
         cfg = AIRPORTS.get(f["airport"], AIRPORTS["LPPT"])
         # pista provável = THR mais próxima do último (ARR) ou primeiro (DEP) plot
-        ref = pts[-1] if f["cls"] != "dep" else pts[0]
-        rwy = min(cfg["rwys"], key=lambda r: dist_nm(ref["lat"], ref["lon"], *cfg["rwys"][r]["thr"])) if pts else None
+        # chegada: o primeiro plot abaixo de 500 ft AGL (ainda antes da soleira); partida: o primeiro plot. O último plot de uma
+        # chegada já está no fim da pista, perto da soleira oposta — dava a pista errada.
+        elev = min(r["elev"] for r in cfg["rwys"].values())
+        if f["cls"] == "dep":
+            ref = pts[0] if pts else None
+        else:
+            ref = next((p for p in pts if p.get("alt") is not None and p["alt"] < elev + 500), pts[-1] if pts else None)
+        rwy = min(cfg["rwys"], key=lambda r: dist_nm(ref["lat"], ref["lon"], *cfg["rwys"][r]["thr"])) if ref else None
+        sources = self.db.flight_sources(f)
+        if sources.get("tower") and sources["tower"].get("rwy") in cfg["rwys"]:
+            rwy = sources["tower"]["rwy"]
         if rwy:
             thr = cfg["rwys"][rwy]["thr"]
             for p in pts:
@@ -180,7 +189,7 @@ class Service:
         star_v = [v for v in (self.star or {}).get("violations", []) if v["flight_id"] == fid]
         fin = [r for r in (self.final or []) if r["flight_id"] == fid]
         return {"flight": {**f, "date_fmt": fmt_date(f["date"]), "rwy_guess": rwy}, "points": pts, "app": app_rec, "star": star_v, "final": fin,
-                "tol": (self.app or {}).get("tol", 0)}
+                "tol": (self.app or {}).get("tol", 0), "sources": sources}
 
     # ------------------------------------------------------------- exportações
     def export_excel(self, path: str, kind: str, extra: dict | None = None):
@@ -345,8 +354,8 @@ class Service:
                            [[h["csn"], h["cat"], h["acType"], h["rwy"], "No_ar" if h["airborne"] else "Solo", h["date"], h["tod"], h["altFt"], h["ias"], h["distNM"]] for h in rr["hits"]]))
         elif kind == "rot":
             rt = self.rot or self.run_rot()
-            sheets.append(("ROT", ["N", "Mov", "Pista", "Data", "Voo", "Tipo", "Hora_THR_ou_1a_amostra", "Hora_descolagem", "ROT_radar_s", "Posicao_m", "TWY_radar", "Hora_evento_radar", "TWY_torre", "Hora_evento_torre", "ROT_torre_s"],
-                           [[i + 1, "ARR" if r.get("cls", "arr") == "arr" else "DEP", r["rwy"], r["date"], r["csn"], r["actype"], r["tTHRstr"], r.get("tOffStr", ""), r["rotS"], r["exitM"], r.get("twy") or "", r.get("tEventStr") or "", r.get("twyTower") or "", r.get("tEventTowerStr") or "", r.get("rotTower") or ""] for i, r in enumerate(rt["results"])]))
+            sheets.append(("ROT", ["N", "Mov", "Pista", "Data", "Voo", "Tipo", "Fonte", "ROT_s", "ROT_torre_s", "ROT_radar_s", "TWY_torre", "Hora_RWY_VAC_ou_RWY_ENT_torre", "Hora_ALDT_ou_ATOT_torre", "TWY_radar", "Hora_evento_radar", "Hora_THR_ou_1a_amostra_radar", "Hora_descolagem_radar", "Posicao_m_radar"],
+                           [[i + 1, "ARR" if r.get("cls", "arr") == "arr" else "DEP", r["rwy"], r["date"], r["csn"], r["actype"], r.get("src", ""), r["rotS"], r.get("rotTower") or "", r.get("rotRadar") or "", r.get("twyTower") or "", r.get("tEventTowerStr") or "", r.get("tEventTower2Str") or "", r.get("twy") or "", r.get("tEventStr") or "", r.get("tTHRstr") or "", r.get("tOffStr", ""), r.get("exitM") or ""] for i, r in enumerate(rt["results"])]))
         elif kind == "pontos":
             rows = extra.get("rows", [])
             sheets.append(("Passagens", ["Hora", "Data", "Bloco", "Voo", "Tipo", "Dist_NM", "Altitude_ft", "IAS_kt", "ROC_fpm", "Latitude", "Longitude"],

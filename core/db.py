@@ -1096,6 +1096,36 @@ class Database:
             out.append({**r, "src": "radar", "t_ref": t})
         return sorted(out, key=lambda x: (x["date"], x["t_ref"]))
 
+    def flight_sources(self, f: dict) -> dict:
+        """Tudo o que as outras fontes sabem sobre este movimento radar: NMIR (plano de voo), torre (A-SMGCS) e OPDI."""
+        out = {"nmir": None, "tower": None, "opdi": None}
+        csn, date, cls, apt = f["csn"], f["date"], f["cls"], f["airport"]
+        cur = self.con.execute("SELECT actype, wtc, adep, ades, etot, ctot, atot, eta, ata, atfm_delay FROM nmir WHERE csn=? AND date=? LIMIT 1", [csn, date])
+        r = cur.fetchone()
+        if r:
+            out["nmir"] = dict(zip([d[0] for d in cur.description], r))
+        else:   # tipo herdado de outro dia
+            r = self.con.execute("SELECT actype, wtc, date FROM nmir WHERE csn=? AND actype IS NOT NULL ORDER BY date DESC LIMIT 1", [csn]).fetchone()
+            if r:
+                out["nmir"] = {"actype": r[0], "wtc": r[1], "inherited_from": r[2]}
+        # torre: o registo do mesmo callsign/dia/tipo mais próximo no tempo (ou qualquer um com borrego)
+        tref = f["t_last"] if cls != "dep" else f["t_first"]
+        g = self.ground_list(apt, [date])
+        cand = [x for x in g if x["csn"] == csn and (x["mt"] == "DEPARTURE") == (cls == "dep" and not (f.get("ga") or 0))]
+        if not cand:
+            cand = [x for x in g if x["csn"] == csn]
+        if cand:
+            best = min(cand, key=lambda x: abs(((x["t_ref"] or 0) % 86400) - tref))
+            out["tower"] = {k: best.get(k) for k in ("gid", "mt", "rwy", "actype", "reg", "ao", "wtc", "adep", "ades", "sid", "star", "stand_d", "stand_a", "taxi_out", "taxi_in",
+                                                     "hp", "ep", "aobt", "hp_time", "rwy_ent", "atot", "aldt", "rwy_vac", "aibt", "ctot", "spd_vac", "ga", "rto", "atfm_delay", "regulation", "taxi_s", "rot_s")}
+            out["tower"]["regulation"] = self.con.execute("SELECT regulation FROM ground WHERE gid=?", [best["gid"]]).fetchone()[0]
+            # todos os registos da torre do callsign nesse dia (ex.: borrego + aterragem)
+            out["tower_all"] = [{"gid": x["gid"], "mt": x["mt"], "t_ref": x["t_ref"], "ga": x.get("ga"), "rwy": x.get("rwy")} for x in cand]
+        o = [x for x in self.opdi_flights(apt, [date]) if x.get("csn") == csn and x.get("cls") == (cls if cls in ("arr", "dep") else "arr")]
+        if o:
+            out["opdi"] = o[0]
+        return out
+
     def go_arounds(self, airport: str, dates: list[str]) -> list[dict]:
         """Borregos das datas, cruzando torre (registo ARRIVAL com GA=TRUE) e radar (flights.ga): um registo por borrego com
         src = 'torre+radar' | 'só torre' | 'só radar', o instante do borrego, a aterragem real (torre) e o movimento radar."""
@@ -1137,11 +1167,13 @@ class Database:
         rows = self.con.execute(f"""
         WITH g AS (SELECT {', '.join(cols)}, CASE WHEN mt='DEPARTURE' THEN atot ELSE aldt END AS t_ref
                    FROM ground WHERE airport=? AND date IN (SELECT unnest(?::VARCHAR[]))),
-        m AS (SELECT g.gid, f.flight_id, abs(f.t_first - g.t_ref) AS dt_dep, abs(f.t_last - g.t_ref) AS dt_arr,
-                     row_number() OVER (PARTITION BY g.gid ORDER BY CASE WHEN g.mt='DEPARTURE' THEN abs(f.t_first - g.t_ref) ELSE abs(f.t_last - g.t_ref) END) rn
+        -- flights.t_first/t_last são segundos do dia; a torre está em epoch → compara com t_ref % 86400
+        m AS (SELECT g.gid, f.flight_id,
+                     row_number() OVER (PARTITION BY g.gid ORDER BY CASE WHEN g.mt='DEPARTURE' THEN abs(f.t_first - (g.t_ref % 86400)) ELSE abs(f.t_last - (g.t_ref % 86400)) END) rn
               FROM g JOIN flights f ON f.csn = g.csn AND f.date = g.date AND f.airport = ?
-                                   AND f.cls = CASE WHEN g.mt='DEPARTURE' THEN 'dep' ELSE 'arr' END
-              WHERE g.t_ref IS NOT NULL)
+                                   AND (f.cls = CASE WHEN g.mt='DEPARTURE' THEN 'dep' ELSE 'arr' END OR coalesce(f.ga, 0) > 0)
+              WHERE g.t_ref IS NOT NULL
+                AND (CASE WHEN g.mt='DEPARTURE' THEN abs(f.t_first - (g.t_ref % 86400)) ELSE abs(f.t_last - (g.t_ref % 86400)) END) < 1800)
         SELECT g.*, m.flight_id FROM g LEFT JOIN m ON m.gid = g.gid AND m.rn = 1
         ORDER BY g.t_ref""", [airport, dates, airport]).fetchall()
         names = cols + ["t_ref", "flight_id"]

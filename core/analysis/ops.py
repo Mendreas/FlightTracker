@@ -295,24 +295,54 @@ def run_rot(db, flights: list[dict], airport: str, ground: list[dict] | None = N
                     "tTHRstr": hhmmss(t_in), "tOffStr": hhmmss(t_off), "epoch": epoch(f["date"], t_in), "rotS": rot, "exitM": round(m1), "entryM": round(m0),
                     "twy": twy[1] if twy else None, "twyM": round(twy[2]) if twy else None, "tEventStr": hhmmss(t_in),
                     "actype": f.get("actype"), "op": operator3(f["csn"])})
-    # ficheiro da torre (A-SMGCS), quando existe: taxiway de saída (EP) / ponto de espera de entrada (HP) e horas RWY_VAC / RWY_ENT
+    # ficheiro da torre (A-SMGCS), quando existe: é a medida de referência (ARR: ALDT → RWY_VAC; DEP: RWY_ENT → ATOT).
+    # Cada movimento fica com rotRadar e rotTower; rotS (o usado nas estatísticas) é o da torre quando existe, senão o do radar.
+    # Movimentos da torre sem ROT calculável pelo radar (partida vista só já no ar, chegada sem plots na rolagem) entram na mesma.
     gmap = {g["flight_id"]: g for g in (ground or []) if g.get("flight_id")}
+    fmap = {f["flight_id"]: f for f in flights}
+    seen = set()
     for x in res:
+        x["rotRadar"] = x["rotS"]; x["src"] = "radar"
         g = gmap.get(x["flight_id"])
         if not g:
             continue
-        if x["cls"] == "arr":
-            x["twyTower"] = g.get("ep"); t = g.get("rwy_vac"); x["rotTower"] = g.get("rot_s")
-        else:
-            x["twyTower"] = g.get("hp"); t = g.get("rwy_ent"); x["rotTower"] = g.get("rot_s")
-        x["tEventTowerStr"] = hhmmss(t % 86400) if t else None
+        seen.add(g["gid"])
+        _tower_fields(x, g)
+    for g in (ground or []):
+        if g["gid"] in seen or not g.get("rot_s"):
+            continue
+        cls = "dep" if g["mt"] == "DEPARTURE" else "arr"
+        f = fmap.get(g.get("flight_id"))
+        t_ev = g.get("rwy_ent") if cls == "dep" else g.get("aldt")
+        x = {"flight_id": g.get("flight_id"), "rwy": g.get("rwy"), "cls": cls, "csn": g["csn"], "date": fmt_date(g["date"]), "dateRaw": g["date"],
+             "tTHRstr": hhmmss(t_ev % 86400) if t_ev else "", "epoch": epoch(g["date"], (t_ev % 86400) if t_ev else 0), "rotRadar": None, "exitM": None, "entryM": None,
+             "twy": None, "tEventStr": None, "actype": g.get("actype") or (f or {}).get("actype"), "op": operator3(g["csn"]), "src": "torre"}
+        _tower_fields(x, g)
+        res.append(x)
     res.sort(key=lambda x: x["epoch"])
     vals = sorted(x["rotS"] for x in res)
     n = len(vals)
     return {"results": res, "dbg": dict(dbg), "n": n, "mean": sum(vals) / n if n else None,
             "p85": vals[min(int(n * 0.85), n - 1)] if n else None, "p95": vals[min(int(n * 0.95), n - 1)] if n else None,
-            "max": vals[-1] if n else None, "processed": len(arr), "processed_dep": len(dep), "tower": bool(gmap),
-            "n_arr": sum(1 for x in res if x["cls"] == "arr"), "n_dep": sum(1 for x in res if x["cls"] == "dep")}
+            "max": vals[-1] if n else None, "processed": len(arr), "processed_dep": len(dep), "tower": bool(ground),
+            "n_arr": sum(1 for x in res if x["cls"] == "arr"), "n_dep": sum(1 for x in res if x["cls"] == "dep"),
+            "n_tower": sum(1 for x in res if x.get("rotTower") is not None), "n_radar_only": sum(1 for x in res if x.get("rotTower") is None)}
+
+
+def _tower_fields(x: dict, g: dict):
+    """Preenche os campos da torre num registo de ROT e torna o ROT da torre o valor de referência."""
+    cls = x["cls"]
+    x["twyTower"] = g.get("ep") if cls == "arr" else g.get("hp")
+    t = g.get("rwy_vac") if cls == "arr" else g.get("rwy_ent")
+    x["tEventTowerStr"] = hhmmss(t % 86400) if t else None
+    t2 = g.get("aldt") if cls == "arr" else g.get("atot")
+    x["tEventTower2Str"] = hhmmss(t2 % 86400) if t2 else None
+    x["rotTower"] = round(g["rot_s"]) if g.get("rot_s") is not None else None
+    x["stand"] = g.get("stand_a") if cls == "arr" else g.get("stand_d")
+    x["gid"] = g.get("gid")
+    if x["rotTower"] is not None:
+        x["rotS"] = x["rotTower"]; x["src"] = "torre" + (" + radar" if x.get("rotRadar") is not None else "")
+        if x.get("exitM") is None: x["exitM"] = None
 
 
 # ------------------------------------------------------------------ Pontos / Sequência

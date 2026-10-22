@@ -324,6 +324,41 @@ function openDetail(f, pts, d) {
   }
   drawProfile(rows, f);
   renderDetailViol(d);
+  renderDetailSources(d && d.sources, f);
+}
+function renderDetailSources(src, f) {
+  const esc = C.esc;
+  const el = $('dSources'); if (!el) return;
+  if (!src) { el.innerHTML = ''; return; }
+  const T = v => v == null ? null : new Date(v * 1000).toISOString().slice(11, 19);
+  const mins = v => v == null ? null : `${Math.round(v / 60)} min ${Math.round(v % 60)} s`;
+  const kv = pairs => `<div class="kv">${pairs.filter(p => p[1] != null && p[1] !== '').map(p => `<div><span>${p[0]}</span> <b>${esc(String(p[1]))}</b></div>`).join('')}</div>`;
+  let h = '';
+  const n = src.nmir;
+  if (n) {
+    h += `<div class="d-src"><h5><span>NMIR · plano de voo</span>${n.inherited_from ? `<span title="Sem registo NMIR neste dia; tipo herdado do registo de ${n.inherited_from}">tipo herdado</span>` : ''}</h5>` +
+      kv([['ADEP', n.adep], ['ADES', n.ades], ['Tipo', n.actype], ['WTC', n.wtc], ['ETOT', T(n.etot)], ['CTOT', T(n.ctot)], ['ATOT', T(n.atot)], ['ETA', T(n.eta)], ['ATA', T(n.ata)], ['Atraso ATFM', n.atfm_delay != null ? `${n.atfm_delay} min` : null]]) + '</div>';
+  } else h += '<div class="d-src"><h5><span>NMIR</span></h5><span class="muted">sem registo</span></div>';
+  const t = src.tower;
+  if (t) {
+    const dep = t.mt === 'DEPARTURE';
+    h += `<div class="d-src"><h5><span>Torre · A-SMGCS (${dep ? 'partida' : 'chegada'} RWY ${t.rwy || '?'})</span>${t.ga ? '<span class="bad">GO-AROUND</span>' : ''}</h5>` +
+      kv([['ADEP', t.adep], ['ADES', t.ades], ['Tipo', t.actype], ['WTC', t.wtc], ['Matrícula', t.reg], ['Operador', t.ao], ['SID', t.sid], ['STAR', t.star],
+          ['Stand', dep ? t.stand_d : t.stand_a], [dep ? 'Ponto de espera' : 'Saída de pista', dep ? t.hp : t.ep],
+          ['AOBT', T(t.aobt)], ['HP', T(t.hp_time)], ['RWY_ENT', T(t.rwy_ent)], ['ATOT', T(t.atot)], ['ALDT', T(t.aldt)], ['RWY_VAC', T(t.rwy_vac)], ['AIBT', T(t.aibt)], ['CTOT', T(t.ctot)],
+          ['ROT', t.rot_s != null ? `${Math.round(t.rot_s)} s` : null], [dep ? 'Taxi-out' : 'Taxi-in', mins(t.taxi_s)], ['Vel. saída', t.spd_vac != null ? `${Math.round(t.spd_vac)} kt` : null],
+          ['Atraso ATFM', t.atfm_delay != null ? `${t.atfm_delay} min` : null], ['Regulação', t.regulation], ['RTO', t.rto ? 'sim' : null]]) +
+      ((dep ? t.taxi_out : t.taxi_in) ? `<div class="route">Rota no solo: ${esc(dep ? t.taxi_out : t.taxi_in)}</div>` : '') +
+      (src.tower_all && src.tower_all.length > 1 ? `<div class="muted">${src.tower_all.length} registos da torre neste dia: ${src.tower_all.map(x => `${x.mt === 'DEPARTURE' ? 'DEP' : 'ARR'} ${T(x.t_ref) || '?'}${x.ga ? ' (GA)' : ''}`).join(' · ')}</div>` : '') + '</div>';
+  } else h += '<div class="d-src"><h5><span>Torre · A-SMGCS</span></h5><span class="muted">sem registo (sem ficheiro da torre para este dia, ou callsign não encontrado)</span></div>';
+  const o = src.opdi;
+  if (o) {
+    h += `<div class="d-src"><h5><span>OPDI · ADS-B</span></h5>` +
+      kv([['ADEP', o.adep], ['ADES', o.ades], ['Tipo', o.typecode], ['Matrícula', o.reg], ['icao24', o.icao24], ['Modelo', o.model], ['Pista', o.rwy_ref],
+          ['Entrada pista', T(o.t_rwy_in)], ['Saída pista', T(o.t_rwy_out)], ['Descolagem', T(o.t_takeoff)], ['Aterragem', T(o.t_landing)], ['TOC', T(o.t_toc)], ['TOD', T(o.t_tod)],
+          ['Patamares < FL100', o.n_levels_low], ['Taxiways', o.twy], ['Stand (entrada)', T(o.t_park_in)], ['Stand (saída)', T(o.t_park_out)]]) + '</div>';
+  }
+  el.innerHTML = h;
 }
 function renderDetailViol(d) {
   const el = $('dViol'); if (!el) return; let h = '';

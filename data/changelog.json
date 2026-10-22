@@ -21,7 +21,10 @@
           "Ao vir de outra aba para o Mapa, o zoom é feito depois de o mapa ter o tamanho certo (deixava de mostrar o mundo inteiro).",
           "Na aba Solo, clicar num voo na lista de voos seleciona o movimento da torre correspondente e mostra o percurso no solo.",
           "Análise Op. → ROT: inclui as partidas (da primeira amostra na pista à descolagem) com filtro Tudo / Chegadas / Partidas e cartões separados; aviso de que o ROT de partida pelo radar é um mínimo.",
-          "ROT: taxiway de saída (chegadas, pelo radar: junção da rede de taxiways mais próxima da última amostra na pista, do lado para onde virou — H6, U5, A7…) e hora do evento; com ficheiro da torre, também a saída (EP) / entrada (HP) e as horas RWY_VAC / RWY_ENT da torre, lado a lado. Cartão 'Saídas / entradas' com a contagem por taxiway."
+          "ROT: taxiway de saída (chegadas, pelo radar: junção da rede de taxiways mais próxima da última amostra na pista, do lado para onde virou — H6, U5, A7…) e hora do evento; com ficheiro da torre, também a saída (EP) / entrada (HP) e as horas RWY_VAC / RWY_ENT da torre, lado a lado. Cartão 'Saídas / entradas' com a contagem por taxiway.",
+          "ROT (Análise Op.): com ficheiro da torre, o ROT de referência passa a ser o do A-SMGCS (chegada: ALDT → saída de pista; partida: entrada na pista → ATOT); o do radar fica ao lado para comparação. Movimentos da torre sem ROT radar (partidas vistas só no ar) entram na mesma. Ligação torre ↔ radar corrigida (comparava epoch com segundos do dia).",
+          "Detalhe do voo: mostra tudo o que as outras fontes sabem — NMIR (ADEP/ADES, tipo, ETOT/CTOT/ATOT/ETA/ATA, atraso ATFM), torre (stand, rota no solo, ponto de espera / saída, AOBT, RWY_ENT, ATOT, ALDT, RWY_VAC, AIBT, ROT, taxi, SID/STAR, regulação, go-around) e OPDI (matrícula, icao24, pista, descolagem/aterragem, TOC/TOD, patamares).",
+          "Detalhe do voo: 'pista provável' das chegadas corrigida (usava o último plot, já no fim da pista); com torre usa a pista do registo."
         ]
       }
     ]
