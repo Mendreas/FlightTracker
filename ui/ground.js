@@ -549,6 +549,14 @@ const Ground = (() => {
     $('pnExport').onclick = async () => { try { const p = await call('export', 'panel', { d0: ymd($('pnFrom').value), d1: ymd($('pnTo').value) }, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
   });
   function resize() { if (map) map.invalidateSize(); }
-  return { onTab, onFilter, onTabCross, onFilterCross, onTabPanel, resize };
+  /* seleção vinda da lista de voos (radar): escolhe o movimento da torre ligado a esse flight_id */
+  function selectByFlight(fid) {
+    if (!map) return;
+    if (fid == null) { if (sel != null) select(sel); return; }
+    const row = rows.find(r => r.flight_id === fid);
+    if (!row) { toast('Este voo não tem movimento correspondente no ficheiro da torre.', 'err'); return; }
+    if (row.gid !== sel) select(row.gid, { scrollTable: true });
+  }
+  return { onTab, onFilter, onTabCross, onFilterCross, onTabPanel, resize, selectByFlight };
 })();
 window.Ground = Ground;

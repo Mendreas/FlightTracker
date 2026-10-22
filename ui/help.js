@@ -118,6 +118,7 @@ const HELP = {
   'No ar vs Solo no ponto 2400m — por hora': 'Passagens de partidas no ponto a 2 400 m da soleira (TWY U6 / P): "no ar" quando já descolou (altitude ≥ 50 ft), "solo" quando ainda rola.',
   'Descolagens': 'Partidas analisadas no ponto de referência.',
   'ROT médio': 'Tempo médio de ocupação de pista.',
+  'N.º movimentos': 'Chegadas e partidas com ROT calculável a partir do radar: chegada = do cruzamento da soleira à última amostra na pista; partida = da primeira amostra na pista (no solo) à descolagem (primeira amostra acima de 100 ft sobre a pista). Só é possível quando há plots na rolagem.',
   'Total': 'Total de registos analisados.',
   'Vel. na saída': 'Velocidade (kt) registada pelo A-SMGCS no momento em que a aeronave liberta a pista (RWY_VAC).',
 

@@ -199,7 +199,7 @@ function applyAirportView() {
   status(`${state.airport}: ${state.flights.length} movimento(s) · ${arr} chegadas · ${dep} partidas · ${state.days.size} dia(s) · ${fmt(state.allFlights.length)} no total (todos os aeroportos)`, 'on', $('sTime').textContent);
   $('tblInfo').textContent = `${state.flights.length} movimentos em ${state.airport}${state.aptOnly ? ' (só ARR/DEP segundo o NMIR)' : ''}`;
 }
-function applyClsView() { state.hidden.clear(); const q = ($('inpCsn').value || '').trim().toLowerCase(); state.flights.forEach(f => { if ((state.clsView && f.cls !== state.clsView) || (q && !f.csn.toLowerCase().includes(q))) state.hidden.add(f.flight_id); }); }
+function applyClsView() { state.hidden.clear(); state.prevHidden = null; const q = ($('inpCsn').value || '').trim().toLowerCase(); state.flights.forEach(f => { if ((state.clsView && f.cls !== state.clsView) || (q && !f.csn.toLowerCase().includes(q))) state.hidden.add(f.flight_id); }); }
 
 /* ------------------------------------------------------------- Flights */
 async function applyFilter() {
@@ -265,21 +265,34 @@ function renderTable() {
 async function focusFlight(id) {
   if (!state.byId.has(id)) { toast('Esse movimento não está nos filtros atuais.', 'err'); return; }
   showTab('map');
-  state.flights.forEach(f => state.hidden.add(f.flight_id));
-  state.hidden.delete(id);
-  state.selected = id;
-  drawTracks(); renderFlightList();
-  const l = state.layers.get(id); if (l) { l.bringToFront(); map.fitBounds(l.getBounds().pad(0.2)); }
+  soloFlight(id);
   const f = state.byId.get(id);
   try { const d = await call('flight_detail', id); openDetail(f, d.points, d); } catch (e) { toast(e.message, 'err'); }
   const card = $('flList').querySelector(`[data-id="${id}"]`); if (card) card.scrollIntoView({ block: 'nearest' });
 }
+/* mostra só este voo no mapa (guarda o que estava escondido para repor ao desselecionar) e faz zoom depois de o mapa ter tamanho */
+function soloFlight(id) {
+  if (!state.prevHidden) state.prevHidden = new Set(state.hidden);
+  state.flights.forEach(f => state.hidden.add(f.flight_id));
+  state.hidden.delete(id);
+  state.selected = id;
+  drawTracks(); renderFlightList();
+  setTimeout(() => { map.invalidateSize(); const l = state.layers.get(id); if (l) { l.bringToFront(); map.fitBounds(l.getBounds().pad(0.2)); } }, 120);
+}
+function unsoloFlight() {
+  if (state.prevHidden) { state.hidden = state.prevHidden; state.prevHidden = null; }
+  state.selected = null; drawTracks(); renderFlightList();
+}
 async function selectFlight(id, zoom) {
-  state.selected = (state.selected === id) ? null : id;
-  renderFlightList();
-  state.layers.forEach((l, fid) => l.setStyle({ weight: fid === state.selected ? 4 : 1.6, opacity: fid === state.selected ? 1 : .75 }));
-  if (state.selected == null) { closeDetail(); return; }
-  const l = state.layers.get(id); if (l) { l.bringToFront(); if (zoom) map.fitBounds(l.getBounds().pad(0.2)); }
+  if (state.selected === id) { unsoloFlight(); closeDetail(); if (state.tab === 'solo' && window.Ground) Ground.selectByFlight(null); return; }
+  if (zoom) {            // vindo da lista de voos: mostra só este voo (no Mapa) e seleciona-o no Solo
+    if (state.tab === 'solo' && window.Ground) { state.selected = id; renderFlightList(); Ground.selectByFlight(id); }
+    else soloFlight(id);
+  } else {               // clique na trajetória no mapa: só realça
+    state.selected = id; renderFlightList();
+    state.layers.forEach((l, fid) => l.setStyle({ weight: fid === state.selected ? 4 : 1.6, opacity: fid === state.selected ? 1 : .75 }));
+    const l = state.layers.get(id); if (l) l.bringToFront();
+  }
   const f = state.byId.get(id);
   try {
     const d = await call('flight_detail', id);
@@ -401,6 +414,7 @@ function selectLastDay() {
   renderFilters();
 }
 function showTab(name) {
+  state.tab = name;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tabpane').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
   $('mapTools').style.visibility = name === 'map' ? 'visible' : 'hidden';

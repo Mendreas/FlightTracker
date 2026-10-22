@@ -344,7 +344,7 @@ class Service:
                            [[h["csn"], h["cat"], h["acType"], h["rwy"], "No_ar" if h["airborne"] else "Solo", h["date"], h["tod"], h["altFt"], h["ias"], h["distNM"]] for h in rr["hits"]]))
         elif kind == "rot":
             rt = self.rot or self.run_rot()
-            sheets.append(("ROT", ["N", "Pista", "Data", "Voo", "Tipo", "Hora_THR", "ROT_s", "Dist_saida_m"], [[i + 1, r["rwy"], r["date"], r["csn"], r["actype"], r["tTHRstr"], r["rotS"], r["exitM"]] for i, r in enumerate(rt["results"])]))
+            sheets.append(("ROT", ["N", "Mov", "Pista", "Data", "Voo", "Tipo", "Hora_THR_ou_entrada", "Hora_descolagem", "ROT_s", "Dist_saida_m", "Entrada_m"], [[i + 1, "ARR" if r.get("cls", "arr") == "arr" else "DEP", r["rwy"], r["date"], r["csn"], r["actype"], r["tTHRstr"], r.get("tOffStr", ""), r["rotS"], r["exitM"], r.get("entryM", "")] for i, r in enumerate(rt["results"])]))
         elif kind == "pontos":
             rows = extra.get("rows", [])
             sheets.append(("Passagens", ["Hora", "Data", "Bloco", "Voo", "Tipo", "Dist_NM", "Altitude_ft", "IAS_kt", "ROC_fpm", "Latitude", "Longitude"],

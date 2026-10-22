@@ -185,12 +185,48 @@ def run_rot(db, flights: list[dict], airport: str) -> dict:
                     found = True; break
             if found: break
         if not found: dbg["noCross"] += 1
+    for r_ in res:
+        r_["cls"] = "arr"
+    # ---- partidas: da primeira amostra na pista (no solo) à descolagem (primeira amostra acima de elev + 100 ft)
+    dep = [f for f in flights if f["cls"] == "dep"]
+    pts_dep = db.points_bulk([f["flight_id"] for f in dep])
+    for f in dep:
+        pts = [p for p in pts_dep.get(f["flight_id"], []) if p[LAT] is not None and p[LON] is not None and p[ALT] is not None]
+        if len(pts) < 3:
+            dbg["dep_noPts"] += 1; continue
+        best = None
+        for rid, r in cfg["rwys"].items():
+            thr = r["thr"]; lim = r["elev"] + 100
+            rc = [runway_coords_m(p[LAT], p[LON], thr[0], thr[1], r["brg"]) for p in pts]
+            on = [i for i in range(len(pts)) if -60 <= rc[i][0] <= 4300 and abs(rc[i][1]) <= 220 and pts[i][ALT] <= lim]
+            if len(on) < 2 or rc[on[-1]][0] <= rc[on[0]][0]:   # tem de andar no sentido da pista
+                continue
+            i0, i1 = on[0], on[-1]
+            t_in = pts[i0][T]
+            # descolagem: interpola entre a última amostra no solo e a primeira acima de lim (se existir)
+            if i1 + 1 < len(pts) and pts[i1 + 1][ALT] > lim and pts[i1 + 1][T] - pts[i1][T] <= 60:
+                k = (lim - pts[i1][ALT]) / max(1, pts[i1 + 1][ALT] - pts[i1][ALT])
+                t_off = pts[i1][T] + k * (pts[i1 + 1][T] - pts[i1][T])
+            else:
+                t_off = pts[i1][T]
+            rot = round(t_off - t_in)
+            if best is None or len(on) > best[0]:
+                best = (len(on), rid, t_in, t_off, rot, rc[i0][0], rc[i1][0])
+        if best is None:
+            dbg["dep_noRwy"] += 1; continue
+        _, rid, t_in, t_off, rot, m0, m1 = best
+        if not 15 <= rot <= 300:
+            dbg["dep_invalid"] += 1; continue
+        res.append({"flight_id": f["flight_id"], "rwy": rid, "cls": "dep", "csn": f["csn"], "date": fmt_date(f["date"]), "dateRaw": f["date"],
+                    "tTHRstr": hhmmss(t_in), "tOffStr": hhmmss(t_off), "epoch": epoch(f["date"], t_in), "rotS": rot, "exitM": round(m1), "entryM": round(m0),
+                    "actype": f.get("actype"), "op": operator3(f["csn"])})
     res.sort(key=lambda x: x["epoch"])
     vals = sorted(x["rotS"] for x in res)
     n = len(vals)
     return {"results": res, "dbg": dict(dbg), "n": n, "mean": sum(vals) / n if n else None,
             "p85": vals[min(int(n * 0.85), n - 1)] if n else None, "p95": vals[min(int(n * 0.95), n - 1)] if n else None,
-            "max": vals[-1] if n else None, "processed": len(arr)}
+            "max": vals[-1] if n else None, "processed": len(arr), "processed_dep": len(dep),
+            "n_arr": sum(1 for x in res if x["cls"] == "arr"), "n_dep": sum(1 for x in res if x["cls"] == "dep")}
 
 
 # ------------------------------------------------------------------ Pontos / Sequência

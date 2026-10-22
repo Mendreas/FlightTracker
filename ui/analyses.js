@@ -404,18 +404,26 @@ const Analyses = (() => {
     try { R.rot = await call('run_rot'); renderRot(); } catch (e) { empty(el, 'Erro: ' + e.message); toast(e.message, 'err'); }
   }
   function renderRot() {
-    const d = R.rot, el = $('rotBody'), rf = $('rotRwy').value; if (!d) return;
+    const d = R.rot, el = $('rotBody'), rf = $('rotRwy').value, cf = $('rotCls').value; if (!d) return;
     const rws = [...new Set(d.results.map(r => r.rwy))].sort(); const sel = $('rotRwy'); sel.innerHTML = '<option value="all">Todas</option>' + rws.map(r => `<option value="${r}" ${rf === r ? 'selected' : ''}>RWY ${r}</option>`).join('');
-    const rows = d.results.filter(r => rf === 'all' || r.rwy === rf);
-    $('rotCount').textContent = `${rows.length} aterragem(ns)`;
-    const vals = rows.map(r => r.rotS).sort((a, b) => a - b), n = vals.length;
+    const rows = d.results.filter(r => (rf === 'all' || r.rwy === rf) && (cf === 'all' || (r.cls || 'arr') === cf));
+    const nA = rows.filter(r => (r.cls || 'arr') === 'arr').length, nD = rows.length - nA;
+    $('rotCount').textContent = `${rows.length} movimento(s) · ${nA} ARR · ${nD} DEP`;
+    const stats = list => { const v = list.map(r => r.rotS).sort((a, b) => a - b), n = v.length; return { n, mean: n ? v.reduce((a, b) => a + b, 0) / n : null, p85: n ? v[Math.min(Math.floor(n * .85), n - 1)] : null, p95: n ? v[Math.min(Math.floor(n * .95), n - 1)] : null, max: n ? v[n - 1] : null }; };
+    const S = stats(rows), SA = stats(rows.filter(r => (r.cls || 'arr') === 'arr')), SD = stats(rows.filter(r => r.cls === 'dep'));
     const rotSorted = rows.slice().sort((a, b) => b.rotS - a.rotS);
-    drillScope('rot', { 'N.º aterragens': { title: 'Aterragens com ROT', rows: rows }, 'ROT médio': { title: 'ROT por aterragem', rows: rotSorted }, 'P85': { title: 'ROT por aterragem (decrescente)', rows: rotSorted }, 'P95': { title: 'ROT por aterragem (decrescente)', rows: rotSorted }, 'Máximo': { title: 'ROT por aterragem (decrescente)', rows: rotSorted } });
-    let h = '<div class="kgrid">' + C.kcard('N.º aterragens', n) + C.kcard('ROT médio', n ? fmt(vals.reduce((a, b) => a + b, 0) / n) + ' s' : '—') + C.kcard('P85', n ? vals[Math.min(Math.floor(n * .85), n - 1)] + ' s' : '—') + C.kcard('P95', n ? vals[Math.min(Math.floor(n * .95), n - 1)] + ' s' : '—') + C.kcard('Máximo', n ? vals[n - 1] + ' s' : '—') + '</div>';
-    if (d.n < d.processed * 0.3) h += '<div class="hint sep-o" style="margin-bottom:8px">⚠ A maioria das chegadas termina antes da pista (cobertura radar até ~250 ft / 1,5 NM da THR) — o ROT só é calculável quando existem plots na rolagem.</div>';
-    h += `<div class="hint" style="margin-bottom:8px">ARR processados: ${d.processed} · sem pontos: ${d.dbg.noPts || 0} · THR não detectada: ${d.dbg.noCross || 0} · sem saída de pista: ${d.dbg.noOnRwy || 0} · ROT inválido: ${d.dbg.tooShort || 0} · calculados: ${d.n}</div>`;
-    h += C.table([{ k: 'i', label: 'N', fmt: (v, r, i) => i + 1 }, { k: 'rwy', label: 'Pista', fmt: v => rwyBadge(v) }, { k: 'date', label: 'Data' }, { k: 'csn', label: 'Voo', fmt: (v, r) => csnLink(v, r.flight_id) }, { k: 'actype', label: 'Tipo' }, { k: 'tTHRstr', label: 'Hora THR' },
-      { k: 'rotS', label: 'ROT (s)', fmt: v => `<span class="${v <= 45 ? 'sep-g' : v <= 60 ? 'sep-o' : 'sep-r'}">${v}</span>` }, { k: 'exitM', label: 'Dist. saída (m)' }], rows, { id: 'rotTable' });
+    const sv = v => v == null ? '—' : fmt(v) + ' s';
+    drillScope('rot', { 'N.º movimentos': { title: 'Movimentos com ROT', rows: rows }, 'ROT médio': { title: 'ROT por movimento', rows: rotSorted }, 'P85': { title: 'ROT por movimento (decrescente)', rows: rotSorted }, 'P95': { title: 'ROT por movimento (decrescente)', rows: rotSorted }, 'Máximo': { title: 'ROT por movimento (decrescente)', rows: rotSorted },
+      'ROT chegada': { title: 'ROT das chegadas', rows: rotSorted.filter(r => (r.cls || 'arr') === 'arr') }, 'ROT partida': { title: 'ROT das partidas', rows: rotSorted.filter(r => r.cls === 'dep') } });
+    let h = '<div class="kgrid">' + C.kcard('N.º movimentos', S.n, `${nA} chegadas · ${nD} partidas`) + C.kcard('ROT médio', sv(S.mean)) + C.kcard('P85', sv(S.p85)) + C.kcard('P95', sv(S.p95)) + C.kcard('Máximo', sv(S.max)) +
+      (cf === 'all' ? C.kcard('ROT chegada', sv(SA.mean), `média · ${SA.n} · P85 ${sv(SA.p85)}`) + C.kcard('ROT partida', sv(SD.mean), `média · ${SD.n} · P85 ${sv(SD.p85)}`) : '') + '</div>';
+    if (d.n_arr < d.processed * 0.3) h += '<div class="hint sep-o" style="margin-bottom:8px">⚠ A maioria das chegadas termina antes da pista (cobertura radar até ~250 ft / 1,5 NM da THR) — o ROT só é calculável quando existem plots na rolagem. Com ficheiro da torre, use a aba Solo → ROT e taxi (A-SMGCS), medido pelo A-SMGCS.</div>';
+    if (nD) h += '<div class="hint sep-o" style="margin-bottom:8px">⚠ Partidas: o radar só começa a ver a aeronave já em corrida (a primeira amostra está normalmente a 300–1 300 m da soleira), por isso o ROT de partida pelo radar é um valor mínimo — o valor real (entrada na pista → descolagem) está na aba Solo, medido pelo A-SMGCS.</div>';
+    h += `<div class="hint" style="margin-bottom:8px">ARR processados: ${d.processed} · sem pontos: ${d.dbg.noPts || 0} · THR não detectada: ${d.dbg.noCross || 0} · sem saída de pista: ${d.dbg.noOnRwy || 0} · ROT inválido: ${d.dbg.tooShort || 0} · calculados: ${d.n_arr ?? d.n}
+      &nbsp;|&nbsp; DEP processados: ${d.processed_dep ?? 0} · sem pontos: ${d.dbg.dep_noPts || 0} · sem amostras na pista: ${d.dbg.dep_noRwy || 0} · ROT inválido: ${d.dbg.dep_invalid || 0} · calculados: ${d.n_dep ?? 0}</div>`;
+    h += C.table([{ k: 'i', label: 'N', fmt: (v, r, i) => i + 1 }, { k: 'cls', label: 'Mov.', fmt: v => `<span class="badge ${v || 'arr'}">${(v || 'arr').toUpperCase()}</span>` }, { k: 'rwy', label: 'Pista', fmt: v => rwyBadge(v) }, { k: 'date', label: 'Data' }, { k: 'csn', label: 'Voo', fmt: (v, r) => csnLink(v, r.flight_id) }, { k: 'actype', label: 'Tipo' },
+      { k: 'tTHRstr', label: 'THR / entrada', fmt: (v, r) => r.cls === 'dep' ? `${v} → ${r.tOffStr}` : v },
+      { k: 'rotS', label: 'ROT (s)', fmt: v => `<span class="${v <= 45 ? 'sep-g' : v <= 60 ? 'sep-o' : 'sep-r'}">${v}</span>` }, { k: 'exitM', label: 'Saída / descolagem (m)', fmt: (v, r) => r.cls === 'dep' ? `${r.entryM} → ${v}` : v }], rows, { id: 'rotTable' });
     el.innerHTML = h; wireCsn(el);
   }
 
@@ -731,7 +739,7 @@ const Analyses = (() => {
     // RRMS / ROT
     $('rrRun').onclick = () => runRrms(true); ['rrCat', 'rrGrp', 'rrMetric', 'rrRwy'].forEach(id => $(id).onchange = () => R.rrms && renderRrms());
     exportBtn('rrExport', 'rrms', null, () => 'RRMS_passagens.xlsx'); reportBtn('rrPdf', 'rrms', () => ({ cat: $('rrCat').value, rwy: $('rrRwy').value }));
-    $('rotRun').onclick = runRot; $('rotRwy').onchange = () => R.rot && renderRot(); exportBtn('rotExport', 'rot');
+    $('rotRun').onclick = runRot; $('rotRwy').onchange = () => R.rot && renderRot(); $('rotCls').onchange = () => R.rot && renderRot(); exportBtn('rotExport', 'rot');
     // KPIs
     $('kpiRun').onclick = runKpis; exportBtn('kpiExport', 'kpis'); exportBtn('kpiExportPru', 'pru'); reportBtn('kpiReport', 'kpis');
     $('kpiMonthly').onclick = () => { if (!hasFlights()) { toast('Aplica um filtro (idealmente um mês inteiro) primeiro.', 'err'); return; } toast('A gerar o relatório mensal… abre no navegador quando estiver pronto.', 'ok'); call('report', 'mensal', {}).catch(e => toast(e.message, 'err')); };

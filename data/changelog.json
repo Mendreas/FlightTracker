@@ -13,6 +13,15 @@
           "Go-arounds (KPIs e Painel): cada borrego da torre é cruzado com o radar — 'torre + radar' (confirmado), 'não visto no radar' ou 'sem plots'; borregos vistos só no radar também aparecem. O modal mostra a hora do borrego e a aterragem real.",
           "Final: numa chegada com borrego, a aterragem analisada é o último cruzamento da soleira (a aterragem real), não a aproximação abortada."
         ]
+      },
+      {
+        "title": "Interface",
+        "items": [
+          "Clicar num voo na lista de voos mostra só esse voo no mapa (como ao vir da Tabela ou das análises); voltar a clicar, ou fechar o detalhe, repõe os outros.",
+          "Ao vir de outra aba para o Mapa, o zoom é feito depois de o mapa ter o tamanho certo (deixava de mostrar o mundo inteiro).",
+          "Na aba Solo, clicar num voo na lista de voos seleciona o movimento da torre correspondente e mostra o percurso no solo.",
+          "Análise Op. → ROT: inclui as partidas (da primeira amostra na pista à descolagem) com filtro Tudo / Chegadas / Partidas e cartões separados; aviso de que o ROT de partida pelo radar é um mínimo."
+        ]
       }
     ]
   },
