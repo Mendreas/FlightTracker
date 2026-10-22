@@ -334,6 +334,11 @@ function renderDetailSources(src, f) {
   const mins = v => v == null ? null : `${Math.round(v / 60)} min ${Math.round(v % 60)} s`;
   const kv = pairs => `<div class="kv">${pairs.filter(p => p[1] != null && p[1] !== '').map(p => `<div><span>${p[0]}</span> <b>${esc(String(p[1]))}</b></div>`).join('')}</div>`;
   let h = '';
+  const dur = f.t_last - f.t_first;
+  h += `<div class="d-src"><h5><span>Radar · CNS (${CLS_NAME[f.cls] || f.cls}${f.ga ? `, ${f.ga} borrego(s)` : ''})</span><span>${esc(f.date ? `${f.date.slice(4, 6)}/${f.date.slice(2, 4)}/20${f.date.slice(0, 2)}` : '')}</span></h5>` +
+    kv([['Callsign', f.csn], ['Mode S', f.modes], ['Tipo', f.actype], ['WTC', f.wtc], ['Plots', f.n], ['Duração', `${Math.floor(dur / 60)}m${String(Math.round(dur % 60)).padStart(2, '0')}`],
+        ['Primeiro plot', (f.tod_first || '').slice(0, 8)], ['Último plot', (f.tod_last || '').slice(0, 8)], ['Alt. inicial', f.alt_first != null ? `${fmt(f.alt_first)} ft` : null], ['Alt. final', f.alt_last != null ? `${fmt(f.alt_last)} ft` : null],
+        ['Alt. mín / máx', `${fmt(f.alt_min)} / ${fmt(f.alt_max)} ft`], ['Blocos', f.blocks], ['Ficheiro', f.airport]]) + '</div>';
   const n = src.nmir;
   if (n) {
     h += `<div class="d-src"><h5><span>NMIR · plano de voo</span>${n.inherited_from ? `<span title="Sem registo NMIR neste dia; tipo herdado do registo de ${n.inherited_from}">tipo herdado</span>` : ''}</h5>` +

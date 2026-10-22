@@ -147,7 +147,9 @@ tbody tr:hover{background:var(--panel2);cursor:pointer}
 .kpi b{display:block;font-size:15px;font-family:var(--mono)}
 .kpi span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
 #dChart{width:100%;height:150px;padding:0 14px}
-.d-tblwrap{flex:1;overflow:auto;border-top:1px solid var(--line)}
+.d-body{flex:1;overflow:auto;min-height:0}
+.d-tblwrap{border-top:1px solid var(--line)}
+.d-tbl thead th{position:sticky;top:0;background:var(--panel2)}
 .d-tbl td,.d-tbl th{padding:3px 8px;font-size:11px}
 
 /* ---------- toast ---------- */
@@ -289,7 +291,7 @@ tr.gd-row.sel td{background:var(--sel)}
 .badge.ga{background:#7c3aed;color:#fff}
 
 /* detalhe do voo: fontes (NMIR / torre / OPDI) */
-.d-sources{margin:6px 0 8px;font-size:11.5px}
+.d-sources{margin:0 14px 8px;font-size:11.5px}
 .d-src{border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:6px;background:var(--panel2)}
 .d-src h5{margin:0 0 4px;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
 .d-src .kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:2px 10px}
