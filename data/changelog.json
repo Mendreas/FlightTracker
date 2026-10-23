@@ -1,5 +1,12 @@
 [
   {
+    "version": "4.1.4",
+    "date": "em desenvolvimento",
+    "title": "",
+    "summary": "",
+    "sections": []
+  },
+  {
     "version": "4.1.3",
     "date": "2026-10-23",
     "title": "Correção: instalação nova não abria",
