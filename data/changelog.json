@@ -1,10 +1,17 @@
 [
   {
     "version": "4.1.3",
-    "date": "em desenvolvimento",
-    "title": "",
-    "summary": "",
-    "sections": []
+    "date": "2026-10-23",
+    "title": "Correção: instalação nova não abria",
+    "summary": "Correção urgente da 4.1.2: numa instalação de raiz (sem base de dados anterior, p. ex. no Mac) a app ficava com 'Base de dados indisponível … table nmir has 22 columns but 12 values were supplied' e não importava. Quem já tinha base de dados não foi afetado.",
+    "sections": [
+      {
+        "title": "Correção",
+        "items": [
+          "A tabela-semente do NMIR era carregada com a lista antiga de colunas; numa base nova falhava e bloqueava a importação. Corrigido — basta instalar por cima."
+        ]
+      }
+    ]
   },
   {
     "version": "4.1.2",

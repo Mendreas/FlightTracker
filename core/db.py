@@ -160,7 +160,7 @@ class Database:
         if c.execute("SELECT count(*) FROM nmir").fetchone()[0] == 0:
             seed = resource_path("data", "nmir_seed.csv")
             if seed.exists():
-                c.execute("INSERT INTO nmir SELECT csn, date, actype, wtc, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL FROM read_csv(?, header=true, all_varchar=true)",
+                c.execute("INSERT INTO nmir (csn, date, actype, wtc) SELECT csn, date, actype, wtc FROM read_csv(?, header=true, all_varchar=true)",
                           [str(seed)])
 
     def fix_airports(self) -> int:
