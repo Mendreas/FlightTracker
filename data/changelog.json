@@ -1,5 +1,19 @@
 [
   {
+    "version": "4.1.6",
+    "date": "2026-10-23",
+    "title": "Correção: janela \"tk\" no macOS",
+    "summary": "Correção da 4.1.5: a pequena janela vazia com o título \"tk\" continuava a aparecer sobre os diálogos de ficheiro no macOS. Os diálogos (Importar pasta, NMIR, Torre, OPDI, Guardar Excel/PDF/CSV/JSON…) passam agora a usar as janelas nativas do macOS, sem tkinter.",
+    "sections": [
+      {
+        "title": "Correção",
+        "items": [
+          "macOS: os diálogos de ficheiro deixam de usar tkinter e passam a usar os diálogos nativos do sistema — resolve de vez a janela \"tk\" vazia."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.1.5",
     "date": "2026-10-23",
     "title": "Correção: fecho da app no macOS",

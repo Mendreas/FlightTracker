@@ -1,15 +1,18 @@
 """Processo de trabalho: base de dados + servidor HTTP local. Corre separado da janela,
 para que o Windows nunca marque a janela como "Não responde" enquanto o Python calcula.
 
-Os diálogos de ficheiros usam tkinter (funciona sem janela principal). O Tk/Cocoa só pode ser
-usado na thread principal do processo — os pedidos HTTP chegam numa thread por pedido (ver
-core/httpapi.py), por isso o diálogo é pedido por uma fila e executado na thread principal
-(o ciclo deste módulo), que espera o resultado. Sem isto, no macOS o diálogo nunca aparece
-(o ícone salta na dock a pedir atenção, mas a janela não chega a desenhar-se)."""
+Diálogos de ficheiros:
+- macOS: usa os diálogos nativos do sistema via AppleScript (osascript). Isto evita o tkinter
+  por completo — nenhuma janela "tk" aparece, e não há restrição de thread (osascript pode ser
+  chamado de qualquer thread, o próprio sistema trata da janela).
+- Windows/Linux: usa tkinter. O Tk só pode ser usado na thread principal do processo — os
+  pedidos HTTP chegam numa thread por pedido (ver core/httpapi.py), por isso o diálogo é pedido
+  por uma fila e executado na thread principal (o ciclo deste módulo), que espera o resultado."""
 from __future__ import annotations
 
 import logging
 import queue
+import subprocess
 import sys
 import threading
 import time
@@ -29,8 +32,59 @@ def _types(file_types):
     return out or [("Todos", "*.*")]
 
 
+def _as_escape(s: str) -> str:
+    return s.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _extensions(file_types):
+    """"Excel (*.xlsx)", "Todos (*.*)" -> ["xlsx"] (ignora *.* e duplicados)."""
+    exts = []
+    for ft in file_types or ():
+        _, _, pat = ft.partition("(")
+        pat = pat.rstrip(")").strip()
+        if pat.startswith("*."):
+            ext = pat[2:].strip()
+            if ext and ext != "*" and ext not in exts:
+                exts.append(ext)
+    return exts
+
+
+def _run_dialog_mac(kind, allow_multiple, save_filename, file_types):
+    """Diálogo nativo do macOS via AppleScript — sem tkinter, pode ser chamado de qualquer thread."""
+    exts = _extensions(file_types)
+    type_clause = (" of type {" + ", ".join(f'"{e}"' for e in exts) + "}") if exts else ""
+    if kind == FOLDER_DIALOG:
+        script = 'POSIX path of (choose folder with prompt "Escolhe a pasta com os CSV")'
+    elif kind == OPEN_DIALOG:
+        multi = " with multiple selections allowed" if allow_multiple else ""
+        script = (
+            f'set theFiles to choose file with prompt "Escolhe o ficheiro"{type_clause}{multi}\n'
+            'if class of theFiles is list then\n'
+            '    set thePaths to {}\n'
+            '    repeat with f in theFiles\n'
+            '        set end of thePaths to POSIX path of f\n'
+            '    end repeat\n'
+            '    set AppleScript\'s text item delimiters to linefeed\n'
+            '    return thePaths as text\n'
+            'else\n'
+            '    return POSIX path of theFiles\n'
+            'end if'
+        )
+    else:
+        name = _as_escape(save_filename or "ficheiro")
+        script = f'POSIX path of (choose file name with prompt "Guardar como" default name "{name}")'
+    try:
+        out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        return None
+    if out.returncode != 0:
+        return None  # cancelado pelo utilizador (ou erro — tratado como cancelamento)
+    paths = [p for p in out.stdout.strip().split("\n") if p]
+    return paths or None
+
+
 def _run_dialog(kind, allow_multiple, save_filename, file_types):
-    """Corre SEMPRE na thread principal deste processo (ver _dialog_loop)."""
+    """Corre SEMPRE na thread principal deste processo (ver _dialog_loop). Só usado fora do macOS."""
     import tkinter as tk
     from tkinter import filedialog
     root = tk.Tk(); root.withdraw(); root.update_idletasks()
@@ -69,6 +123,9 @@ class TkDialogs:
     põe o pedido na fila e espera que a thread principal (_dialog_loop) o processe."""
 
     def create_file_dialog(self, kind, allow_multiple=False, save_filename="", file_types=()):
+        if sys.platform == "darwin":
+            # Diálogo nativo via AppleScript: sem tkinter, sem restrição de thread, sem janela "tk".
+            return _run_dialog_mac(kind, allow_multiple, save_filename, file_types)
         result_box: dict = {}
         done = threading.Event()
         _dialog_queue.put((kind, allow_multiple, save_filename, file_types, result_box, done))
