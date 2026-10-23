@@ -1,5 +1,19 @@
 [
   {
+    "version": "4.1.5",
+    "date": "em desenvolvimento",
+    "title": "",
+    "summary": "",
+    "sections": [
+      {
+        "title": "Interface",
+        "items": [
+          "Diálogos de ficheiro (macOS): deixa de aparecer uma pequena janela vazia com o título 'tk' por cima do diálogo — era a janela interna do Tk, escondida mas ainda a desenhar-se."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.1.4",
     "date": "2026-10-23",
     "title": "Correção: diálogos de ficheiro no macOS",

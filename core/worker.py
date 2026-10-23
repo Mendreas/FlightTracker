@@ -33,7 +33,7 @@ def _run_dialog(kind, allow_multiple, save_filename, file_types):
     """Corre SEMPRE na thread principal deste processo (ver _dialog_loop)."""
     import tkinter as tk
     from tkinter import filedialog
-    root = tk.Tk(); root.withdraw(); root.attributes("-topmost", True)
+    root = tk.Tk(); root.withdraw(); root.update_idletasks()
     try:
         if kind == FOLDER_DIALOG:
             p = filedialog.askdirectory(title="Escolhe a pasta com os CSV", parent=root)
