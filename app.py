@@ -617,6 +617,22 @@ def main():
     if LAN:
         logging.info("Acesso na rede local: http://%s:%s/index.html", _lan_ip(), port)
     logging.info("Processo de dados iniciado (pid %s) na porta %s", proc.pid, port)
+    def _stop_worker():
+        """Termina o processo de dados. No macOS, depois de um diálogo de ficheiro (tkinter/Cocoa) o
+        processo às vezes ignora o SIGTERM normal (terminate()) — se não sair a tempo, força o fim (kill)."""
+        if proc.poll() is not None:
+            return
+        proc.terminate()
+        try:
+            proc.wait(timeout=4)
+        except subprocess.TimeoutExpired:
+            logging.warning("Processo de dados não terminou a tempo — a forçar o fim (pid %s)", proc.pid)
+            proc.kill()
+            try:
+                proc.wait(timeout=4)
+            except subprocess.TimeoutExpired:
+                pass
+
     url = f"http://127.0.0.1:{port}/index.html"
     ok = _wait_server(port, 60)
     if not ok:
@@ -628,8 +644,7 @@ def main():
             ctypes.windll.user32.MessageBoxW(0, msg, "FlightTracker — erro ao arrancar", 0x10)
         except Exception:  # noqa: BLE001
             print(msg)
-        if proc.poll() is None:
-            proc.terminate()
+        _stop_worker()
         return
     use_browser = "--browser" in sys.argv or os.environ.get("FLIGHTPLOTTER_BROWSER") == "1"
     if not use_browser:
@@ -646,8 +661,7 @@ def main():
             use_browser = True
     if use_browser:
         _run_in_browser(url, port)
-    if proc.poll() is None:
-        proc.terminate()
+    _stop_worker()
     logging.info("Aplicação terminada")
 
 
