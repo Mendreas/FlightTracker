@@ -1,6 +1,6 @@
 [
   {
-    "version": "4.2.0",
+    "version": "4.3.0",
     "date": "2026-11-12",
     "title": "Zips diretos e radar de solo (CNS)",
     "summary": "A importação passa a ler diretamente os zips do CNS (sem os extrair) e a app importa o radar de solo de Lisboa, Porto e Faro. A aba Solo passa a funcionar também em Porto e Faro.",
@@ -12,7 +12,8 @@
           "Radar de solo (CNS, ficheiros lisTGO / prtTGO / farTGO, pastas EVL_GNDLIS_...): novo tipo de ficheiro, reconhecido pelo nome. Guarda só o que está dentro do aeroporto (raio de 3 a 4,5 km do ARP), sem alvos em voo, com uma amostra a cada 2 segundos — o volume na base é uma fração do original.",
           "Aba Solo — Lisboa: ao seleccionar um movimento, o percurso real do radar de solo aparece a ciano (com um marcador que acompanha o relógio), por cima do percurso reconstruído a partir da torre. Interruptor 'Radar de solo' na barra.",
           "Aba Solo — Porto e Faro (e Lisboa quando não há ficheiro da torre): mostra os percursos reais do radar de solo no mapa, com a mesma animação (relógio, rasto, velocidade 1× a 120×), uma tabela por movimento no solo (início, fim, duração, velocidade máxima, distância) e exportação para Excel. Os alvos parados (veículos estacionados) são ignorados; ao seleccionar um voo, liga-se à trajetória radar do ar pelo callsign.",
-          "Preferências → 'Remover ficheiros que já não existem': passa a ter em conta os ficheiros dentro de zips."
+          "Preferências → 'Remover ficheiros que já não existem': passa a ter em conta os ficheiros dentro de zips.",
+          "Guia de utilização: novas secções sobre zips, radar de solo e a aba Solo no Porto e em Faro."
         ]
       },
       {

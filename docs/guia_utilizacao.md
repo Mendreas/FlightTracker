@@ -74,13 +74,14 @@ O programa tem dois ramos de desenvolvimento no GitHub: `main` (versão madura, 
 
 ### 3.1 Visão geral
 
-A aplicação aceita quatro tipos de ficheiro. Pode importá-los todos de uma vez, misturados na mesma pasta ou em subpastas:
+A aplicação aceita cinco tipos de ficheiro. Pode importá-los todos de uma vez, misturados na mesma pasta ou em subpastas, e também **dentro de zips** (ver 4.1):
 
 | Fonte | Tipo de ficheiro | O que contém | Para que serve na aplicação |
 |---|---|---|---|
 | Radar (CNS) | CSV, um por dia e por bloco de 4 horas, por aeroporto | Uma linha por "plot": callsign, código Mode S, hora, latitude, longitude, altitude, velocidade indicada (IAS), velocidade solo (GS), rumo, razão de subida | É a base de tudo: trajetórias no mapa, classificação em chegada/partida, Final, velocidades, FAST, KPIs radar |
 | NMIR | Excel (.xlsx) exportado do portal NMIR da EUROCONTROL | Uma linha por voo com plano de voo: callsign, tipo de aeronave, aeródromo de partida (ADEP) e de destino (ADES), horas previstas e reais (LOBD, ETOT, CTOT, ATOT, ETA, ATA), atraso ATFM | Dá o tipo de avião e a categoria de esteira a cada movimento radar; diz se o voo é mesmo de/para o aeroporto; pontualidade e atraso ATFM |
 | Torre (A-SMGCS) | CSV com nome do género `ALL_LPPT_2026-03-01_….csv` (132 colunas) | Um registo por movimento de pista em Lisboa: horas reais de off-block, descolagem, aterragem, on-block; entrada e saída de pista; ponto de espera; stand; taxiways percorridos; go-around; atraso ATFM | Aba Solo (percursos no solo, animação, ROT, tempos de taxi), KPIs PRU, Painel, Cruzamento |
+| Radar de solo (CNS) | CSV do radar de superfície, um por dia e bloco de 4 horas, por aeroporto (Lisboa, Porto, Faro). Nome do género `lisTGO0_lisARP.csv`, em pastas `EVL_GNDLIS_261023_20-24` | Mesmas colunas do radar normal (callsign, Mode S, hora, latitude, longitude, velocidade), com uma amostra por segundo, incluindo veículos | Aba Solo: percursos reais no solo, em Lisboa (por cima do percurso da torre), no Porto e em Faro |
 | OPDI | CSV diário com nome do género `opdi_LPPT_20260301.csv` | Um registo por evento de cada voo captado por ADS-B: descolagem, aterragem, topo de subida/descida, cruzamentos de FL50/FL100, início de cada patamar | Origem/destino independente do NMIR; descida contínua (CDO); Cruzamento de fontes |
 
 ### 3.2 Como a aplicação reconhece cada ficheiro
@@ -90,6 +91,7 @@ A aplicação olha para o **conteúdo** (a primeira linha, com os nomes das colu
 - Ficheiro `.xlsx` → NMIR.
 - CSV cuja primeira linha contém `flt_id` e `event_time` → OPDI.
 - CSV cuja primeira linha contém `taxi_out` e `aldt` → torre.
+- CSV cujo caminho contém `GNDLIS` ou `lisTGO` / `prtTGO` / `farTGO` → **radar de solo** (o cabeçalho é igual ao do radar normal, por isso aqui o que conta é o nome da pasta ou do ficheiro).
 - Qualquer outro CSV → radar.
 
 Por isso, **para o NMIR, a torre e o OPDI o nome do ficheiro não tem importância**: pode ter o nome que tiver.
@@ -150,6 +152,10 @@ O que acontece com cada ficheiro:
 
 Se a pasta tiver vários ficheiros NMIR, todos são importados e os movimentos são reconstruídos **uma só vez** no fim (e não por cada ficheiro), para a importação ser rápida.
 
+**Zips.** Os ficheiros `.zip` da pasta (e das subpastas) são abertos pela aplicação e cada `.csv` ou `.xlsx` lá dentro é importado **sem ser extraído para o disco**. A data e o bloco horário vêm do nome da pasta dentro do zip (por exemplo `EVL_GNDLIS_261023_20-24/...`), e o aeroporto da posição dos plots. Um zip já importado não é relido. Não deixe na mesma pasta um zip e os CSV extraídos do mesmo radar: seriam importados duas vezes.
+
+**Radar de solo.** Só se guarda o que está dentro do aeroporto (raio de 3 a 4,5 km do ponto de referência, sem alvos em voo), uma amostra a cada 2 segundos e, nos alvos parados, uma a cada 30 segundos. A base fica assim com uma pequena fração do volume original.
+
 ### 4.2 Botão ⟳ Atualizar
 
 Repete a importação da **última pasta** que importou, procurando só os ficheiros novos ou alterados. É o botão a usar no dia a dia quando o CNS acrescenta os ficheiros de mais um dia à mesma pasta de rede.
@@ -168,7 +174,7 @@ Como referência: um dia completo de Lisboa (6 ficheiros do radar, cerca de 700 
 
 ### 4.6 Remover ficheiros que já não existem
 
-Em **⚙ Preferências → Base de dados → 🧹 Remover ficheiros que já não existem no disco** apagam-se da base os registos de ficheiros que entretanto foram apagados ou movidos. Útil para libertar espaço ou depois de reorganizar a pasta de rede.
+Em **⚙ Preferências → Base de dados → 🧹 Remover ficheiros que já não existem no disco** apagam-se da base os registos de ficheiros que entretanto foram apagados ou movidos (para os que estão dentro de um zip, conta o zip). Útil para libertar espaço ou depois de reorganizar a pasta de rede.
 
 ## 5. A janela principal
 
@@ -393,9 +399,9 @@ Ao contrário das outras abas, o Painel **não depende do filtro de dias**: most
 - **Qualidade / cobertura dos dados por dia:** para cada dia, quantos blocos radar existem (de 6), se há dados da torre, NMIR e OPDI, e alertas automáticos (ROT alto, muitos go-arounds, ATFM elevado, pontualidade baixa). Serve para perceber se um valor estranho se deve a dados em falta.
 - **⬇ Excel** exporta todas as séries.
 
-### 12.2 Solo (movimentos no solo em Lisboa)
+### 12.2 Solo (movimentos no solo)
 
-Esta aba usa o ficheiro da torre (A-SMGCS) e só tem dados para Lisboa.
+Em **Lisboa**, esta aba usa o ficheiro da torre (A-SMGCS) e, quando existe, o radar de solo do CNS. No **Porto** e em **Faro** usa só o radar de solo (ver 12.2.1).
 
 - **Mapa do aeroporto:** à direita, com a rede de **taxiways, pistas e 89 stands** de Lisboa, retirada do OpenStreetMap e embebida na aplicação (não precisa de internet). Fundo: OSM (por omissão), Satélite ou Sem fundo. **Nomes** liga/desliga as etiquetas dos taxiways e stands.
 - **Tabela:** à esquerda, com um movimento por linha: hora, callsign, tipo, pista, stand, saída de pista (EP) ou ponto de espera (HP), ROT, taxi e o movimento radar correspondente quando existe. Clique numa linha para ver o percurso no mapa. O divisor entre tabela e mapa arrasta-se; duplo clique repõe a posição.
@@ -403,7 +409,18 @@ Esta aba usa o ficheiro da torre (A-SMGCS) e só tem dados para Lisboa.
 - **Animação do dia:** o relógio (▶, velocidade 1× a 120×, barra de tempo) move todos os aviões ao longo do dia, com rasto. **Clicar num avião** no mapa seleciona-o na tabela sem parar o relógio.
 - **Replay ar + solo:** com a caixa marcada, as trajetórias radar do mesmo dia animam-se no mesmo relógio: uma chegada aparece no ar, aterra e continua no percurso de solo até ao stand; uma partida faz o inverso.
 - **ROT e taxi (A-SMGCS)** (botão): estatísticas de **ROT** (tempo de ocupação de pista) — chegadas: da aterragem (ALDT) à saída da pista (RWY_VAC); partidas: da entrada na pista (RWY_ENT) à descolagem (ATOT) — com distribuições, por saída de pista / ponto de espera, por categoria de esteira e por pista; **taxi-in/out por stand** (15 mais usados); **velocidade na saída** de pista. Todos os cartões são clicáveis. **⬇ Excel**.
+- **Radar de solo (Lisboa):** com a caixa **Radar de solo** marcada, ao seleccionar um movimento aparece a ciano o percurso **real** medido pelo radar de superfície, com um marcador que acompanha o relógio, por cima do percurso reconstruído a partir da torre. Permite ver, por exemplo, se o avião seguiu mesmo os taxiways registados.
 - **📥 Ficheiro da torre…** importa um ficheiro individual.
+
+#### 12.2.1 Solo no Porto e em Faro (só radar de solo)
+
+No Porto e em Faro não há ficheiro da torre nem rede de taxiways embebida. A aba mostra então as **posições reais do radar de solo** sobre o mapa (OSM ou satélite):
+
+- **Tabela:** um movimento no solo por linha, com voo, Modo S, hora de início e de fim (UTC), duração, velocidade máxima (kt), distância percorrida (m) e número de pontos. Os alvos parados (veículos estacionados) são ignorados, e o aviso indica quantos foram. A ligação **ver** abre o voo no radar do ar.
+- **Mapa e animação:** o mesmo relógio (▶, 1× a 120×), com rasto. As trajetórias radar do ar do mesmo dia animam-se no mesmo relógio e são ligadas ao percurso de solo pelo callsign: uma chegada passa do ar para o solo quando aterra, e uma partida faz o inverso.
+- **⬇ Excel** exporta a tabela.
+- Em Lisboa, nos dias sem ficheiro da torre, a aba comporta-se da mesma forma, sobre a rede de taxiways.
+- Não há ROT nem tempos de taxi de A-SMGCS nestas vistas: precisam do ficheiro da torre.
 
 ### 12.3 Cruzamento de fontes
 
