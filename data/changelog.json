@@ -1,5 +1,19 @@
 [
   {
+    "version": "4.3.1",
+    "date": "2026-11-12",
+    "title": "Correção: zips e CSV extraídos já não duplicam plots",
+    "summary": "Correção da 4.3.0: se o mesmo bloco do radar existisse como CSV extraído e dentro de um zip, os plots eram importados duas vezes.",
+    "sections": [
+      {
+        "title": "Correção",
+        "items": [
+          "Importar pasta: um bloco (aeroporto, dia e bloco horário) que já exista noutro caminho — como CSV extraído ou dentro de um zip — é registado mas não é importado outra vez, e não é relido nas importações seguintes. Vale nas duas ordens (zip depois do CSV, ou CSV depois do zip)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.3.0",
     "date": "2026-11-12",
     "title": "Zips diretos e radar de solo (CNS)",

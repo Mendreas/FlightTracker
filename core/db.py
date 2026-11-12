@@ -613,6 +613,17 @@ class Database:
                     WHEN s.tmin < 12*3600 THEN '08-12' WHEN s.tmin < 16*3600 THEN '12-16'
                     WHEN s.tmin < 20*3600 THEN '16-20' ELSE '20-24' END
                 FROM pstat s WHERE s.file_id = pending.file_id""")
+            # um zip e os CSV extraídos do mesmo bloco não podem contar duas vezes: se (aeroporto, data, bloco) já existe
+            # noutro caminho e um dos dois está dentro de um zip, o ficheiro novo fica registado (para não ser relido) mas sem plots
+            dups = c.execute("""
+                SELECT DISTINCT p.file_id, p.vpath FROM pending p JOIN files f
+                  ON f.airport = p.airport AND f.date = p.date AND f.block = p.block AND f.path <> p.vpath AND f.n_rows > 0
+                WHERE contains(lower(p.vpath), '.zip|') OR contains(lower(f.path), '.zip|')""").fetchall()
+            if dups:
+                ids = [d[0] for d in dups]
+                c.execute("DELETE FROM points WHERE file_id IN (SELECT unnest(?::INTEGER[]))", [ids])
+                c.execute("DELETE FROM pstat WHERE file_id IN (SELECT unnest(?::INTEGER[]))", [ids])
+                self._log(f"{len(dups)} ficheiro(s) repetem um bloco já importado (zip vs. extraído) e foram ignorados: " + "; ".join(d[1].split(ZSEP)[-1] for d in dups[:5]))
             c.execute("""
                 INSERT INTO files(file_id,path,name,size,mtime,airport,date,block,n_rows)
                 SELECT p.file_id, p.vpath, p.name, p.size, p.mtime, p.airport, p.date, p.block, coalesce(s.n,0)

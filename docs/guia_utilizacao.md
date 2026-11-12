@@ -152,7 +152,7 @@ O que acontece com cada ficheiro:
 
 Se a pasta tiver vários ficheiros NMIR, todos são importados e os movimentos são reconstruídos **uma só vez** no fim (e não por cada ficheiro), para a importação ser rápida.
 
-**Zips.** Os ficheiros `.zip` da pasta (e das subpastas) são abertos pela aplicação e cada `.csv` ou `.xlsx` lá dentro é importado **sem ser extraído para o disco**. A data e o bloco horário vêm do nome da pasta dentro do zip (por exemplo `EVL_GNDLIS_261023_20-24/...`), e o aeroporto da posição dos plots. Um zip já importado não é relido. Não deixe na mesma pasta um zip e os CSV extraídos do mesmo radar: seriam importados duas vezes.
+**Zips.** Os ficheiros `.zip` da pasta (e das subpastas) são abertos pela aplicação e cada `.csv` ou `.xlsx` lá dentro é importado **sem ser extraído para o disco**. A data e o bloco horário vêm do nome da pasta dentro do zip (por exemplo `EVL_GNDLIS_261023_20-24/...`), e o aeroporto da posição dos plots. Um zip já importado não é relido. Se o mesmo bloco (aeroporto, dia e bloco horário) existir como CSV extraído e dentro de um zip, a aplicação importa só o primeiro e ignora o repetido, para os plots não contarem duas vezes.
 
 **Radar de solo.** Só se guarda o que está dentro do aeroporto (raio de 3 a 4,5 km do ponto de referência, sem alvos em voo), uma amostra a cada 2 segundos e, nos alvos parados, uma a cada 30 segundos. A base fica assim com uma pequena fração do volume original.
 
