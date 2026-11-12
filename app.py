@@ -382,6 +382,12 @@ class Api:
     def ground_raw(self, gid):
         return self._safe(self.svc.ground_raw, gid)
 
+    def ground_radar(self, gid):
+        return self._safe(self.svc.ground_radar, gid)
+
+    def gradar_day(self):
+        return self._safe(self.svc.gradar_day)
+
     def run_rot(self):
         return self._safe(self.svc.run_rot)
 

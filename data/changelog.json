@@ -3,14 +3,15 @@
     "version": "4.2.0",
     "date": "2026-11-12",
     "title": "Zips diretos e radar de solo (CNS)",
-    "summary": "A importação passa a ler diretamente os zips do CNS (sem os extrair) e a app importa o radar de solo de Lisboa, Porto e Faro, que aparece na aba Solo por cima do percurso reconstruído.",
+    "summary": "A importação passa a ler diretamente os zips do CNS (sem os extrair) e a app importa o radar de solo de Lisboa, Porto e Faro. A aba Solo passa a funcionar também em Porto e Faro.",
     "sections": [
       {
         "title": "Novidades",
         "items": [
           "Importar pasta: os ficheiros .zip da pasta (e subpastas) são abertos e cada CSV lá dentro é importado sem ser extraído para o disco. A data e o bloco vêm do nome da pasta interna (por exemplo EVL_..._261023_20-24); o aeroporto, da posição dos plots. Um zip já importado não é relido.",
           "Radar de solo (CNS, ficheiros lisTGO / prtTGO / farTGO, pastas EVL_GNDLIS_...): novo tipo de ficheiro, reconhecido pelo nome. Guarda só o que está dentro do aeroporto (raio de 3 a 4,5 km do ARP), sem alvos em voo, com uma amostra a cada 2 segundos — o volume na base é uma fração do original.",
-          "Aba Solo: ao seleccionar um movimento, o percurso real do radar de solo aparece a ciano (com um marcador que acompanha o relógio), por cima do percurso reconstruído a partir da torre. Interruptor 'Radar de solo' na barra.",
+          "Aba Solo — Lisboa: ao seleccionar um movimento, o percurso real do radar de solo aparece a ciano (com um marcador que acompanha o relógio), por cima do percurso reconstruído a partir da torre. Interruptor 'Radar de solo' na barra.",
+          "Aba Solo — Porto e Faro (e Lisboa quando não há ficheiro da torre): mostra os percursos reais do radar de solo no mapa, com a mesma animação (relógio, rasto, velocidade 1× a 120×), uma tabela por movimento no solo (início, fim, duração, velocidade máxima, distância) e exportação para Excel. Os alvos parados (veículos estacionados) são ignorados; ao seleccionar um voo, liga-se à trajetória radar do ar pelo callsign.",
           "Preferências → 'Remover ficheiros que já não existem': passa a ter em conta os ficheiros dentro de zips."
         ]
       },
@@ -18,7 +19,7 @@
         "title": "Notas",
         "items": [
           "Não deixe na mesma pasta o zip e os CSV extraídos do radar aéreo: seriam importados duas vezes.",
-          "A vista de solo continua só para Lisboa; os dados de radar de solo do Porto e de Faro já ficam importados, para uma versão seguinte."
+          "Em Porto e Faro não há ficheiro da torre nem rede de taxiways: a vista mostra as posições reais do radar sobre o mapa (OSM ou satélite), sem ROT nem taxi de A-SMGCS."
         ]
       }
     ]

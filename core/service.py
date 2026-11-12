@@ -490,6 +490,20 @@ class Service:
         ways = [{"type": w["type"], "ref": w.get("ref"), "pts": [af.nodes[n] for n in w["nodes"] if n in af.nodes]} for w in af.ways]
         return {"ways": ways, "stands": af.stands, "holding": af.holding, "thr": {k: v["thr"] for k, v in af.thr.items()}}
 
+    def gradar_day(self):
+        """Vista de solo só com radar de solo (aeroportos sem ficheiro da torre / sem rede de taxiways): uma 'perna' por movimento
+        no solo, com gid sequencial, no formato que a aba Solo já anima."""
+        import datetime
+        res = self.db.gradar_day(self.airport, self.dates)
+        out = []
+        for i, t in enumerate(sorted(res["tracks"], key=lambda x: (x["date"], x["t0"])), 1):
+            d = t["date"]
+            base = datetime.datetime(2000 + int(d[:2]), int(d[2:4]), int(d[4:6]), tzinfo=datetime.timezone.utc).timestamp()
+            out.append({"gid": i, "date": d, "csn": t["csn"], "modes": t["modes"], "n": t["n"], "vmax": round(t["vmax"]), "dist": t["dist"],
+                        "t0": base + t["t0"], "t1": base + t["t1"], "t_ref": base + t["t0"],
+                        "t": [base + x for x in t["t"]], "pts": [[a, b] for a, b in t["pts"]], "gs": t["gs"]})
+        return {"tracks": out, "parked": res["parked"], "summary": self.db.gradar_summary(), "airport": self.airport}
+
     def ground_radar(self, gid: int):
         """Pontos do radar de solo (CNS, TGO) do movimento da torre: o percurso real, para comparar com o reconstruído.
         Devolve {"pts": [[epoch, lat, lon, gs_kt, modeC], ...]} (vazio se não houver radar de solo importado para esse voo)."""

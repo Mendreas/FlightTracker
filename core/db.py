@@ -81,6 +81,7 @@ GRADAR_APT_RE = re.compile(r"(?i)\b(lis|far|prt|fun)TGO")
 GRADAR_AIRPORTS = {"lis": "LPPT", "far": "LPFR", "prt": "LPPR", "fun": "LPMA"}
 GRADAR_RADIUS_M = {"LPPT": 4500, "LPPR": 3500, "LPFR": 3500, "LPMA": 3000}   # só se guarda o que está dentro deste raio do ARP
 GRADAR_STEP_S = 2                                                              # 1 amostra a cada N segundos (o original é 1 Hz)
+GRADAR_PARKED_S = 30                                                           # alvos parados (< 1 kt): 1 amostra a cada N segundos
 
 
 def is_zip_entry(p: str) -> bool:
@@ -364,6 +365,7 @@ class Database:
                 FROM read_csv(?, delim=?, header=?, columns=?, auto_detect=false, ignore_errors=true, null_padding=true, encoding=?) r
             ) WHERE tod_sec IS NOT NULL AND lat IS NOT NULL AND lon IS NOT NULL
                 AND CAST(floor(tod_sec) AS BIGINT) % {int(GRADAR_STEP_S)} = 0
+                AND (gs >= 1 OR CAST(floor(tod_sec) AS BIGINT) % {int(GRADAR_PARKED_S)} = 0)
                 AND sqrt(pow((lat - {lat0}) * 110540.0, 2) + pow((lon - ({lon0})) * {kx}, 2)) <= {GRADAR_RADIUS_M[apt]}
                 AND (gs < 60 OR modec IS NULL OR modec < {elev_fl + 3.0})""",
                   [apt, date, block, vp, path, sep, has_header, coltypes, enc])
@@ -373,6 +375,44 @@ class Database:
         r = self.con.execute("SELECT count(*), min(date), max(date), count(DISTINCT airport) FROM gradar").fetchone()
         apts = [a for (a,) in self.con.execute("SELECT DISTINCT airport FROM gradar ORDER BY 1").fetchall()]
         return {"rows": r[0], "from": r[1], "to": r[2], "airports": apts}
+
+    def gradar_day(self, airport: str, dates: list[str]) -> dict:
+        """Percursos do radar de solo das datas, para a vista de solo sem ficheiro da torre (Porto, Faro…).
+        Agrupa por callsign+data (sem callsign: bloco+trk) e parte em pernas quando há buracos > 5 min.
+        Só devolve as pernas com movimento (vel. máx ≥ 3 kt ou deslocamento ≥ 50 m); as restantes contam-se em 'parked'."""
+        if not dates:
+            return {"tracks": [], "parked": 0}
+        lat0, lon0 = AIRPORT_CENTERS.get(airport, (0.0, 0.0))
+        kx = 111320.0 * math.cos(math.radians(lat0))
+        rows = self.con.execute("""
+            SELECT date, CASE WHEN csn IS NULL OR csn = '' THEN '#' || block || '/' || coalesce(CAST(trk AS VARCHAR), '?') ELSE csn END AS k,
+                   any_value(modes) OVER (PARTITION BY date, CASE WHEN csn IS NULL OR csn = '' THEN '#' || block || '/' || coalesce(CAST(trk AS VARCHAR), '?') ELSE csn END) AS ms,
+                   t, lat, lon, gs, csn
+            FROM gradar WHERE airport = ? AND date IN (SELECT unnest(?::VARCHAR[])) ORDER BY date, k, t""", [airport, dates]).fetchall()
+        legs, parked = [], 0
+        cur, last_key, last_t = None, None, None
+
+        def close(leg):
+            nonlocal parked
+            if not leg:
+                return
+            pts = leg["pts"]
+            dist = sum(math.hypot((pts[i][0] - pts[i - 1][0]) * 110540.0, (pts[i][1] - pts[i - 1][1]) * kx) for i in range(1, len(pts)))
+            leg["dist"] = round(dist)
+            if leg["vmax"] >= 3 or dist >= 50:
+                legs.append(leg)
+            else:
+                parked += 1
+        for date, k, ms, t, la, lo, gs, csn in rows:
+            key = (date, k)
+            if key != last_key or t - last_t > 300:
+                close(cur)
+                cur = {"date": date, "csn": csn or "(sem id)", "modes": ms, "t0": t, "t1": t, "n": 0, "vmax": 0.0, "pts": [], "t": [], "gs": []}
+            cur["pts"].append((la, lo)); cur["t"].append(t); cur["gs"].append(round(gs or 0, 1))
+            cur["t1"] = t; cur["n"] += 1; cur["vmax"] = max(cur["vmax"], gs or 0)
+            last_key, last_t = key, t
+        close(cur)
+        return {"tracks": legs, "parked": parked}
 
     def gradar_track(self, airport: str, date: str, csn: str, t0: float, t1: float) -> list[list]:
         """Pontos do radar de solo de um callsign num intervalo [t0, t1] (segundos do dia): [t, lat, lon, gs, modec, trk]."""

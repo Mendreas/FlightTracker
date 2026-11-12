@@ -6,7 +6,9 @@ const Ground = (() => {
   const { esc, fmt } = C;
   const call = (...a) => FP.call(...a);
   const toast = (m, k) => FP.toast(m, k);
-  const COL = { DEPARTURE: '#ff9b2f', ARRIVAL: '#3b9cff' };
+  const COL = { DEPARTURE: '#ff9b2f', ARRIVAL: '#3b9cff', GR: '#22d3ee' };
+  const VIEW = { LPPT: [[38.762, -9.150], [38.800, -9.120]], LPPR: [[41.226, -8.702], [41.268, -8.660]], LPFR: [[37.000, -7.998], [37.032, -7.948]], LPMA: [[32.684, -16.792], [32.712, -16.752]] };
+  let mode = 'tower';             // 'tower' (ficheiro da torre + rede de taxiways, LPPT) | 'gradar' (só radar de solo do CNS: Porto, Faro, ou Lisboa sem torre)
 
   let map = null, base = null, netGroup = null, lblGroup = null, standGroup = null, acGroup = null, routeGroup = null, trailGroup = null;
   let net = null;                 // rede (ways, stands, thr)
@@ -36,7 +38,8 @@ const Ground = (() => {
     $('gdLabels').onchange = e => { e.target.checked ? drawLabels() : lblGroup.clearLayers(); };
     $('gdStands').onchange = e => { e.target.checked ? standGroup.addTo(map) : map.removeLayer(standGroup); };
   }
-  function fitAirport() { if (map) map.fitBounds([[38.762, -9.150], [38.800, -9.120]], { padding: [10, 10] }); }
+  function fitAirport() { if (map) map.fitBounds(VIEW[FP.state.airport] || VIEW.LPPT, { padding: [10, 10] }); }
+  function clearNetwork() { net = null; if (netGroup) { netGroup.clearLayers(); standGroup.clearLayers(); lblGroup.clearLayers(); } }
   function setBase(k) {
     if (base) { map.removeLayer(base); base = null; }
     if (k === 'sat') base = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 19 });
@@ -74,30 +77,61 @@ const Ground = (() => {
     const key = [...FP.state.days].sort().join(',') + '|' + FP.state.airport;
     if (!force && key === loadedKey) return;
     ensureMap();
-    const body = $('gdBody');
-    if (FP.state.airport !== 'LPPT') { body.innerHTML = '<div class="empty">A vista de solo está disponível só para Lisboa (LPPT) nesta versão.</div>'; rows = []; routes = {}; clearAnim(); return; }
+    const body = $('gdBody'), apt = FP.state.airport;
     if (!FP.state.days.size) { body.innerHTML = '<div class="empty">Aplica um filtro com pelo menos um dia.</div>'; return; }
     body.innerHTML = '<div class="empty">⏳ A carregar movimentos no solo…</div>';
     try {
-      await loadNetwork();
-      const r = await call('ground_list');
-      rows = r.rows; stats = r.stats; loadedKey = key; gradarInfo = r.gradar;
-      $('gdInfo').textContent = (r.summary.rows ? `${fmt(r.summary.rows)} movimentos da torre na base (${fmtD(r.summary.from)} → ${fmtD(r.summary.to)})` : 'Sem ficheiro da torre importado') +
-        (r.gradar && r.gradar.rows ? ` · ${fmt(r.gradar.rows)} pontos de radar de solo (${fmtD(r.gradar.from)} → ${fmtD(r.gradar.to)})` : '');
       clearAnim();
-      routes = rows.length ? await call('ground_routes', rows.filter(x => x.routable).map(x => x.gid)) : {};
-      const days = [...FP.state.days].sort();
-      dayEpoch = epochOf(days[0]);
-      buildRadar();
-      const rt = Object.values(radar).flatMap(r => [r.t[0], r.t[r.t.length - 1]]);
-      const t0 = Math.min(...rows.map(x => x.t_ref || Infinity), ...rt), t1 = Math.max(...rows.map(x => x.t_ref || 0), ...rt);
-      $('gdTime').min = Math.max(0, Math.floor(t0 - dayEpoch) - 900); $('gdTime').max = Math.ceil(t1 - dayEpoch) + 900;
-      setSim(+$('gdTime').min);
-      $('gdCount').textContent = `${rows.length} movimentos · ${Object.keys(routes).length} com percurso · ${Object.keys(radar).length} trajetórias radar`;
-      if (!rows.length) body.innerHTML = `<div class="empty">Sem movimentos da torre para os dias seleccionados${r.summary.rows ? ' — o ficheiro importado cobre ' + fmtD(r.summary.from) + ' a ' + fmtD(r.summary.to) : ''}. A animação mostra só o radar.</div>`;
-      else renderSub();
+      let tw = null;
+      if (apt === 'LPPT') { await loadNetwork(); tw = await call('ground_list'); gradarInfo = tw.gradar; }
+      else clearNetwork();
+      mode = tw && tw.rows.length ? 'tower' : 'gradar';
+      document.querySelector('[data-gsub="rot"]').style.display = mode === 'gradar' ? 'none' : '';
+      if (mode === 'gradar' && sub !== 'mov') { sub = 'mov'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'mov')); }
+      loadedKey = key;
+      if (mode === 'tower') await loadTower(tw);
+      else await loadRadarSolo(tw);
       fitAirport();
     } catch (e) { body.innerHTML = `<div class="empty">Erro: ${esc(e.message)}</div>`; toast(e.message, 'err'); }
+  }
+  function setupTime() {
+    const rt = Object.values(radar).flatMap(r => [r.t[0], r.t[r.t.length - 1]]);
+    const t0 = Math.min(...rows.map(x => x.t_ref || Infinity), ...rt), t1 = Math.max(...rows.map(x => x.t_ref || 0), ...rt);
+    if (isFinite(t0)) { $('gdTime').min = Math.max(0, Math.floor(t0 - dayEpoch) - 900); $('gdTime').max = Math.ceil(t1 - dayEpoch) + 900; }
+    setSim(+$('gdTime').min);
+  }
+  async function loadTower(r) {
+    const body = $('gdBody');
+    rows = r.rows; stats = r.stats;
+    $('gdInfo').textContent = (r.summary.rows ? `${fmt(r.summary.rows)} movimentos da torre na base (${fmtD(r.summary.from)} → ${fmtD(r.summary.to)})` : 'Sem ficheiro da torre importado') +
+      (r.gradar && r.gradar.rows ? ` · ${fmt(r.gradar.rows)} pontos de radar de solo (${fmtD(r.gradar.from)} → ${fmtD(r.gradar.to)})` : '');
+    routes = rows.length ? await call('ground_routes', rows.filter(x => x.routable).map(x => x.gid)) : {};
+    const days = [...FP.state.days].sort();
+    dayEpoch = epochOf(days[0]);
+    buildRadar();
+    setupTime();
+    $('gdCount').textContent = `${rows.length} movimentos · ${Object.keys(routes).length} com percurso · ${Object.keys(radar).length} trajetórias radar`;
+    renderSub();
+  }
+  /* vista só com radar de solo do CNS (TGO): um percurso por movimento no solo, animado como os da torre */
+  async function loadRadarSolo(tw) {
+    const body = $('gdBody');
+    const r = await call('gradar_day');
+    gradarInfo = r.summary;
+    rows = r.tracks; stats = null; routes = {};
+    for (const t of rows) routes[t.gid] = { pts: t.pts, t: t.t, t0: t.t0, t1: t.t1, mt: 'GR', csn: t.csn };
+    const days = [...FP.state.days].sort();
+    dayEpoch = epochOf(days[0]);
+    buildRadar();
+    for (const t of rows) { const f = FP.state.allFlights.find(x => x.csn === t.csn && x.date === t.date && x.airport === FP.state.airport); t.flight_id = f ? f.flight_id : null; }
+    const s = r.summary;
+    $('gdInfo').textContent = s.rows ? `${fmt(s.rows)} pontos de radar de solo na base (${fmtD(s.from)} → ${fmtD(s.to)}) · sem ficheiro da torre nem rede de taxiways para ${FP.state.airport}: mostram-se as posições reais do radar` : `Sem radar de solo importado para ${FP.state.airport}`;
+    $('gdCount').textContent = `${rows.length} percursos no solo (${r.parked} alvos parados ignorados) · ${Object.keys(radar).length} trajetórias radar`;
+    setupTime();
+    if (!rows.length) {
+      body.innerHTML = `<div class="empty">Sem radar de solo para ${FP.state.airport} nos dias seleccionados${s.rows ? ' — o importado cobre ' + fmtD(s.from) + ' a ' + fmtD(s.to) : ''}. ` +
+        `Importa os zips do radar de solo (ex.: ${FP.state.airport === 'LPPR' ? 'prtTGO_prtARP' : FP.state.airport === 'LPFR' ? 'farTGO_farARP' : 'lisTGO_lisARP'}.AAAA-MM.zip) com “Importar pasta…”.</div>`;
+    } else renderSub();
   }
   const epochOf = d => Date.UTC(2000 + +d.slice(0, 2), +d.slice(2, 4) - 1, +d.slice(4, 6)) / 1000;
   const fmtD = d => d ? `${d.slice(4, 6)}/${d.slice(2, 4)}/20${d.slice(0, 2)}` : '—';
@@ -107,6 +141,19 @@ const Ground = (() => {
   /* ---------------------------------------------------------------- tabelas */
   function renderSub() {
     const body = $('gdBody');
+    if (mode === 'gradar') {
+      body.innerHTML = C.table([
+        { k: 'date', label: 'Data', fmt: fmtD }, { k: 'csn', label: 'Voo / alvo', fmt: v => `<b>${esc(v)}</b>` }, { k: 'modes', label: 'Modo S', fmt: v => v || '—' },
+        { k: 't0', label: 'Início', fmt: v => hmsAbs(v) }, { k: 't1', label: 'Fim', fmt: v => hmsAbs(v) }, { k: 'dur', label: 'Duração', fmt: v => dur(v) },
+        { k: 'vmax', label: 'Vel. máx (kt)' }, { k: 'dist', label: 'Distância (m)', fmt: v => fmt(v) }, { k: 'n', label: 'Pontos' },
+        { k: 'flight_id', label: 'Radar', fmt: v => v ? `<a href="#" class="csn-link" data-fid="${v}">ver</a>` : '<span class="muted">—</span>' },
+      ], rows.map(r => Object.assign(r, { dur: r.t1 - r.t0 })), { id: 'gdTable', limit: 3000, rowClass: r => 'gd-row' + (r.gid === sel ? ' sel' : '') });
+      body.onclick = ev => {
+        if (ev.target.classList.contains('csn-link')) { ev.preventDefault(); FP.focusFlight(+ev.target.dataset.fid); return; }
+        const tr = ev.target.closest('tr[data-i]'); if (tr) select(rows[+tr.dataset.i].gid);
+      };
+      return;
+    }
     if (sub === 'mov') {
       body.innerHTML = C.table([
         { k: 'mt', label: 'Mov.', fmt: v => `<span class="badge ${v === 'DEPARTURE' ? 'dep' : 'arr'}">${v === 'DEPARTURE' ? 'DEP' : 'ARR'}</span>` },
@@ -164,7 +211,7 @@ const Ground = (() => {
     routeGroup.clearLayers(); gtrack = null; if (gtMarker) { acGroup.removeLayer(gtMarker); gtMarker = null; }
     if (sel == null) return;
     const r = routes[sel], row = rows.find(x => x.gid === sel);
-    loadGradar(sel, !r);
+    if (mode === 'tower') loadGradar(sel, !r);
     if (!r) { if (!(gradarInfo && gradarInfo.rows)) toast('Sem percurso reconstruído para este movimento (sem sequência de taxi).', 'err'); return; }
     L.polyline(r.pts, { color: COL[r.mt] || '#fff', weight: 4, opacity: .9 }).addTo(routeGroup);
     L.circleMarker(r.pts[0], { radius: 5, color: '#35c46a', fillOpacity: 1 }).bindTooltip('início ' + hms(r.t0)).addTo(routeGroup);
@@ -247,12 +294,17 @@ const Ground = (() => {
   /* trajetórias radar do dia (já carregadas pelo Mapa: FP.state.tracks com tod_sec no índice 8) */
   function buildRadar() {
     radar = {}; linkByFid = {};
-    for (const r of rows) if (r.flight_id && routes[r.gid]) linkByFid[r.flight_id] = r.gid;
+    if (mode === 'tower') for (const r of rows) if (r.flight_id && routes[r.gid]) linkByFid[r.flight_id] = r.gid;
     for (const f of FP.state.allFlights) {
       if (f.airport !== FP.state.airport) continue;
       const pts = FP.state.tracks[f.flight_id]; if (!pts || pts.length < 2) continue;
       const base = epochOf(f.date);
-      const g = linkByFid[f.flight_id] ? routes[linkByFid[f.flight_id]] : null;
+      let g = linkByFid[f.flight_id] ? routes[linkByFid[f.flight_id]] : null;
+      if (mode === 'gradar' && !g) {   // sem torre: emparelha por callsign+data, pela perna de solo mais próxima do fim (chegada) ou do início (partida) da trajetória radar
+        const tt = pts.map(p => base + (p[8] ?? 0)), ref = f.cls === 'arr' ? tt[tt.length - 1] : tt[0];
+        let best = 1e9;
+        for (const rw of rows) if (rw.csn === f.csn && rw.date === f.date) { const d = Math.abs((f.cls === 'arr' ? rw.t0 : rw.t1) - ref); if (d < best && d < 600) { best = d; g = routes[rw.gid]; } }
+      }
       radar[f.flight_id] = { pts: pts.map(p => [p[0], p[1]]), t: pts.map(p => base + (p[8] ?? 0)), alt: pts.map(p => p[2]), csn: f.csn, cls: f.cls,
         g0: g && f.cls === 'arr' ? g.t0 : null, g1: g && f.cls === 'dep' ? g.t1 : null };   // handoff: chegada some ao aterrar (t0 do solo); partida só aparece após ATOT (t1 do solo)
     }
@@ -299,7 +351,7 @@ const Ground = (() => {
         loadedKey = ''; load(true);
       } catch (e) { toast(e.message, 'err'); }
     };
-    $('gdExport').onclick = async () => { try { const p = await call('export', 'ground', {}, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    $('gdExport').onclick = async () => { try { if (mode === 'gradar') { const p = await call('export_rows', `Radar de solo — ${FP.state.airport}`, ['Data', 'Voo / alvo', 'Modo S', 'Início (UTC)', 'Fim (UTC)', 'Duração (s)', 'Vel. máx (kt)', 'Distância (m)', 'Pontos'], rows.map(r => [fmtD(r.date), r.csn, r.modes || '', hmsAbs(r.t0), hmsAbs(r.t1), Math.round(r.t1 - r.t0), r.vmax, r.dist, r.n])); if (p) toast('Exportado para ' + p, 'ok'); return; } const p = await call('export', 'ground', {}, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
   });
   /* ================================================================ Cruzamento de fontes */
   let cross = null, crossKey = '';
