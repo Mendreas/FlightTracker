@@ -27,7 +27,7 @@ from core.httpapi import start_server
 from core.service import Service
 
 APP_NAME = "FlightTracker"
-VERSION = "4.1.6"
+VERSION = "4.2.0"
 
 
 def setup_logging(folder: Path):

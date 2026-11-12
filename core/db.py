@@ -16,11 +16,15 @@ from __future__ import annotations
 
 import logging
 import json
+import math
 import os
 import re
 import sys
+import shutil
+import tempfile
 import threading
 import time
+import zipfile
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -65,6 +69,26 @@ def resource_path(*parts) -> Path:
 # Ordem das colunas nos CSV do CNS (usada quando o ficheiro vem sem linha de cabeçalho)
 CNS_DEFAULT_COLUMNS = ("latitude", "longitude", "tod", "trknr", "modes", "modea", "csn", "modec", "x", "y", "baroh",
                        "vx", "vy", "roc", "ts", "tas", "gspadd", "iar", "mac", "gspa", "tasa", "iara", "maca", "rectime")
+
+
+# --- zips: cada CSV/XLSX dentro de um zip é tratado como um ficheiro virtual "<zip>|<caminho interno>"
+ZSEP = "|"
+_SIGCACHE: dict[str, tuple[int, float]] = {}      # ficheiro virtual -> (tamanho, mtime do zip), preenchido em scan_folder
+
+# --- radar de solo (CNS "TGO", pastas EVL_GNDLIS_AAMMDD_HH-HH/TRACKER/xxxTGO0/xxxTGO0_xxxARP.csv)
+GRADAR_RE = re.compile(r"(?i)(GNDLIS|[a-z]{3}TGO\d*[_/\\.|])")
+GRADAR_APT_RE = re.compile(r"(?i)\b(lis|far|prt|fun)TGO")
+GRADAR_AIRPORTS = {"lis": "LPPT", "far": "LPFR", "prt": "LPPR", "fun": "LPMA"}
+GRADAR_RADIUS_M = {"LPPT": 4500, "LPPR": 3500, "LPFR": 3500, "LPMA": 3000}   # só se guarda o que está dentro deste raio do ARP
+GRADAR_STEP_S = 2                                                              # 1 amostra a cada N segundos (o original é 1 Hz)
+
+
+def is_zip_entry(p: str) -> bool:
+    return ZSEP in p and p.split(ZSEP, 1)[0].lower().endswith(".zip")
+
+
+def is_gradar_path(p: str) -> bool:
+    return bool(GRADAR_RE.search(p))
 
 
 class Database:
@@ -130,6 +154,9 @@ class Database:
         for col in ("mp_regulation", "dep_window", "dep_conformance", "flttyp", "diverted", "operator", "flt_uid"):
             c.execute(f'ALTER TABLE nmir ADD COLUMN IF NOT EXISTS "{col}" VARCHAR')
         c.execute("CREATE TABLE IF NOT EXISTS meta(key VARCHAR PRIMARY KEY, value VARCHAR)")
+        c.execute("""CREATE TABLE IF NOT EXISTS gradar(
+            airport VARCHAR, date VARCHAR, block VARCHAR, file_key VARCHAR,
+            t DOUBLE, trk INTEGER, csn VARCHAR, modes VARCHAR, lat DOUBLE, lon DOUBLE, modec DOUBLE, gs DOUBLE)""")
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
         c.execute("CREATE TABLE IF NOT EXISTS aux_files(path VARCHAR PRIMARY KEY, kind VARCHAR, size BIGINT, mtime DOUBLE, rows INTEGER, imported TIMESTAMP DEFAULT current_timestamp)")
@@ -191,23 +218,69 @@ class Database:
     # ------------------------------------------------------------------ import
     @staticmethod
     def scan_folder(folder: str) -> list[str]:
+        """Ficheiros .csv/.xlsx da pasta e subpastas; os .zip são abertos e cada .csv/.xlsx lá dentro entra como ficheiro virtual."""
         out = []
         for root, _dirs, files in os.walk(folder):
             for fn in files:
-                if fn.lower().endswith((".csv", ".xlsx")) and not fn.startswith((".", "~", "$")):
-                    out.append(os.path.join(root, fn))
+                if fn.startswith((".", "~", "$")):
+                    continue
+                low = fn.lower()
+                full = os.path.join(root, fn)
+                if low.endswith((".csv", ".xlsx")):
+                    out.append(full)
+                elif low.endswith(".zip"):
+                    try:
+                        zmt = os.stat(full).st_mtime
+                        with zipfile.ZipFile(full) as z:
+                            for zi in z.infolist():
+                                base = zi.filename.rsplit("/", 1)[-1]
+                                if zi.is_dir() or not base.lower().endswith((".csv", ".xlsx")) or base.startswith((".", "~", "$")):
+                                    continue
+                                if zi.filename.startswith("__MACOSX/"):
+                                    continue
+                                vp = full + ZSEP + zi.filename
+                                _SIGCACHE[vp] = (zi.file_size, zmt)
+                                out.append(vp)
+                    except (zipfile.BadZipFile, OSError) as e:
+                        logging.warning("zip ignorado %s: %s", full, e)
         out.sort()
         return out
 
     @staticmethod
+    def file_sig(p: str) -> tuple[int, float]:
+        """(tamanho, mtime) — para um ficheiro dentro de um zip: (tamanho da entrada, mtime do zip)."""
+        if is_zip_entry(p):
+            sg = _SIGCACHE.get(p)
+            if sg is None:
+                zp, inner = p.split(ZSEP, 1)
+                with zipfile.ZipFile(zp) as z:
+                    sg = (z.getinfo(inner).file_size, os.stat(zp).st_mtime)
+                _SIGCACHE[p] = sg
+            return sg
+        st = os.stat(p)
+        return st.st_size, st.st_mtime
+
+    @staticmethod
+    def _first_line(path: str) -> bytes:
+        if is_zip_entry(path):
+            zp, inner = path.split(ZSEP, 1)
+            with zipfile.ZipFile(zp) as z, z.open(inner) as fh:
+                return fh.readline()
+        with open(path, "rb") as fh:
+            return fh.readline()
+
+    @staticmethod
     def classify_file(path: str) -> str:
-        """'radar' (CSV do CNS), 'opdi' (flight events), 'ground' (export da torre), 'nmir' (Excel) — pela 1ª linha."""
+        """'radar' (CSV do CNS), 'gradar' (radar de solo do CNS, pelo nome), 'opdi' (flight events),
+        'ground' (export da torre), 'nmir' (Excel) — pela 1ª linha."""
         low = path.lower()
         if low.endswith(".xlsx"):
             return "nmir"
+        if is_gradar_path(path):
+            return "gradar"
         try:
-            hdr = open(path, "rb").readline().decode("utf-8-sig", "replace").lower()
-        except OSError:
+            hdr = Database._first_line(path).decode("utf-8-sig", "replace").lower()
+        except (OSError, KeyError, zipfile.BadZipFile):
             return "radar"
         if "flt_id" in hdr and "event_time" in hdr:
             return "opdi"
@@ -215,20 +288,97 @@ class Database:
             return "ground"
         return "radar"
 
+    @staticmethod
+    def _extract(path: str, dst_dir: str, idx: int = 0) -> str:
+        """Ficheiro real para ler: o próprio caminho, ou a entrada do zip extraída para dst_dir."""
+        if not is_zip_entry(path):
+            return path
+        zp, inner = path.split(ZSEP, 1)
+        dst = os.path.join(dst_dir, f"{idx:05d}_{os.path.basename(inner)}")
+        with zipfile.ZipFile(zp) as z, z.open(inner) as src, open(dst, "wb") as out:
+            shutil.copyfileobj(src, out, 1 << 20)
+        return dst
+
     def _known_aux(self) -> dict[str, tuple[int, float]]:
         return {p: (s, m) for p, s, m in self.con.execute("SELECT path, size, mtime FROM aux_files").fetchall()}
 
     def import_aux(self, path: str, kind: str) -> int:
-        """Importa um ficheiro NMIR / OPDI / torre e regista-o em aux_files."""
-        if kind == "nmir":
-            n = self.import_nmir_xlsx(path, rebuild=False)   # a tabela de movimentos é reconstruída uma só vez no fim
-        elif kind == "opdi":
-            n = self.import_opdi(path)["rows"]
-        else:
-            n = self.import_ground(path)["rows"]
-        st = os.stat(path)
-        self.con.execute("INSERT OR REPLACE INTO aux_files VALUES (?,?,?,?,?,current_timestamp)", [path, kind, st.st_size, st.st_mtime, n])
+        """Importa um ficheiro NMIR / OPDI / torre / radar de solo (também dentro de um zip) e regista-o em aux_files."""
+        tmp = tempfile.mkdtemp(prefix="ft_aux_") if is_zip_entry(path) else None
+        try:
+            real = self._extract(path, tmp) if tmp else path
+            if kind == "nmir":
+                n = self.import_nmir_xlsx(real, rebuild=False)   # a tabela de movimentos é reconstruída uma só vez no fim
+            elif kind == "opdi":
+                n = self.import_opdi(real)["rows"]
+            elif kind == "gradar":
+                n = self.import_gradar(real, vpath=path)
+            else:
+                n = self.import_ground(real)["rows"]
+        finally:
+            if tmp:
+                shutil.rmtree(tmp, ignore_errors=True)
+        size, mtime = self.file_sig(path)
+        self.con.execute("INSERT OR REPLACE INTO aux_files VALUES (?,?,?,?,?,current_timestamp)", [path, kind, size, mtime, n])
         return n
+
+    # ------------------------------------------------------------------ radar de solo
+    def import_gradar(self, path: str, vpath: str | None = None) -> int:
+        """Importa um CSV do radar de solo (TGO) do CNS. Guarda só o que está dentro do aeroporto
+        (raio GRADAR_RADIUS_M do ARP; no ar, a velocidade/altitude excluem os alvos em voo) e 1 amostra a cada GRADAR_STEP_S s."""
+        from .geo import AIRPORTS
+        vp = vpath or path
+        m = GRADAR_APT_RE.search(vp)
+        apt = GRADAR_AIRPORTS.get(m.group(1).lower()) if m else None
+        if not apt:
+            raise RuntimeError("aeroporto do radar de solo não identificado (esperado lisTGO / prtTGO / farTGO no nome)")
+        meta = parse_path(vp)
+        date, block = meta["date"], meta["block"]
+        lat0, lon0 = AIRPORT_CENTERS[apt]
+        elev_fl = (AIRPORTS.get(apt, {}).get("elev") or 0) / 100.0
+        cols, enc, sep, has_header = self._read_header(path)
+        pick = {k: self._pick(cols, k) for k in ("lat", "lon", "tod", "trknr", "modes", "csn", "modec")}
+        if not (pick["lat"] and pick["lon"] and pick["tod"]):
+            raise RuntimeError("radar de solo: faltam colunas latitude/longitude/tod")
+
+        def q(name, fallback=None):
+            c = name if name in cols else fallback
+            return f'trim(r."{c}")' if c and c in cols else "NULL"
+
+        def num(expr):
+            return f"TRY_CAST(replace({expr}, ',', '.') AS DOUBLE)"
+        tod = q(pick["tod"])
+        tod_sec = (f"TRY_CAST(split_part({tod}, ':', 1) AS INTEGER)*3600 + TRY_CAST(split_part({tod}, ':', 2) AS INTEGER)*60 + "
+                   f"TRY_CAST(replace(split_part({tod}, ':', 3), ',', '.') AS DOUBLE)")
+        coltypes = {c: "VARCHAR" for c in cols}
+        kx = 111320.0 * math.cos(math.radians(lat0))
+        c = self.con
+        c.execute("DELETE FROM gradar WHERE file_key = ?", [vp])
+        c.execute(f"""
+            INSERT INTO gradar
+            SELECT ?, ?, ?, ?, tod_sec, trk, csn, modes, lat, lon, modec, gs FROM (
+                SELECT {tod_sec} AS tod_sec, TRY_CAST({q(pick['trknr'])} AS INTEGER) AS trk,
+                       upper({q(pick['csn'])}) AS csn, {q(pick['modes'])} AS modes,
+                       {num(q(pick['lat']))} AS lat, {num(q(pick['lon']))} AS lon, {num(q(pick['modec']))} AS modec,
+                       sqrt(pow(coalesce({num(q('vx'))}, 0), 2) + pow(coalesce({num(q('vy'))}, 0), 2)) * 1.943844 AS gs
+                FROM read_csv(?, delim=?, header=?, columns=?, auto_detect=false, ignore_errors=true, null_padding=true, encoding=?) r
+            ) WHERE tod_sec IS NOT NULL AND lat IS NOT NULL AND lon IS NOT NULL
+                AND CAST(floor(tod_sec) AS BIGINT) % {int(GRADAR_STEP_S)} = 0
+                AND sqrt(pow((lat - {lat0}) * 110540.0, 2) + pow((lon - ({lon0})) * {kx}, 2)) <= {GRADAR_RADIUS_M[apt]}
+                AND (gs < 60 OR modec IS NULL OR modec < {elev_fl + 3.0})""",
+                  [apt, date, block, vp, path, sep, has_header, coltypes, enc])
+        return c.execute("SELECT count(*) FROM gradar WHERE file_key = ?", [vp]).fetchone()[0]
+
+    def gradar_summary(self) -> dict:
+        r = self.con.execute("SELECT count(*), min(date), max(date), count(DISTINCT airport) FROM gradar").fetchone()
+        apts = [a for (a,) in self.con.execute("SELECT DISTINCT airport FROM gradar ORDER BY 1").fetchall()]
+        return {"rows": r[0], "from": r[1], "to": r[2], "airports": apts}
+
+    def gradar_track(self, airport: str, date: str, csn: str, t0: float, t1: float) -> list[list]:
+        """Pontos do radar de solo de um callsign num intervalo [t0, t1] (segundos do dia): [t, lat, lon, gs, modec, trk]."""
+        rows = self.con.execute("""SELECT t, lat, lon, gs, modec, trk FROM gradar
+                                   WHERE airport=? AND date=? AND csn=? AND t BETWEEN ? AND ? ORDER BY t""", [airport, date, csn, t0, t1]).fetchall()
+        return [list(r) for r in rows]
 
     def _known_files(self) -> dict[str, tuple[int, float]]:
         return {p: (s, m) for p, s, m in self.con.execute("SELECT path, size, mtime FROM files").fetchall()}
@@ -239,15 +389,18 @@ class Database:
         todo, aux = [], []
         allf = self.scan_folder(folder)
         for p in allf:
-            st = os.stat(p)
+            try:
+                size, mtime = self.file_sig(p)
+            except OSError:
+                continue
             kind = self.classify_file(p)
             if kind == "radar":
                 k = known.get(p)
-                if k is None or k[0] != st.st_size or abs(k[1] - st.st_mtime) > 1:
+                if k is None or k[0] != size or abs(k[1] - mtime) > 1:
                     todo.append(p)
             else:
                 k = known_aux.get(p)
-                if k is None or k[0] != st.st_size or abs(k[1] - st.st_mtime) > 1:
+                if k is None or k[0] != size or abs(k[1] - mtime) > 1:
                     aux.append((p, kind))
         return todo, len(allf), aux
 
@@ -334,7 +487,28 @@ class Database:
             pass
 
     def _import_batch(self, paths: list[str]) -> tuple[int, list[str]]:
-        """Importa vários CSV de uma vez (agrupados por cabeçalho). Devolve (linhas, erros)."""
+        """Importa vários CSV de uma vez (agrupados por cabeçalho). Devolve (linhas, erros).
+        Entradas de zip são extraídas para uma pasta temporária durante o lote e registadas com o caminho virtual."""
+        if not any(is_zip_entry(p) for p in paths):
+            return self._import_batch_real(paths, {})
+        tmp = tempfile.mkdtemp(prefix="ft_zip_")
+        try:
+            real, vmap, errs0 = [], {}, []
+            for i, p in enumerate(paths):
+                try:
+                    rp = self._extract(p, tmp, i)
+                except (OSError, KeyError, zipfile.BadZipFile) as e:
+                    errs0.append(f"{p.split(ZSEP)[-1]}: {e}")
+                    continue
+                real.append(rp)
+                if rp != p:
+                    vmap[rp] = p
+            n, errs = self._import_batch_real(real, vmap)
+            return n, errs0 + errs
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def _import_batch_real(self, paths: list[str], vmap: dict[str, str]) -> tuple[int, list[str]]:
         t_batch = time.time()
         mb = sum(os.path.getsize(p) for p in paths) / 1048576
         errors = []
@@ -355,15 +529,18 @@ class Database:
                 errors.extend(f"{os.path.basename(p)}: {e}" for p in plist)
                 continue
             # remove versões anteriores e prepara metadados por ficheiro
-            c.execute("DELETE FROM points WHERE file_id IN (SELECT file_id FROM files WHERE path IN (SELECT unnest(?::VARCHAR[])))", [plist])
-            c.execute("DELETE FROM files WHERE path IN (SELECT unnest(?::VARCHAR[]))", [plist])
+            vlist = [vmap.get(p, p) for p in plist]
+            c.execute("DELETE FROM points WHERE file_id IN (SELECT file_id FROM files WHERE path IN (SELECT unnest(?::VARCHAR[])))", [vlist])
+            c.execute("DELETE FROM files WHERE path IN (SELECT unnest(?::VARCHAR[]))", [vlist])
             next_id = c.execute("SELECT coalesce(max(file_id),0)+1 FROM files").fetchone()[0]
-            c.execute("CREATE OR REPLACE TEMP TABLE pending(file_id INTEGER, path VARCHAR, name VARCHAR, size BIGINT, mtime DOUBLE, airport VARCHAR, date VARCHAR, block VARCHAR)")
+            c.execute("CREATE OR REPLACE TEMP TABLE pending(file_id INTEGER, path VARCHAR, name VARCHAR, size BIGINT, mtime DOUBLE, airport VARCHAR, date VARCHAR, block VARCHAR, vpath VARCHAR)")
             rows = []
             for i, p in enumerate(plist):
-                st = os.stat(p); m = parse_path(p)
-                rows.append((next_id + i, p, os.path.basename(p), st.st_size, st.st_mtime, m["airport"], m["date"], m["block"]))
-            c.executemany("INSERT INTO pending VALUES (?,?,?,?,?,?,?,?)", rows)
+                vp = vmap.get(p, p)
+                size, mtime = self.file_sig(vp) if is_zip_entry(vp) else (os.stat(p).st_size, os.stat(p).st_mtime)
+                m = parse_path(vp)
+                rows.append((next_id + i, p, os.path.basename(vp.split(ZSEP)[-1]), size, mtime, m["airport"], m["date"], m["block"], vp))
+            c.executemany("INSERT INTO pending VALUES (?,?,?,?,?,?,?,?,?)", rows)
             try:
                 c.execute(f"""
                     INSERT INTO points
@@ -398,7 +575,7 @@ class Database:
                 FROM pstat s WHERE s.file_id = pending.file_id""")
             c.execute("""
                 INSERT INTO files(file_id,path,name,size,mtime,airport,date,block,n_rows)
-                SELECT p.file_id, p.path, p.name, p.size, p.mtime, p.airport, p.date, p.block, coalesce(s.n,0)
+                SELECT p.file_id, p.vpath, p.name, p.size, p.mtime, p.airport, p.date, p.block, coalesce(s.n,0)
                 FROM pending p LEFT JOIN pstat s USING(file_id)""")
             total_rows += c.execute("SELECT coalesce(sum(n),0) FROM pstat").fetchone()[0]
         self._log(f"lote de {len(paths)} ficheiros ({mb:.1f} MB) -> {int(total_rows)} linhas em {time.time()-t_batch:.1f}s"
@@ -428,11 +605,11 @@ class Database:
         with guard():
             todo, total_found, aux = self.pending_files(folder)
         self._log(f"== importar {folder}: {len(todo)} CSV radar novos + {len(aux)} NMIR/OPDI/torre, de {total_found} (scan {time.time()-t0:.1f}s)")
-        aux_done = {"nmir": 0, "opdi": 0, "ground": 0}
+        aux_done = {"nmir": 0, "opdi": 0, "ground": 0, "gradar": 0}
         aux_errs: list[str] = []
         for i, (p, kind) in enumerate(aux):
             if progress:
-                progress(i, len(aux), f"{ {'nmir': 'NMIR', 'opdi': 'OPDI', 'ground': 'torre'}[kind] }: {os.path.basename(p)}")
+                progress(i, len(aux), f"{ {'nmir': 'NMIR', 'opdi': 'OPDI', 'ground': 'torre', 'gradar': 'radar de solo'}[kind] }: {os.path.basename(p)}")
             t_a = time.time()
             try:
                 with guard():
@@ -470,7 +647,12 @@ class Database:
 
     def remove_missing(self) -> int:
         """Apaga da base os ficheiros que já não existem no disco."""
-        gone = [p for (p,) in self.con.execute("SELECT path FROM files").fetchall() if not os.path.exists(p)]
+        def missing(p: str) -> bool:     # ficheiro dentro de um zip: falta se o zip já não existe
+            return not os.path.exists(p.split(ZSEP, 1)[0] if is_zip_entry(p) else p)
+        gone = [p for (p,) in self.con.execute("SELECT path FROM files").fetchall() if missing(p)]
+        for (p,) in self.con.execute("SELECT path FROM aux_files WHERE kind='gradar'").fetchall():
+            if missing(p):
+                self.con.execute("DELETE FROM gradar WHERE file_key=?", [p]); self.con.execute("DELETE FROM aux_files WHERE path=?", [p])
         for p in gone:
             fid = self.con.execute("SELECT file_id FROM files WHERE path=?", [p]).fetchone()[0]
             self.con.execute("DELETE FROM points WHERE file_id=?", [fid])

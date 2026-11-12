@@ -20,6 +20,8 @@ const Ground = (() => {
   let radar = {};                 // flight_id -> {pts:[[lat,lon]], t:[epoch], alt:[], csn, cls, g0, g1}
   let linkByFid = {};             // flight_id -> gid (ligação torre↔radar)
   let loadedKey = '';
+  let gtrack = null, gtMarker = null;   // radar de solo (CNS) do movimento seleccionado: {t:[epoch], pts:[[lat,lon]], gs:[kt]}
+  let gradarInfo = null;
 
   /* ---------------------------------------------------------------- mapa */
   function ensureMap() {
@@ -79,8 +81,9 @@ const Ground = (() => {
     try {
       await loadNetwork();
       const r = await call('ground_list');
-      rows = r.rows; stats = r.stats; loadedKey = key;
-      $('gdInfo').textContent = r.summary.rows ? `${fmt(r.summary.rows)} movimentos da torre na base (${fmtD(r.summary.from)} → ${fmtD(r.summary.to)})` : 'Sem ficheiro da torre importado';
+      rows = r.rows; stats = r.stats; loadedKey = key; gradarInfo = r.gradar;
+      $('gdInfo').textContent = (r.summary.rows ? `${fmt(r.summary.rows)} movimentos da torre na base (${fmtD(r.summary.from)} → ${fmtD(r.summary.to)})` : 'Sem ficheiro da torre importado') +
+        (r.gradar && r.gradar.rows ? ` · ${fmt(r.gradar.rows)} pontos de radar de solo (${fmtD(r.gradar.from)} → ${fmtD(r.gradar.to)})` : '');
       clearAnim();
       routes = rows.length ? await call('ground_routes', rows.filter(x => x.routable).map(x => x.gid)) : {};
       const days = [...FP.state.days].sort();
@@ -158,15 +161,28 @@ const Ground = (() => {
       if (on && o.scrollTable) tr.scrollIntoView({ block: 'center' });
     });
     if (o.scrollTable && sub !== 'mov') { sub = 'mov'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'mov')); renderSub(); }
-    routeGroup.clearLayers();
+    routeGroup.clearLayers(); gtrack = null; if (gtMarker) { acGroup.removeLayer(gtMarker); gtMarker = null; }
     if (sel == null) return;
     const r = routes[sel], row = rows.find(x => x.gid === sel);
-    if (!r) { toast('Sem percurso reconstruído para este movimento (sem sequência de taxi).', 'err'); return; }
+    loadGradar(sel, !r);
+    if (!r) { if (!(gradarInfo && gradarInfo.rows)) toast('Sem percurso reconstruído para este movimento (sem sequência de taxi).', 'err'); return; }
     L.polyline(r.pts, { color: COL[r.mt] || '#fff', weight: 4, opacity: .9 }).addTo(routeGroup);
     L.circleMarker(r.pts[0], { radius: 5, color: '#35c46a', fillOpacity: 1 }).bindTooltip('início ' + hms(r.t0)).addTo(routeGroup);
     L.circleMarker(r.pts[r.pts.length - 1], { radius: 5, color: '#ff5d5d', fillOpacity: 1 }).bindTooltip('fim ' + hms(r.t1)).addTo(routeGroup);
     if (!o.keepTime) { map.fitBounds(L.latLngBounds(r.pts).pad(.3)); setSim(r.t0 - dayEpoch + 1); }
     else drawFrame();
+  }
+  /* radar de solo (CNS): posições reais do voo seleccionado, a ciano; compara-se com o percurso reconstruído a partir da torre */
+  async function loadGradar(gid, fit) {
+    if (!(gradarInfo && gradarInfo.rows) || !$('gdGradar').checked) return;
+    let r;
+    try { r = await call('ground_radar', gid); } catch (e) { return; }
+    if (sel !== gid) return;
+    if (!r.pts.length) { if (fit) toast('Este voo não tem radar de solo importado.', 'err'); return; }
+    gtrack = { t: r.pts.map(p => p[0]), pts: r.pts.map(p => [p[1], p[2]]), gs: r.pts.map(p => p[3]) };
+    L.polyline(gtrack.pts, { color: '#22d3ee', weight: 2.5, opacity: .95, dashArray: '2 4', interactive: false }).bindTooltip('radar de solo').addTo(routeGroup);
+    for (const p of r.pts) L.circleMarker([p[1], p[2]], { radius: 1.5, color: '#22d3ee', weight: 0, fillOpacity: .8, interactive: false }).addTo(routeGroup);
+    if (fit) { map.fitBounds(L.latLngBounds(gtrack.pts).pad(.3)); setSim(gtrack.t[0] - dayEpoch); } else drawFrame();
   }
   function posAt(r, t) {
     const T = r.t, P = r.pts;
@@ -202,6 +218,11 @@ const Ground = (() => {
       }
     }
     for (const [gid, mk] of markers) if (!active.has(gid)) { acGroup.removeLayer(mk); markers.delete(gid); }
+    if (gtrack && $('gdGradar').checked && t >= gtrack.t[0] - 5 && t <= gtrack.t[gtrack.t.length - 1] + 5) {
+      const p = posAt(gtrack, t);
+      if (!gtMarker) gtMarker = L.circleMarker(p, { radius: 6, color: '#0e7490', weight: 2, fillColor: '#22d3ee', fillOpacity: 1, interactive: false }).addTo(acGroup);
+      else gtMarker.setLatLng(p);
+    } else if (gtMarker) { acGroup.removeLayer(gtMarker); gtMarker = null; }
     // radar (ar)
     const ractive = new Set();
     if ($('gdRadar').checked) {
@@ -236,7 +257,7 @@ const Ground = (() => {
         g0: g && f.cls === 'arr' ? g.t0 : null, g1: g && f.cls === 'dep' ? g.t1 : null };   // handoff: chegada some ao aterrar (t0 do solo); partida só aparece após ATOT (t1 do solo)
     }
   }
-  function clearAnim() { stop(); markers.forEach(m => acGroup && acGroup.removeLayer(m)); markers.clear(); rmarkers.forEach(m => acGroup && acGroup.removeLayer(m)); rmarkers.clear(); routeGroup && routeGroup.clearLayers(); trailGroup && trailGroup.clearLayers(); sel = null; }
+  function clearAnim() { gtrack = null; gtMarker = null; stop(); markers.forEach(m => acGroup && acGroup.removeLayer(m)); markers.clear(); rmarkers.forEach(m => acGroup && acGroup.removeLayer(m)); rmarkers.clear(); routeGroup && routeGroup.clearLayers(); trailGroup && trailGroup.clearLayers(); sel = null; }
   function tick(ts) {
     if (!playing) return;
     const dt = lastFrame ? (ts - lastFrame) / 1000 : 0; lastFrame = ts;
@@ -269,6 +290,7 @@ const Ground = (() => {
     $('gdPlay').onclick = () => playing ? stop() : play();
     $('gdTime').oninput = e => { stop(); setSim(+e.target.value); };
     $('gdRadar').onchange = drawFrame;
+    $('gdGradar').onchange = () => { const g = sel; sel = null; if (g != null) select(g, { keepTime: true }); else drawFrame(); };
     document.querySelectorAll('[data-gsub]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x === b)); sub = b.dataset.gsub; renderSub(); });
     $('gdImport').onclick = async () => {
       try {

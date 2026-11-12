@@ -470,7 +470,7 @@ class Service:
             r["routable"] = bool(af) and bool(r.get("taxi_out") or r.get("taxi_in"))
         self.ground = rows
         return {"rows": rows, "summary": self.db.ground_summary(), "network": af is not None,
-                "stats": gmod.ground_stats(rows) if rows else None}
+                "stats": gmod.ground_stats(rows) if rows else None, "gradar": self.db.gradar_summary()}
 
     def ground_routes(self, gids: list[int]):
         from . import ground as gmod
@@ -489,6 +489,27 @@ class Service:
         af = gmod.airfield(self.airport)
         ways = [{"type": w["type"], "ref": w.get("ref"), "pts": [af.nodes[n] for n in w["nodes"] if n in af.nodes]} for w in af.ways]
         return {"ways": ways, "stands": af.stands, "holding": af.holding, "thr": {k: v["thr"] for k, v in af.thr.items()}}
+
+    def ground_radar(self, gid: int):
+        """Pontos do radar de solo (CNS, TGO) do movimento da torre: o percurso real, para comparar com o reconstruído.
+        Devolve {"pts": [[epoch, lat, lon, gs_kt, modeC], ...]} (vazio se não houver radar de solo importado para esse voo)."""
+        import datetime
+        rows = self.db.ground_get([int(gid)])
+        if not rows:
+            return {"pts": []}
+        r = rows[0]
+        d = r["date"]
+        base = datetime.datetime(2000 + int(d[:2]), int(d[2:4]), int(d[4:6]), tzinfo=datetime.timezone.utc).timestamp()
+        if r["mt"] == "DEPARTURE":
+            a = r.get("aobt") or r.get("rwy_ent") or ((r.get("atot") or 0) - 1500)
+            b = (r.get("atot") or a + 1500) + 60
+        else:
+            a = (r.get("aldt") or r.get("rwy_vac") or 0) - 60
+            b = (r.get("aibt") or (r.get("rwy_vac") or a) + 900) + 120
+        if not a:
+            return {"pts": []}
+        pts = self.db.gradar_track(self.airport, d, r["csn"], a - base, b - base)
+        return {"pts": [[base + x[0], x[1], x[2], x[3], x[4]] for x in pts]}
 
     def ground_raw(self, gid: int):
         return self.db.ground_raw(int(gid))
