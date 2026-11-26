@@ -11,14 +11,18 @@
           "Botão '🚜 Excel de reboques…' (aba Solo): importa o registo de reboques do aeroporto seleccionado (colunas Data, Início, Fim, Rasto, Schengen, De, Para, Rota, Cruzamento de pista, Duração registada, Observações). Um novo ficheiro substitui o anterior.",
           "Separador 'Reboques': lista só os reboques do Excel nos dias seleccionados e anima-os no mapa. O emparelhamento procura primeiro o veículo follow-me (callsign FM## / FF##) em movimento na hora do registo (±5 min) e, se a aeronave rebocada aparecer no radar de solo, mostra-a também (rosa; o follow-me a verde). Quando a aeronave não aparece, mostra o percurso do follow-me.",
           "Cada reboque tem uma confiança (alta / média / baixa) e o número de outros alvos em movimento na mesma altura. O fuso das horas do Excel (Lisboa ou UTC) é detectado automaticamente e pode ser forçado.",
-          "Exportação Excel dos reboques: resumo (duração média, mediana, mínima, máxima, P90, cruzamentos de pista), por dia, mês, hora, categoria, Schengen, origem, destino, origem-destino e rota, mais o detalhe de cada reboque com os dados do radar (alvo, acompanhante, duração e distância reais, cruzamento de pista detectado pelo radar)."
+          "Exportação Excel dos reboques: resumo (duração média, mediana, mínima, máxima, P90, cruzamentos de pista), por dia, mês, hora, categoria, Schengen, origem, destino, origem-destino e rota, mais o detalhe de cada reboque com os dados do radar (alvo, acompanhante, duração e distância reais, cruzamento de pista detectado pelo radar).",
+          "Rota no mapa: ao seleccionar um reboque aparece por cima do mapa a rota completa (De → taxiways da rota do Excel → Para).",
+          "Reboques sem radar de solo nesse dia (etiqueta 'só Excel') passam a ter traçado aproximado a tracejado, entre os stands e através dos taxiways da rota, à velocidade constante entre o início e o fim do Excel. As posições de stands e taxiways são aprendidas a partir dos reboques que o radar identificou (um taxiway só é desenhado depois de visto em pelo menos 2 reboques).",
+          "Novo separador 'KPIs' (reboques): cruzamentos de pista por hora, dia da semana, origens, destinos, pares origem-destino, taxiways e rotas mais usados, companhias (das aeronaves vistas no radar), os 10 reboques mais demorados. Filtros por data, mês, hora, cruzamento, esteira, Schengen, origem, destino, companhia, rota e radar; exportação para Excel, CSV e PDF (abre no browser: 'Guardar como PDF')."
         ]
       },
       {
         "title": "Notas",
         "items": [
           "Os stands não têm coordenadas na app, por isso o emparelhamento não usa a posição dos stands: se houver vários alvos escoltados na mesma altura, a confiança desce e aparece o número de alternativas.",
-          "O radar de solo tem de estar importado para os dias em causa (zips prtTGO). A aeronave rebocada nem sempre aparece no radar de solo; o follow-me aparece sempre."
+          "O radar de solo tem de estar importado para os dias em causa (zips prtTGO). A aeronave rebocada nem sempre aparece no radar de solo; o follow-me aparece sempre.",
+          "A detecção automática do fuso do Excel passou a usar só os reboques de dias com radar de solo importado."
         ]
       }
     ]

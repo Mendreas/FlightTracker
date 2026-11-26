@@ -86,7 +86,7 @@ const Ground = (() => {
       let tw = null;
       if (apt === 'LPPT') { await loadNetwork(); tw = await call('ground_list'); gradarInfo = tw.gradar; }
       else clearNetwork();
-      mode = sub === 'tows' ? 'tows' : (tw && tw.rows.length ? 'tower' : 'gradar');
+      mode = (sub === 'tows' || sub === 'kpi') ? 'tows' : (tw && tw.rows.length ? 'tower' : 'gradar');
       document.querySelector('[data-gsub="rot"]').style.display = mode === 'gradar' || mode === 'tows' ? 'none' : '';
       $('gdTowTz').style.display = $('gdTowScope').style.display = mode === 'tows' ? '' : 'none';
       if (mode === 'tows') { loadedKey = key; await loadTows(); fitAirport(); return; }
@@ -140,7 +140,7 @@ const Ground = (() => {
   async function loadTows() {
     const body = $('gdBody');
     const r = await call('tows_day', towTz);
-    rows = r.rows; stats = null; routes = {};
+    kpiAll = null; rows = r.rows; stats = null; routes = {};
     for (const t of rows) {
       t.t_ref = t.utc0;
       t.tracks.forEach((k, i) => {
@@ -173,6 +173,7 @@ const Ground = (() => {
   const CONF = { 'alta': '#35c46a', 'média': '#f5b942', 'baixa': '#ff6b6b' };
   function renderSub() {
     const body = $('gdBody');
+    if (mode === 'tows' && sub === 'kpi') { body.onclick = null; renderKpi(); return; }
     if (mode === 'tows') {
       body.innerHTML = C.table([
         { k: 'date', label: 'Data', fmt: fmtD }, { k: 't0', label: 'Início', fmt: hmL }, { k: 't1', label: 'Fim', fmt: hmL },
@@ -182,7 +183,7 @@ const Ground = (() => {
         { k: 'dur_reg', label: 'Dur. Excel (min)', fmt: (v, r) => v != null ? v : Math.round((r.t1 - r.t0) / 60) },
         { k: 'rb', label: 'Aeronave rebocada (radar)', fmt: v => v ? `<span style="color:${COL.RB}">${esc(v)}</span>` : '<span class="muted" title="A aeronave rebocada nem sempre aparece no radar de solo">não visível</span>' },
         { k: 'fm', label: 'Follow-me', fmt: v => v ? `<span style="color:${COL.FM}">${esc(v)}</span>` : '<span class="muted">—</span>' },
-        { k: 'conf', label: 'Confiança', fmt: (v, r) => v ? `<span style="color:${CONF[v]};font-weight:700">${v}</span>${r.alts ? ` <span class="muted" title="Outros alvos em movimento no mesmo período">(+${r.alts})</span>` : ''}` : `<span class="muted">${esc(r.status)}</span>` },
+        { k: 'conf', label: 'Confiança', fmt: (v, r) => v ? `<span style="color:${CONF[v]};font-weight:700">${v}</span>${r.alts ? ` <span class="muted" title="Outros alvos em movimento no mesmo período">(+${r.alts})</span>` : ''}` : (r.est ? '<span class="muted" title="Sem radar de solo: traçado aproximado entre os stands e taxiways">só Excel</span>' : `<span class="muted">${esc(r.status)}</span>`) },
         { k: 'real_dur', label: 'Dur. radar', fmt: v => v == null ? '—' : dur(v) }, { k: 'dist_m', label: 'Dist. (m)', fmt: v => v == null ? '—' : fmt(v) },
         { k: 'cruz_radar', label: 'Cruz. radar', fmt: v => v == null ? '—' : v ? 'Sim' : 'Não' }, { k: 'obs', label: 'Obs.', fmt: v => esc(v || '') },
       ], rows, { id: 'gdTable', limit: 3000, rowClass: r => 'gd-row' + (r.gid === sel ? ' sel' : '') });
@@ -248,6 +249,134 @@ const Ground = (() => {
     body.innerHTML = h;
   }
 
+  /* ---------------------------------------------------------------- reboques: rota no mapa, KPIs, filtros e exportação */
+  const tokens = r => String(r.rota || '').toUpperCase().split(/[^A-Z0-9]+/).filter(Boolean);
+  const cruzFlag = v => { const s = String(v == null ? '' : v).normalize('NFKD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, ''); return ['sim', 's', 'yes', '1'].includes(s) ? true : ['nao', 'n', 'no', '0'].includes(s) ? false : null; };
+  const durMin = r => r.dur_reg != null ? +r.dur_reg : r.t1 != null ? (r.t1 - r.t0) / 60 : null;
+  const pctl = (v, p) => { if (!v.length) return null; const s = v.slice().sort((a, b) => a - b), k = (s.length - 1) * p, f = Math.floor(k), c = Math.ceil(k); return s[f] + (s[c] - s[f]) * (k - f); };
+  const r1 = v => v == null ? null : Math.round(v * 10) / 10;
+  const f1 = v => v == null ? '—' : (Math.round(v * 10) / 10).toString().replace('.', ',');
+  const pctS = (a, b) => b ? f1(100 * a / b) + ' %' : '—';
+  function tAgg(list) {
+    const d = list.map(durMin).filter(x => x != null), cz = list.map(r => cruzFlag(r.cruz));
+    return { n: list.length, media: d.length ? d.reduce((a, b) => a + b, 0) / d.length : null, mediana: pctl(d, .5), min: d.length ? Math.min(...d) : null, max: d.length ? Math.max(...d) : null, p90: pctl(d, .9), total_h: d.reduce((a, b) => a + b, 0) / 60,
+      cruz_sim: cz.filter(c => c === true).length, cruz_nao: cz.filter(c => c === false).length, cruz_nd: cz.filter(c => c === null).length };
+  }
+  /* chip com a rota (De → taxiways → Para) por cima do mapa */
+  let chipEl = null;
+  function chip(row) {
+    if (!map) return;
+    if (!chipEl) { chipEl = document.createElement('div'); chipEl.className = 'gd-chip'; $('gdMap').appendChild(chipEl); }
+    if (!row) { chipEl.style.display = 'none'; return; }
+    const tk = tokens(row), all = [row.de || '?', ...tk, row.para || '?'];
+    chipEl.innerHTML = `<b>Rota</b> ` + all.map((x, i) => `<span class="${i === 0 || i === all.length - 1 ? 'st' : 'tx'}">${esc(x)}</span>`).join(' → ') + (row.est ? ' <i class="muted">(só Excel · aproximado)</i>' : '');
+    chipEl.style.display = 'block';
+  }
+  /* KPIs */
+  const AIRLINES = { TAP: 'TAP Air Portugal', RYR: 'Ryanair', EZY: 'easyJet', EJU: 'easyJet Europe', AFR: 'Air France', KLM: 'KLM', BAW: 'British Airways', DLH: 'Lufthansa', IBE: 'Iberia', VLG: 'Vueling', TRA: 'Transavia', TVF: 'Transavia France', NAX: 'Norwegian', SAS: 'SAS', SWR: 'Swiss', UAE: 'Emirates', AEA: 'Air Europa', LOT: 'LOT', TVS: 'Smartwings', WZZ: 'Wizz Air', WMT: 'Wizz Air Malta', EWG: 'Eurowings', ENT: 'Enter Air', TUI: 'TUI', TOM: 'TUI', JAF: 'TUI fly', BEL: 'Brussels', AZA: 'ITA', ITY: 'ITA', RAM: 'Royal Air Maroc', SWT: 'Swiftair', AEE: 'Aegean', AUA: 'Austrian', FIN: 'Finnair', ACA: 'Air Canada', UAL: 'United', DAL: 'Delta', AAL: 'American', PGT: 'Pegasus', THY: 'Turkish', QTR: 'Qatar', ETD: 'Etihad' };
+  const airOf = r => r.rb && /^[A-Z]{3}[0-9A-Z]{1,4}$/.test(r.rb) ? r.rb.slice(0, 3) : null;
+  const airName = c => AIRLINES[c] ? `${AIRLINES[c]} (${c})` : c;
+  const horaOf = r => String(Math.floor(r.t0 / 3600) % 24).padStart(2, '0');
+  const WD = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const KF = { d0: '', d1: '', mes: '', h0: '', h1: '', cruz: '', wtc: '', sch: '', cia: '', de: '', para: '', rota: '', radar: '' };
+  let kpiAll = null, KCUR = null;
+  const d2s = v => v ? v.slice(2, 4) + v.slice(5, 7) + v.slice(8, 10) : '';
+  function kRowOk(r) {
+    if (KF.d0 && r.date < d2s(KF.d0)) return false; if (KF.d1 && r.date > d2s(KF.d1)) return false;
+    if (KF.mes && ('20' + r.date.slice(0, 2) + '-' + r.date.slice(2, 4)) !== KF.mes) return false;
+    if (KF.h0 !== '' || KF.h1 !== '') { const h = +horaOf(r), a = KF.h0 === '' ? 0 : +KF.h0, b = KF.h1 === '' ? 23 : +KF.h1; if (a <= b ? (h < a || h > b) : (h < a && h > b)) return false; }
+    if (KF.cruz) { const c = cruzFlag(r.cruz); if (KF.cruz === 'sim' ? c !== true : KF.cruz === 'nao' ? c !== false : c !== null) return false; }
+    if (KF.wtc && r.wtc !== KF.wtc) return false; if (KF.sch && r.schengen !== KF.sch) return false; if (KF.cia && airOf(r) !== KF.cia) return false;
+    if (KF.de && r.de !== KF.de) return false; if (KF.para && r.para !== KF.para) return false;
+    if (KF.rota && !String(r.rota || '').toUpperCase().includes(KF.rota.toUpperCase())) return false;
+    if (KF.radar === 'ok' && r.status !== 'ok') return false; if (KF.radar === 'sem' && r.status === 'ok') return false;
+    return true;
+  }
+  function kDesc() {
+    const L = { d0: 'de', d1: 'até', mes: 'mês', h0: 'hora ≥', h1: 'hora ≤', wtc: 'esteira', sch: 'Schengen', de: 'origem', para: 'destino', rota: 'rota contém' }, o = [];
+    for (const k in L) if (KF[k]) o.push(`${L[k]} ${KF[k]}`);
+    if (KF.cruz) o.push('cruzamento: ' + { sim: 'Sim', nao: 'Não', nd: 'não registado' }[KF.cruz]); if (KF.cia) o.push('companhia: ' + airName(KF.cia)); if (KF.radar) o.push(KF.radar === 'ok' ? 'só com radar' : 'só sem radar');
+    return o.length ? o.join(' · ') : 'sem filtros (todos os reboques)';
+  }
+  const topN = (list, f, n = 10) => { const m = {}; list.forEach(r => { const k = f(r); if (!k) return; const o = m[k] = m[k] || { k, v: 0, s: 0 }; o.v++; if (cruzFlag(r.cruz) === true) o.s++; }); return Object.values(m).sort((a, b) => b.v - a.v || (a.k < b.k ? -1 : 1)).slice(0, n); };
+  function kCompute(list) {
+    const g = tAgg(list), com = tAgg(list.filter(r => cruzFlag(r.cruz) === true)), sem = tAgg(list.filter(r => cruzFlag(r.cruz) === false)), dias = [...new Set(list.map(r => r.date))];
+    const hora = topN(list, r => horaOf(r) + 'h', 999).sort((a, b) => a.k < b.k ? -1 : 1), perDay = topN(list, r => r.date, 999);
+    const tw = {}; list.forEach(r => new Set(tokens(r).filter(x => /^[A-Z]+\d*$/.test(x))).forEach(k => { const o = tw[k] = tw[k] || { k, v: 0, s: 0 }; o.v++; if (cruzFlag(r.cruz) === true) o.s++; }));
+    const ident = list.filter(airOf), cia = {}; ident.forEach(r => { const c = airOf(r), o = cia[c] = cia[c] || { k: airName(c), v: 0, s: 0 }; o.v++; if (cruzFlag(r.cruz) === true) o.s++; });
+    const matched = list.filter(r => r.status === 'ok'), ag = matched.filter(r => r.cruz_radar != null && cruzFlag(r.cruz) != null);
+    return { g, com, sem, rows: list, nd: dias.length, hora, perDay, byWd: topN(list, r => WD[new Date(Date.UTC(2000 + +r.date.slice(0, 2), +r.date.slice(2, 4) - 1, +r.date.slice(4, 6))).getUTCDay()], 7),
+      twl: Object.values(tw).sort((a, b) => b.v - a.v).slice(0, 12), cl: Object.values(cia).sort((a, b) => b.v - a.v).slice(0, 15), ident, longest: list.slice().sort((a, b) => durMin(b) - durMin(a)).slice(0, 10),
+      orig: topN(list, r => r.de, 10), dest: topN(list, r => r.para, 10), pares: topN(list, r => r.de && r.para ? r.de + ' → ' + r.para : null, 10), wtc: topN(list, r => r.wtc, 6), sch: topN(list, r => r.schengen, 6),
+      rotas: topN(list, r => r.rota, 999).filter(o => o.v >= 3).sort((a, b) => b.s / b.v - a.s / a.v || b.v - a.v).slice(0, 8), rcz: list.reduce((s, r) => s + (r.n_cruz_radar || 0), 0),
+      radar: { ident: matched.length, comFm: matched.filter(r => r.fm).length, alta: matched.filter(r => r.conf === 'alta').length, agree: ag.filter(r => r.cruz_radar === cruzFlag(r.cruz)).length, cmp: ag.length, comDados: list.filter(r => r.status !== 'sem dados' && r.status !== 'sem radar' || r.status === 'sem radar' && false).length },
+      pk: hora.slice().sort((a, b) => b.v - a.v)[0], pd: perDay[0] };
+  }
+  const kbars = (items, fmt) => { const mx = Math.max(1, ...items.map(i => i.v)); return items.map(i => `<div class="tk-bw"><i title="${esc(i.k)}">${esc(i.k)}</i><u style="width:${Math.max(2, 60 * i.v / mx)}%">${i.s != null ? `<s style="width:${i.v ? 100 * i.s / i.v : 0}%"></s>` : ''}</u><em>${fmt ? fmt(i) : i.v}</em></div>`).join(''); };
+  function kBody(K) {
+    const g = K.g, kp = (n, v, s) => `<div class="tk-kp"><b>${v}</b><span>${n}</span>${s ? `<small>${s}</small>` : ''}</div>`;
+    const sec = (t, b, note) => `<h4>${t}</h4>${b}${note ? `<div class="muted" style="font-size:11px">${note}</div>` : ''}`, cz = i => `${i.v} (${i.s} c/ cruz.)`;
+    let h = '<div class="tk-kps">' + kp('Reboques', g.n, `${K.nd} dias · ${f1(g.n / Math.max(1, K.nd))}/dia`) + kp('Com cruzamento de pista', g.cruz_sim, pctS(g.cruz_sim, g.n)) + kp('Sem cruzamento', g.cruz_nao, pctS(g.cruz_nao, g.n))
+      + kp('Duração média (min)', f1(g.media), `c/ cruz. ${f1(K.com.media)} · s/ cruz. ${f1(K.sem.media)}`) + kp('Hora de ponta', K.pk ? K.pk.k : '—', K.pk ? K.pk.v + ' reboques' : '') + kp('Dia mais carregado', K.pd ? fmtD(K.pd.k).slice(0, 5) : '—', K.pd ? K.pd.v + ' reboques' : '') + '</div>';
+    h += `<div class="tk-card">Radar de solo: ${K.radar.ident} reboques identificados (${K.radar.comFm} com follow-me, ${K.radar.alta} de confiança alta) · cruzamentos de pista vistos no radar: <b>${K.rcz}</b> · concordância radar/Excel: ${K.radar.agree}/${K.radar.cmp}</div>`;
+    h += sec('Cruzamentos de pista por hora de início <small class="muted">(cor forte = com cruzamento)</small>', kbars(K.hora, i => `${i.s}/${i.v}`)) + sec('Reboques por dia da semana', kbars(K.byWd, i => `${i.s}/${i.v}`));
+    h += sec('Origens mais frequentes', kbars(K.orig, cz)) + sec('Destinos mais frequentes', kbars(K.dest, cz)) + sec('Pares origem → destino', kbars(K.pares, cz)) + sec('Taxiways mais usados nas rotas', kbars(K.twl, cz));
+    h += sec('Rotas com maior % de cruzamento <small class="muted">(≥ 3 reboques)</small>', kbars(K.rotas, i => `${i.s}/${i.v} (${f1(100 * i.s / i.v)} %)`));
+    h += sec('Categoria de esteira / Schengen', kbars(K.wtc.map(o => ({ ...o, k: 'Rasto ' + o.k })), i => i.v) + kbars(K.sch.map(o => ({ ...o, k: 'Schengen: ' + o.k })), i => i.v));
+    h += sec('Companhias com mais reboques', K.cl.length ? kbars(K.cl, cz) : '<div class="muted">Sem aeronaves identificadas no radar.</div>', `O Excel não indica a aeronave: só contam os reboques em que a aeronave foi vista no radar de solo (${K.ident.length} de ${K.rows.length}).`);
+    h += sec('10 reboques mais demorados', `<table class="tk-t"><thead><tr><th>Data</th><th>Início</th><th>De→Para</th><th>Rota</th><th>Min</th><th>Cruz.</th></tr></thead><tbody>${K.longest.map(r => `<tr data-go="${r.gid}"><td>${fmtD(r.date).slice(0, 5)}</td><td>${hmL(r.t0)}</td><td>${esc(r.de || '')}→${esc(r.para || '')}</td><td>${esc(r.rota || '')}</td><td>${f1(durMin(r))}</td><td>${esc(r.cruz || '')}</td></tr>`).join('')}</tbody></table>`);
+    return h;
+  }
+  async function renderKpi() {
+    const body = $('gdBody');
+    if (!kpiAll) { body.innerHTML = '<div class="empty">⏳ A preparar os KPIs…</div>'; try { kpiAll = (await call('tows_day', towTz, 'kpi')).rows; } catch (e) { body.innerHTML = `<div class="empty">Erro: ${esc(e.message)}</div>`; return; } }
+    if (!kpiAll.length) { body.innerHTML = '<div class="empty">Importa o Excel de reboques para ver os KPIs.</div>'; return; }
+    const uniq = f => [...new Set(kpiAll.map(f).filter(Boolean))].sort(), meses = uniq(r => '20' + r.date.slice(0, 2) + '-' + r.date.slice(2, 4)), cias = uniq(airOf);
+    const sl = (id, lab, opts) => `<label>${lab} <select class="inp tiny" data-f="${id}"><option value="">todos</option>${opts.map(o => { const [v, t] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${KF[id] === v ? 'selected' : ''}>${esc(t)}</option>`; }).join('')}</select></label>`;
+    body.innerHTML = `<div class="tk-flt"><b>Filtros</b><label>De <input class="inp tiny" type="date" data-f="d0" value="${KF.d0}"></label><label>Até <input class="inp tiny" type="date" data-f="d1" value="${KF.d1}"></label>${sl('mes', 'Mês', meses)}
+      <label>Hora <input class="inp tiny" type="number" min="0" max="23" data-f="h0" value="${KF.h0}" style="width:50px"> – <input class="inp tiny" type="number" min="0" max="23" data-f="h1" value="${KF.h1}" style="width:50px"></label>
+      ${sl('cruz', 'Cruzamento', [['sim', 'Sim'], ['nao', 'Não'], ['nd', 'Não registado']])}${sl('wtc', 'Esteira', uniq(r => r.wtc))}${sl('sch', 'Schengen', uniq(r => r.schengen))}${sl('de', 'Origem', uniq(r => r.de))}${sl('para', 'Destino', uniq(r => r.para))}
+      ${sl('cia', 'Companhia*', cias.map(c => [c, airName(c)]))}<label>Rota <input class="inp tiny" type="text" data-f="rota" value="${esc(KF.rota)}" placeholder="ex: S2" style="width:70px"></label>${sl('radar', 'Radar', [['ok', 'só com radar'], ['sem', 'só sem radar']])}
+      <button class="btn sm" id="tkClr">Limpar filtros</button><span style="flex:1"></span><button class="btn sm primary" id="tkXl">⬇ Excel</button><button class="btn sm" id="tkCsv">⬇ CSV</button><button class="btn sm" id="tkPdf">🖨 PDF</button>
+      <div class="muted" style="width:100%;font-size:11px">* A companhia só é conhecida nos reboques em que o radar de solo viu a aeronave rebocada. O PDF abre no browser: escolhe “Guardar como PDF” na janela de impressão.</div></div><div id="tkRes"></div>`;
+    body.querySelectorAll('[data-f]').forEach(e => e.onchange = () => { KF[e.dataset.f] = e.value; kDraw(); });
+    $('tkClr').onclick = () => { for (const k in KF) KF[k] = ''; renderKpi(); };
+    $('tkXl').onclick = kpiXlsx; $('tkCsv').onclick = kpiCsv; $('tkPdf').onclick = kpiPdf;
+    body.onclick = ev => { const tr = ev.target.closest('tr[data-go]'); if (tr) { sub = 'tows'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'tows')); const id = +tr.dataset.go; renderSub(); sel = null; select(id, { scrollTable: false }); const e = document.querySelector('#gdTable tr.sel'); if (e) e.scrollIntoView({ block: 'center' }); } };
+    kDraw();
+  }
+  function kDraw() {
+    const list = kpiAll.filter(kRowOk); KCUR = kCompute(list);
+    $('tkRes').innerHTML = `<div class="tk-card"><b>${list.length}</b> de ${kpiAll.length} reboques · ${esc(kDesc())}</div>` + (list.length ? kBody(KCUR) : '<div class="empty">Nenhum reboque com estes filtros.</div>');
+  }
+  function kSheets(K) {
+    const g = K.g, H = ['Reboques', 'Com cruzamento', '% com cruzamento'], tab = a => a.map(i => [i.k, i.v, i.s, i.v ? r1(100 * i.s / i.v) : null]), apt = FP.state.airport;
+    const sheets = [['Resumo', ['Indicador', 'Valor'], [['Aeroporto', apt], ['Filtros aplicados', kDesc()], ['Reboques', g.n], ['Dias', K.nd], ['Reboques por dia (média)', r1(g.n / Math.max(1, K.nd))], ['Com cruzamento de pista', g.cruz_sim], ['% com cruzamento', g.n ? r1(100 * g.cruz_sim / g.n) : null],
+      ['Sem cruzamento', g.cruz_nao], ['Cruzamento não registado', g.cruz_nd], ['Duração média (min)', r1(g.media)], ['Duração mediana (min)', r1(g.mediana)], ['Duração mínima (min)', r1(g.min)], ['Duração máxima (min)', r1(g.max)], ['Duração média com cruzamento (min)', r1(K.com.media)],
+      ['Duração média sem cruzamento (min)', r1(K.sem.media)], ['Tempo total (h)', r1(g.total_h)], ['Hora de ponta', K.pk ? K.pk.k + ' (' + K.pk.v + ')' : null], ['Dia mais carregado', K.pd ? fmtD(K.pd.k) + ' (' + K.pd.v + ')' : null], ['Cruzamentos de pista no radar', K.rcz], ['Aeronaves identificadas no radar', K.ident.length]]]];
+    const add = (n, l, a) => sheets.push([n, [l, ...H], tab(a)]);
+    add('Por hora', 'Hora de início', K.hora); add('Dia da semana', 'Dia', K.byWd); add('Por dia', 'Data', K.perDay.slice().sort((a, b) => a.k < b.k ? -1 : 1).map(o => ({ ...o, k: fmtD(o.k) })));
+    add('Origens', 'Origem', topN(K.rows, r => r.de, 999)); add('Destinos', 'Destino', topN(K.rows, r => r.para, 999)); add('Origem-destino', 'Origem → destino', topN(K.rows, r => r.de && r.para ? r.de + ' → ' + r.para : null, 999));
+    add('Taxiways', 'Taxiway', K.twl); add('Rotas', 'Rota', topN(K.rows, r => r.rota, 999)); add('Companhias', 'Companhia', K.cl);
+    sheets.push(['Detalhe', ['Data', 'Início (Excel)', 'Fim (Excel)', 'Rasto', 'Schengen', 'De', 'Para', 'Rota', 'Cruzamento (Excel)', 'Duração (min)', 'Observações', 'Radar: estado', 'Confiança', 'Aeronave rebocada', 'Follow-me', 'Cruzamentos (radar)'],
+      K.rows.map(r => [fmtD(r.date), hmL(r.t0), hmL(r.t1), r.wtc, r.schengen, r.de, r.para, r.rota, r.cruz, r1(durMin(r)), r.obs, r.status, r.conf, r.rb, r.fm, r.n_cruz_radar])]);
+    return sheets;
+  }
+  const kEmpty = () => { if (!KCUR || !KCUR.rows.length) { toast('Sem reboques para exportar com estes filtros.', 'err'); return true; } return false; };
+  async function kpiXlsx() { if (kEmpty()) return; try { const p = await call('export_sheets', `KPIs_Reboques_${FP.state.airport}`, kSheets(KCUR)); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } }
+  async function kpiCsv() {
+    if (kEmpty()) return;
+    const q = v => { v = v == null ? '' : String(v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }, out = [['Secção', 'Item', 'Reboques', 'Com cruzamento', '% com cruzamento']];
+    kSheets(KCUR).filter(s => s[0] !== 'Detalhe').forEach(([n, , rows]) => rows.forEach(r => out.push(n === 'Resumo' ? [n, r[0], r[1], '', ''] : [n, ...r])));
+    try { const p = await call('export_text', `KPIs_Reboques_${FP.state.airport}`, out.map(r => r.map(q).join(';')).join('\r\n'), 'csv'); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); }
+  }
+  async function kpiPdf() {
+    if (kEmpty()) return;
+    const css = `body{font:13px system-ui,Segoe UI,sans-serif;color:#0f172a;margin:14px}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}.muted{color:#64748b}h4{margin:14px 0 4px;break-after:avoid}.tk-kps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tk-kp{border:1px solid #cbd5e1;border-radius:8px;padding:8px;text-align:center;break-inside:avoid}.tk-kp b{display:block;font-size:22px;color:#1d4ed8}.tk-kp span{color:#64748b;font-size:11px}.tk-kp small{display:block}.tk-card{border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;margin:8px 0;background:#f8fafc}.tk-bw{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:12px}.tk-bw i{flex:0 0 110px;font-style:normal;overflow:hidden;white-space:nowrap}.tk-bw u{display:block;height:14px;background:#93c5fd;border-radius:3px;position:relative}.tk-bw u s{position:absolute;left:0;top:0;bottom:0;background:#1d4ed8;border-radius:3px}.tk-bw em{font-style:normal;color:#475569;white-space:nowrap}.tk-t{width:100%;border-collapse:collapse;font-size:12px}.tk-t th{background:#e2e8f0;text-align:left;padding:3px 6px}.tk-t td{padding:3px 6px;border-bottom:1px solid #e2e8f0}@page{size:A4;margin:12mm}`;
+    const html = `<!DOCTYPE html><html lang="pt"><head><meta charset="utf-8"><title>KPIs reboques ${FP.state.airport}</title><style>${css}</style></head><body><h2 style="color:#1e3a5f;margin:0">KPIs de reboques — ${FP.state.airport}</h2><div class="muted" style="margin-bottom:8px">Gerado em ${new Date().toLocaleString('pt-PT')} · Filtros: ${esc(kDesc())}</div>${kBody(KCUR)}<script>window.onload=()=>setTimeout(()=>window.print(),600)<\/script></body></html>`;
+    try { await call('open_html', `KPIs_Reboques_${FP.state.airport}_${new Date().toISOString().slice(0, 10)}.html`, html); toast('Aberto no browser: escolhe “Guardar como PDF” na janela de impressão.', 'ok'); } catch (e) { toast(e.message, 'err'); }
+  }
+
   /* ---------------------------------------------------------------- selecção e animação */
   function select(gid, o = {}) {
     if (mode === 'tows' && gid >= 100000) gid = Math.floor((gid - 100000) / 10);   // clicou no follow-me: selecciona o reboque
@@ -258,12 +387,19 @@ const Ground = (() => {
     });
     if (o.scrollTable && sub !== 'mov' && sub !== 'tows') { sub = 'mov'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'mov')); renderSub(); }
     routeGroup.clearLayers(); gtrack = null; if (gtMarker) { acGroup.removeLayer(gtMarker); gtMarker = null; }
+    if (mode === 'tows') chip(null);
     if (sel == null) return;
     const r = routes[sel], row = rows.find(x => x.gid === sel);
+    if (mode === 'tows' && row) chip(row);
     if (mode === 'tower') loadGradar(sel, !r);
     if (!r && mode === 'tows') { toast(row && row.status === 'sem radar' ? 'Este reboque não foi encontrado no radar de solo (verifica o fuso das horas e se o radar de solo desse dia está importado).' : 'Sem percurso para este reboque.', 'err'); return; }
     if (!r) { if (!(gradarInfo && gradarInfo.rows)) toast('Sem percurso reconstruído para este movimento (sem sequência de taxi).', 'err'); return; }
-    L.polyline(r.pts, { color: COL[r.mt] || '#fff', weight: 4, opacity: .9 }).addTo(routeGroup);
+    L.polyline(r.pts, { color: COL[r.mt] || '#fff', weight: 4, opacity: .9, dashArray: row && row.est ? '8 8' : null }).addTo(routeGroup);
+    if (mode === 'tows' && row && row.est) {
+      const k = row.tracks[0];
+      for (const w of k.way || []) L.circleMarker([w[1], w[2]], { radius: w[3] === 'st' ? 6 : 4, color: '#000', weight: 1, fillColor: w[3] === 'st' ? '#fff' : '#fbbf24', fillOpacity: 1 }).bindTooltip(w[0], { permanent: true, direction: 'top' }).addTo(routeGroup);
+      if (k.miss && k.miss.length) toast('Taxiways sem posição aprendida (omitidos no desenho): ' + k.miss.join(', '), 'warn');
+    }
     if (mode === 'tows' && row) for (const k of row.tracks) if (k.pts !== r.pts && k.pts.length) L.polyline(k.pts, { color: COL.FM, weight: 3, opacity: .9, dashArray: '6 4' }).bindTooltip(k.role + ' · ' + k.label).addTo(routeGroup);
     L.circleMarker(r.pts[0], { radius: 5, color: '#35c46a', fillOpacity: 1 }).bindTooltip('início ' + hms(r.t0)).addTo(routeGroup);
     L.circleMarker(r.pts[r.pts.length - 1], { radius: 5, color: '#ff5d5d', fillOpacity: 1 }).bindTooltip('fim ' + hms(r.t1)).addTo(routeGroup);
@@ -396,7 +532,7 @@ const Ground = (() => {
     $('gdGradar').onchange = () => { const g = sel; sel = null; if (g != null) select(g, { keepTime: true }); else drawFrame(); };
     document.querySelectorAll('[data-gsub]').forEach(b => b.onclick = () => {
       const prev = sub; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x === b)); sub = b.dataset.gsub;
-      if (sub === 'tows' || prev === 'tows') { loadedKey = ''; load(true); } else renderSub();
+      const isT = x => x === 'tows' || x === 'kpi'; if (isT(sub) !== isT(prev)) { loadedKey = ''; load(true); } else renderSub();
     });
     $('gdTowTz').onchange = e => { towTz = e.target.value; loadedKey = ''; load(true); };
     $('gdTowImport').onclick = async () => {

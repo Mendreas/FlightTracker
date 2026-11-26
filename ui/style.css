@@ -166,7 +166,7 @@ tbody tr:hover{background:var(--panel2);cursor:pointer}
 .toolbar .spacer{flex:1}
 .inp.num{width:64px;padding:4px 6px}
 .scroll{flex:1;overflow:auto;padding:12px;min-height:0}
-.subtabs{display:flex;gap:2px;padding:4px 10px 0;background:var(--panel);border-bottom:1px solid var(--line);flex:none}
+.subtabs{display:flex;flex-wrap:wrap;align-items:center;gap:2px;padding:4px 10px 0;background:var(--panel);border-bottom:1px solid var(--line);flex:none}
 .subtab{background:transparent;border:0;color:var(--muted);padding:6px 12px;font:inherit;font-size:12px;cursor:pointer;border-bottom:2px solid transparent}
 .subtab.active{color:var(--txt);border-bottom-color:var(--accent2)}
 .subpane{display:none;flex:1;min-height:0;flex-direction:column}.subpane.active{display:flex}
@@ -302,3 +302,12 @@ tr.gd-row.sel td{background:var(--sel)}
 .ds-sec summary{cursor:pointer;font-size:12px}
 .ds-sec summary a{color:var(--accent);font-size:11px;text-decoration:none}
 .ds-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:2px 10px;padding:6px 0 2px}
+
+/* Reboques: chip da rota, KPIs e filtros */
+.gd-chip{display:none;position:absolute;z-index:900;left:56px;top:10px;background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;box-shadow:0 1px 6px #0006;max-width:70%}
+.gd-chip .st{background:var(--accent);color:#fff;border-radius:4px;padding:0 5px}.gd-chip .tx{background:#fef3c7;color:#111;border:1px solid #f59e0b;border-radius:4px;padding:0 4px}
+.tk-flt{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;margin-bottom:8px;font-size:12px}
+.tk-kps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.tk-kp{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;text-align:center}.tk-kp b{display:block;font-size:22px;color:var(--accent)}.tk-kp span{color:var(--muted);font-size:11px}.tk-kp small{display:block}
+.tk-card{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:8px 0;line-height:1.6}
+.tk-bw{display:flex;align-items:center;gap:6px;margin:2px 0;font-size:12px}.tk-bw i{flex:0 0 110px;font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tk-bw u{display:block;height:14px;background:var(--sel);border-radius:3px;position:relative}.tk-bw u s{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:3px}.tk-bw em{font-style:normal;color:var(--muted);white-space:nowrap}
+.tk-t{width:100%;border-collapse:collapse;font-size:12px}.tk-t th{text-align:left;padding:3px 6px;background:var(--panel2)}.tk-t td{padding:3px 6px;border-bottom:1px solid var(--rowline)}.tk-t tr[data-go]{cursor:pointer}.tk-t tr[data-go]:hover{background:var(--hover)}

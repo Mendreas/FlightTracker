@@ -27,7 +27,7 @@ function api() { return useHttp ? true : (window.pywebview && window.pywebview.a
 /* Métodos Python que abrem uma janela nativa (escolher pasta/ficheiro, guardar): enquanto a janela
    está aberta, a app fica bloqueada por uma camada transparente (cliques e teclado). */
 const DIALOG_METHODS = new Set(['choose_folder', 'import_nmir', 'import_ground', 'import_opdi', 'export_rows', 'dataset_export',
-  'points_import', 'points_export', 'export', 'export_pptx', 'export_flights_csv', 'news_save_html', 'import_tows', 'tows_export']);
+  'points_import', 'points_export', 'export', 'export_pptx', 'export_flights_csv', 'news_save_html', 'import_tows', 'export_sheets', 'export_text', 'tows_export']);
 let dialogLocks = 0;
 function blockKeys(e) { e.stopPropagation(); e.preventDefault(); }
 function dialogLock(on) {

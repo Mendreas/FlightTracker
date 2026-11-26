@@ -545,6 +545,11 @@ def _choose_tz(db, airport: str, tows: list[dict], xy: _XY) -> str:
     """Escolhe entre hora de Lisboa e UTC pelo que casa melhor com o radar (amostra de reboques)."""
     if not tows:
         return "lisboa"
+    try:     # só os reboques de dias com radar de solo (senão a amostra fica diluída em dias sem dados e o fuso fica indeterminado)
+        have = {d for (d,) in db.con.execute("SELECT DISTINCT date FROM gradar WHERE airport=?", [airport]).fetchall()}
+        tows = [r for r in tows if r["date"] in have] or tows
+    except Exception:
+        pass
     step = max(1, len(tows) // 30)
     sample = tows[::step][:30]
     score = {}
@@ -724,3 +729,103 @@ def export_sheets(rows: list[dict], tz_used: str, airport: str, with_radar: bool
         det.append(line)
     sheets.append(("Detalhe", head, det))
     return sheets
+
+
+# ---------------------------------------------------------------------------------------------------
+# Geometria aprendida (stands e taxiways) para desenhar os reboques sem radar de solo
+# ---------------------------------------------------------------------------------------------------
+def rota_tokens(rota) -> list[str]:
+    return [t for t in re.split(r"[^A-Z0-9]+", str(rota or "").upper()) if t]
+
+
+def _median(v: list[float]) -> float:
+    s = sorted(v)
+    return s[len(s) // 2]
+
+
+def learn_geometry(res: list[dict], airport: str) -> dict:
+    """Aprende, a partir dos reboques identificados no radar, a posição dos stands (início/fim do reboque) e dos taxiways
+    (atribuição monótona dos pontos do percurso aos taxiways da rota, por programação dinâmica, refinada em 3 iterações).
+    Devolve {"stands": {nome: [lat, lon, n]}, "taxiways": {nome: [lat, lon, n]}}."""
+    lat0, lon0 = _centers().get(airport, (0.0, 0.0))
+    kx = 111320 * math.cos(math.radians(lat0))
+    dist = lambda p, q: math.hypot((p[0] - q[0]) * 110540, (p[1] - q[1]) * kx)
+    st_acc: dict[str, list] = {}
+    obs = []
+    for r in res:
+        if r.get("status") != "ok" or not r.get("tracks") or r.get("real_t0") is None or r["tracks"][0].get("est"):
+            continue
+        tr = next((k for k in r["tracks"] if k["role"] == "reboque"), r["tracks"][0])
+        T, P = tr["t"], tr["pts"]
+        if not T:
+            continue
+        near = lambda x: P[min(range(len(T)), key=lambda i: abs(T[i] - x))]
+        if r.get("de"):
+            st_acc.setdefault(r["de"], []).append(near(r["real_t0"]))
+        if r.get("para"):
+            st_acc.setdefault(r["para"], []).append(near(r["real_t1"]))
+        tk = rota_tokens(r.get("rota"))
+        pts = [p for t, p in zip(T, P) if r["real_t0"] <= t <= r["real_t1"]]
+        if tk and len(pts) >= 2 * len(tk):
+            n = len(tk)
+            obs.append({"tk": tk, "pts": pts, "asg": [min(n - 1, i * n // len(pts)) for i in range(len(pts))]})
+    pos: dict[str, list] = {}
+    for it in range(4):
+        acc: dict[str, list] = {}
+        for o in obs:
+            tk, pts, asg = o["tk"], o["pts"], o["asg"]
+            n, m = len(tk), len(pts)
+            cen = []
+            for k in range(n):
+                q = [p for i, p in enumerate(pts) if asg[i] == k]
+                cen.append([sum(p[0] for p in q) / len(q), sum(p[1] for p in q) / len(q)] if q else None)
+            for j, k in enumerate(tk):
+                if cen[j]:
+                    acc.setdefault(k, []).append(cen[j])
+            if it == 3:
+                continue
+            ref = [pos[k][:2] if k in pos else cen[j] for j, k in enumerate(tk)]
+            INF = 1e18
+            dp = [[INF] * n for _ in range(m)]
+            bk = [[0] * n for _ in range(m)]
+            for i in range(m):
+                for k in range(n):
+                    c = dist(pts[i], ref[k]) if ref[k] else 1e4
+                    if i == 0:
+                        dp[i][k] = c if k == 0 else INF
+                        continue
+                    b, bj = INF, 0
+                    for j in range(k + 1):
+                        if dp[i - 1][j] < b:
+                            b, bj = dp[i - 1][j], j
+                    dp[i][k] = b + c
+                    bk[i][k] = bj
+            k = n - 1
+            for i in range(m - 1, -1, -1):
+                asg[i] = k
+                k = bk[i][k]
+        pos = {k: [_median([p[0] for p in v]), _median([p[1] for p in v]), len(v)] for k, v in acc.items()}
+    return {"stands": {k: [_median([p[0] for p in v]), _median([p[1] for p in v]), len(v)] for k, v in st_acc.items()}, "taxiways": pos}
+
+
+def attach_estimated(res: list[dict], geo: dict) -> None:
+    """Reboques sem percurso no radar: traçado aproximado De → taxiways da rota → Para (velocidade constante entre início e fim do Excel)."""
+    S, X = geo["stands"], geo["taxiways"]
+    for r in res:
+        if r.get("tracks") or r.get("utc0") is None:
+            continue
+        de, para = r.get("de"), r.get("para")
+        if not (de in S and para in S) or de == para:
+            continue
+        tk = rota_tokens(r.get("rota"))
+        known = [k for k in tk if k in X and X[k][2] >= 2]
+        way = [[de, S[de][0], S[de][1], "st"]] + [[k, X[k][0], X[k][1], "tx"] for k in known] + [[para, S[para][0], S[para][1], "st"]]
+        pts = [[w[1], w[2]] for w in way]
+        cum = [0.0]
+        for i in range(1, len(pts)):
+            cum.append(cum[-1] + math.hypot(pts[i][0] - pts[i - 1][0], (pts[i][1] - pts[i - 1][1]) * math.cos(math.radians(pts[0][0]))) + 1e-9)
+        t0, t1 = r["utc0"], r["utc1"]
+        r["est"] = True
+        r["tracks"] = [{"role": "reboque", "label": "estimado (só Excel)", "est": True, "t": [round(t0 + (t1 - t0) * c / cum[-1], 1) for c in cum],
+                        "pts": [[round(a, 5), round(b, 5)] for a, b in pts], "gs": [0] * len(pts), "way": [[w[0], round(w[1], 5), round(w[2], 5), w[3]] for w in way],
+                        "miss": [k for k in tk if k not in known]}]

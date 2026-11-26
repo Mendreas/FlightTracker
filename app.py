@@ -303,8 +303,38 @@ class Api:
         except Exception as e:  # noqa: BLE001
             return {"ok": False, "error": str(e)}
 
-    def tows_day(self, tz="auto"):
-        return self._safe(self.svc.tows_day, tz)
+    def tows_day(self, tz="auto", scope="sel"):
+        return self._safe(self.svc.tows_day, tz, scope)
+
+    def export_sheets(self, title, sheets):
+        """Guarda em Excel várias folhas [[nome, cabeçalhos, linhas], ...] vindas da interface (ex.: KPIs dos reboques)."""
+        def f():
+            res = self.window.create_file_dialog(SAVE_DIALOG, save_filename=f"{re.sub(r'[^A-Za-z0-9_-]+', '_', title)[:50]}_{time.strftime('%Y-%m-%d')}.xlsx", file_types=("Excel (*.xlsx)",))
+            if not res: return None
+            path = res[0] if isinstance(res, (list, tuple)) else res
+            from core import reports
+            reports.write_excel(path, [(n, h, r) for n, h, r in sheets])
+            return path
+        return self._safe(f)
+
+    def export_text(self, title, text, ext="csv"):
+        def f():
+            res = self.window.create_file_dialog(SAVE_DIALOG, save_filename=f"{re.sub(r'[^A-Za-z0-9_-]+', '_', title)[:50]}_{time.strftime('%Y-%m-%d')}.{ext}", file_types=(f"{ext.upper()} (*.{ext})",))
+            if not res: return None
+            path = res[0] if isinstance(res, (list, tuple)) else res
+            Path(path).write_text(text, encoding="utf-8-sig", newline="")
+            return path
+        return self._safe(f)
+
+    def open_html(self, name, html):
+        """Grava uma página HTML na pasta de dados e abre-a no browser (para imprimir / guardar em PDF)."""
+        def f():
+            import webbrowser
+            path = data_dir() / re.sub(r"[^A-Za-z0-9_.-]+", "_", name)
+            path.write_text(html, encoding="utf-8")
+            webbrowser.open(path.as_uri())
+            return str(path)
+        return self._safe(f)
 
     def tows_export(self, scope="sel", tz="auto"):
         def f():

@@ -541,13 +541,25 @@ class Service:
             cache[key] = tows.match_tows(self.db, self.airport, rows, tz)
         return cache[key]
 
-    def tows_day(self, tz: str = "auto"):
-        """Reboques do Excel nos dias seleccionados, emparelhados com o radar de solo (alvo rebocado + follow-me)."""
+    def tows_day(self, tz: str = "auto", scope: str = "sel"):
+        """Reboques do Excel emparelhados com o radar de solo (alvo rebocado + follow-me). scope: 'sel' dias seleccionados | 'all' todos | 'kpi' todos, sem geometria.
+        Os reboques sem radar levam um traçado aproximado (stands e taxiways aprendidos dos que o radar identificou)."""
         from . import tows
-        res, used = self._tows_matched(self.dates, tz)
-        for r in res:
-            r["gid"] = r["tid"]
+        all_rows, used = self._tows_matched(None, tz)
+        if not all_rows:
+            return {"rows": [], "tz": used, "summary": self.db.tows_summary(self.airport), "airport": self.airport, "stats": None, "gradar": self.db.gradar_summary()}
+        if not any(r.get("est_done") for r in all_rows):
+            geo = tows.learn_geometry(all_rows, self.airport)
+            tows.attach_estimated(all_rows, geo)
+            for r in all_rows:
+                r["gid"] = r["tid"]; r["est_done"] = True
+        if scope == "sel":
+            res = [r for r in all_rows if r["date"] in set(self.dates)]
+        else:
+            res = all_rows
         st = tows.tow_stats(res) if res else None
+        if scope == "kpi":
+            res = [{k: v for k, v in r.items() if k != "tracks"} for r in res]
         return {"rows": res, "tz": used, "summary": self.db.tows_summary(self.airport), "airport": self.airport,
                 "stats": {"global": st["global"], "radar": st["radar"]} if st else None, "gradar": self.db.gradar_summary()}
 
