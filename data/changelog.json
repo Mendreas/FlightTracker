@@ -1,5 +1,20 @@
 [
   {
+    "version": "4.3.2",
+    "date": "2026-11-26",
+    "title": "Janelas de escolha à frente e modais",
+    "summary": "As janelas de escolha de pasta e de ficheiro passam a abrir à frente da app e a bloquear o programa até escolheres ou cancelares.",
+    "sections": [
+      {
+        "title": "Correções",
+        "items": [
+          "Importar pasta (e todas as janelas de abrir/guardar): a janela abre por cima da app, em vez de por trás.",
+          "Enquanto a janela está aberta, a app fica bloqueada (cliques e teclado) até escolheres uma pasta/ficheiro ou cancelares; depois a janela fecha e a app volta a ficar utilizável."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.3.1",
     "date": "2026-11-12",
     "title": "Zips diretos e radar de solo (CNS)",

@@ -24,7 +24,40 @@ const dateObj = d => new Date(2000 + +d.slice(0, 2), +d.slice(2, 4) - 1, +d.slic
 /* ------------------------------------------------------------- API bridge */
 const useHttp = location.protocol.startsWith('http');
 function api() { return useHttp ? true : (window.pywebview && window.pywebview.api); }
+/* Métodos Python que abrem uma janela nativa (escolher pasta/ficheiro, guardar): enquanto a janela
+   está aberta, a app fica bloqueada por uma camada transparente (cliques e teclado). */
+const DIALOG_METHODS = new Set(['choose_folder', 'import_nmir', 'import_ground', 'import_opdi', 'export_rows', 'dataset_export',
+  'points_import', 'points_export', 'export', 'export_pptx', 'export_flights_csv', 'news_save_html']);
+let dialogLocks = 0;
+function blockKeys(e) { e.stopPropagation(); e.preventDefault(); }
+function dialogLock(on) {
+  let el = document.getElementById('dialogLock');
+  if (on) {
+    if (dialogLocks++ > 0) return;
+    if (!el) {
+      el = document.createElement('div'); el.id = 'dialogLock';
+      el.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.35);cursor:wait;display:flex;align-items:center;justify-content:center;color:#fff;font:600 14px system-ui,sans-serif';
+      el.textContent = 'A aguardar a escolha na janela aberta…';
+      document.body.appendChild(el);
+    }
+    el.style.display = 'flex';
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    window.addEventListener('keydown', blockKeys, true); window.addEventListener('keyup', blockKeys, true);
+  } else {
+    if (--dialogLocks > 0) return;
+    dialogLocks = 0;
+    if (el) el.style.display = 'none';
+    window.removeEventListener('keydown', blockKeys, true); window.removeEventListener('keyup', blockKeys, true);
+  }
+}
 async function call(name, ...args) {
+  if (DIALOG_METHODS.has(name)) {
+    dialogLock(true);
+    try { return await callRaw(name, ...args); } finally { dialogLock(false); }
+  }
+  return callRaw(name, ...args);
+}
+async function callRaw(name, ...args) {
   let r;
   if (useHttp) {
     const resp = await fetch('/api', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ method: name, args }) });

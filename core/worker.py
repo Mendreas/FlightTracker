@@ -87,7 +87,18 @@ def _run_dialog(kind, allow_multiple, save_filename, file_types):
     """Corre SEMPRE na thread principal deste processo (ver _dialog_loop). Só usado fora do macOS."""
     import tkinter as tk
     from tkinter import filedialog
-    root = tk.Tk(); root.withdraw(); root.update_idletasks()
+    root = tk.Tk()
+    # Janela-pai invisível mas "sempre à frente": o diálogo herda isso e abre por cima da app
+    # (antes abria por trás da janela do FlightTracker). Em Windows a janela-pai tem de estar
+    # visível para o diálogo a seguir, por isso fica transparente e minúscula em vez de withdraw().
+    try:
+        root.overrideredirect(True)
+        root.geometry("1x1+0+0")
+        root.attributes("-alpha", 0.0)
+        root.attributes("-topmost", True)
+    except Exception:  # noqa: BLE001
+        root.withdraw()
+    root.update_idletasks(); root.lift(); root.focus_force(); root.update()
     try:
         if kind == FOLDER_DIALOG:
             p = filedialog.askdirectory(title="Escolhe a pasta com os CSV", parent=root)
