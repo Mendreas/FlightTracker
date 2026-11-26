@@ -525,6 +525,41 @@ class Service:
         pts = self.db.gradar_track(self.airport, d, r["csn"], a - base, b - base)
         return {"pts": [[base + x[0], x[1], x[2], x[3], x[4]] for x in pts]}
 
+    # ------------------------------------------------------------- reboques (registo em Excel + radar de solo)
+    def _tows_matched(self, dates, tz: str):
+        from . import tows
+        rows = self.db.tows_get(self.airport, dates)
+        if not rows:
+            return [], None
+        cache = getattr(self, "_tow_cache", None)
+        if cache is None:
+            cache = self._tow_cache = {}
+        key = (self.airport, tuple(sorted(dates)) if dates is not None else None, tz, self.db.tows_summary(self.airport)["rows"], self.db.gradar_summary()["rows"])
+        if key not in cache:
+            if len(cache) > 6:
+                cache.clear()
+            cache[key] = tows.match_tows(self.db, self.airport, rows, tz)
+        return cache[key]
+
+    def tows_day(self, tz: str = "auto"):
+        """Reboques do Excel nos dias seleccionados, emparelhados com o radar de solo (alvo rebocado + follow-me)."""
+        from . import tows
+        res, used = self._tows_matched(self.dates, tz)
+        for r in res:
+            r["gid"] = r["tid"]
+        st = tows.tow_stats(res) if res else None
+        return {"rows": res, "tz": used, "summary": self.db.tows_summary(self.airport), "airport": self.airport,
+                "stats": {"global": st["global"], "radar": st["radar"]} if st else None, "gradar": self.db.gradar_summary()}
+
+    def tows_export(self, path: str, scope: str = "sel", tz: str = "auto"):
+        from . import tows
+        res, used = self._tows_matched(self.dates if scope == "sel" else None, tz)
+        if not res:
+            raise RuntimeError("Não há reboques importados para este aeroporto" + (" nos dias seleccionados." if scope == "sel" else "."))
+        with_radar = self.db.gradar_summary()["rows"] > 0
+        reports.write_excel(path, tows.export_sheets(res, used, self.airport, with_radar))
+        return path
+
     def ground_raw(self, gid: int):
         return self.db.ground_raw(int(gid))
 

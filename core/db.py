@@ -158,6 +158,9 @@ class Database:
         c.execute("""CREATE TABLE IF NOT EXISTS gradar(
             airport VARCHAR, date VARCHAR, block VARCHAR, file_key VARCHAR,
             t DOUBLE, trk INTEGER, csn VARCHAR, modes VARCHAR, lat DOUBLE, lon DOUBLE, modec DOUBLE, gs DOUBLE)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS tows(
+            airport VARCHAR, tid INTEGER, date VARCHAR, t0 DOUBLE, t1 DOUBLE, wtc VARCHAR, schengen VARCHAR, de VARCHAR, para VARCHAR,
+            rota VARCHAR, cruz VARCHAR, dur_reg DOUBLE, obs VARCHAR, src VARCHAR)""")
         c.execute("CREATE TABLE IF NOT EXISTS analysis_cache(key VARCHAR PRIMARY KEY, flight_id INTEGER, value VARCHAR, created TIMESTAMP DEFAULT current_timestamp)")
         c.execute("CREATE TABLE IF NOT EXISTS user_points(name VARCHAR PRIMARY KEY, lat DOUBLE, lon DOUBLE, descr VARCHAR)")
         c.execute("CREATE TABLE IF NOT EXISTS aux_files(path VARCHAR PRIMARY KEY, kind VARCHAR, size BIGINT, mtime DOUBLE, rows INTEGER, imported TIMESTAMP DEFAULT current_timestamp)")
@@ -370,6 +373,34 @@ class Database:
                 AND (gs < 60 OR modec IS NULL OR modec < {elev_fl + 3.0})""",
                   [apt, date, block, vp, path, sep, has_header, coltypes, enc])
         return c.execute("SELECT count(*) FROM gradar WHERE file_key = ?", [vp]).fetchone()[0]
+
+    # ------------------------------------------------------------------ reboques (registo em Excel)
+    def import_tows(self, path: str, airport: str) -> dict:
+        """Importa o Excel de reboques; substitui os reboques anteriores desse aeroporto (o registo é cumulativo)."""
+        from . import tows as tw
+        rows = tw.read_tows_excel(path)
+        if not rows:
+            raise RuntimeError("O Excel não tem nenhuma linha de reboque com data e horas.")
+        src = os.path.basename(path)
+        self.con.execute("DELETE FROM tows WHERE airport = ?", [airport])
+        for r in rows:
+            self.con.execute("INSERT INTO tows VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                             [airport, r["tid"], r["date"], r["t0"], r["t1"], r["wtc"], r["schengen"], r["de"], r["para"], r["rota"], r["cruz"],
+                              r["dur_reg"], r["obs"], src])
+        return {"rows": len(rows), "from": rows[0]["date"], "to": rows[-1]["date"], "src": src}
+
+    def tows_get(self, airport: str, dates: list[str] | None = None) -> list[dict]:
+        cols = ["tid", "date", "t0", "t1", "wtc", "schengen", "de", "para", "rota", "cruz", "dur_reg", "obs"]
+        q = f"SELECT {', '.join(cols)} FROM tows WHERE airport = ?"
+        args: list = [airport]
+        if dates is not None:
+            q += " AND date IN (SELECT unnest(?::VARCHAR[]))"
+            args.append(list(dates) or ["__none__"])
+        return [dict(zip(cols, r)) for r in self.con.execute(q + " ORDER BY date, t0, tid", args).fetchall()]
+
+    def tows_summary(self, airport: str) -> dict:
+        r = self.con.execute("SELECT count(*), min(date), max(date), any_value(src) FROM tows WHERE airport = ?", [airport]).fetchone()
+        return {"rows": r[0], "from": r[1], "to": r[2], "src": r[3]}
 
     def gradar_summary(self) -> dict:
         r = self.con.execute("SELECT count(*), min(date), max(date), count(DISTINCT airport) FROM gradar").fetchone()

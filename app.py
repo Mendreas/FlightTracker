@@ -27,7 +27,7 @@ from core.httpapi import start_server
 from core.service import Service
 
 APP_NAME = "FlightTracker"
-VERSION = "4.3.2"
+VERSION = "4.4.0"
 
 
 def setup_logging(folder: Path):
@@ -291,6 +291,28 @@ class Api:
 
     def ground_list(self):
         return self._safe(self.svc.ground_list)
+
+    def import_tows(self):
+        """Excel de reboques (um por aeroporto; o aeroporto é o que está seleccionado na app)."""
+        try:
+            res = self.window.create_file_dialog(OPEN_DIALOG, allow_multiple=False, file_types=("Excel de reboques (*.xlsx)", "Todos (*.*)"))
+            if not res:
+                return {"ok": True, "data": None}
+            path = res[0] if isinstance(res, (list, tuple)) else res
+            return self._safe(self.svc.db.import_tows, path, self.svc.airport)
+        except Exception as e:  # noqa: BLE001
+            return {"ok": False, "error": str(e)}
+
+    def tows_day(self, tz="auto"):
+        return self._safe(self.svc.tows_day, tz)
+
+    def tows_export(self, scope="sel", tz="auto"):
+        def f():
+            res = self.window.create_file_dialog(SAVE_DIALOG, save_filename=f"Reboques_{self.svc.airport}_{time.strftime('%Y-%m-%d')}.xlsx", file_types=("Excel (*.xlsx)",))
+            if not res: return None
+            path = res[0] if isinstance(res, (list, tuple)) else res
+            return self.svc.tows_export(path, scope, tz)
+        return self._safe(f)
 
     def import_opdi(self):
         try:

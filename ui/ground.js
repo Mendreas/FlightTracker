@@ -6,7 +6,7 @@ const Ground = (() => {
   const { esc, fmt } = C;
   const call = (...a) => FP.call(...a);
   const toast = (m, k) => FP.toast(m, k);
-  const COL = { DEPARTURE: '#ff9b2f', ARRIVAL: '#3b9cff', GR: '#22d3ee' };
+  const COL = { DEPARTURE: '#ff9b2f', ARRIVAL: '#3b9cff', GR: '#22d3ee', RB: '#f472b6', FM: '#a3e635' };
   const VIEW = { LPPT: [[38.762, -9.150], [38.800, -9.120]], LPPR: [[41.226, -8.702], [41.268, -8.660]], LPFR: [[37.000, -7.998], [37.032, -7.948]], LPMA: [[32.684, -16.792], [32.712, -16.752]] };
   let mode = 'tower';             // 'tower' (ficheiro da torre + rede de taxiways, LPPT) | 'gradar' (só radar de solo do CNS: Porto, Faro, ou Lisboa sem torre)
 
@@ -24,6 +24,7 @@ const Ground = (() => {
   let loadedKey = '';
   let gtrack = null, gtMarker = null;   // radar de solo (CNS) do movimento seleccionado: {t:[epoch], pts:[[lat,lon]], gs:[kt]}
   let gradarInfo = null;
+  let towTz = 'auto';             // fuso das horas do Excel de reboques: auto | lisboa | utc
 
   /* ---------------------------------------------------------------- mapa */
   function ensureMap() {
@@ -85,9 +86,11 @@ const Ground = (() => {
       let tw = null;
       if (apt === 'LPPT') { await loadNetwork(); tw = await call('ground_list'); gradarInfo = tw.gradar; }
       else clearNetwork();
-      mode = tw && tw.rows.length ? 'tower' : 'gradar';
-      document.querySelector('[data-gsub="rot"]').style.display = mode === 'gradar' ? 'none' : '';
-      if (mode === 'gradar' && sub !== 'mov') { sub = 'mov'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'mov')); }
+      mode = sub === 'tows' ? 'tows' : (tw && tw.rows.length ? 'tower' : 'gradar');
+      document.querySelector('[data-gsub="rot"]').style.display = mode === 'gradar' || mode === 'tows' ? 'none' : '';
+      $('gdTowTz').style.display = $('gdTowScope').style.display = mode === 'tows' ? '' : 'none';
+      if (mode === 'tows') { loadedKey = key; await loadTows(); fitAirport(); return; }
+      if (mode === 'gradar' && sub !== 'mov' && sub !== 'tows') { sub = 'mov'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'mov')); }
       loadedKey = key;
       if (mode === 'tower') await loadTower(tw);
       else await loadRadarSolo(tw);
@@ -133,14 +136,59 @@ const Ground = (() => {
         `Importa os zips do radar de solo (ex.: ${FP.state.airport === 'LPPR' ? 'prtTGO_prtARP' : FP.state.airport === 'LPFR' ? 'farTGO_farARP' : 'lisTGO_lisARP'}.AAAA-MM.zip) com “Importar pasta…”.</div>`;
     } else renderSub();
   }
+  /* reboques: só o que está no Excel, cada um com o alvo rebocado (rosa) e o veículo acompanhante (verde) encontrados no radar de solo */
+  async function loadTows() {
+    const body = $('gdBody');
+    const r = await call('tows_day', towTz);
+    rows = r.rows; stats = null; routes = {};
+    for (const t of rows) {
+      t.t_ref = t.utc0;
+      t.tracks.forEach((k, i) => {
+        if (!k.t.length) return;
+        const isTow = k.role === 'reboque' && !routes[t.gid];
+        routes[isTow ? t.gid : 100000 + t.gid * 10 + i] = { pts: k.pts, t: k.t, t0: k.t[0], t1: k.t[k.t.length - 1], mt: isTow ? 'RB' : 'FM',
+          csn: isTow ? `${t.de || '?'}→${t.para || '?'}` : (k.role === 'acompanhante' ? 'follow-me' : k.role) };
+      });
+    }
+    const days = [...FP.state.days].sort();
+    dayEpoch = epochOf(days[0]);
+    buildRadar();
+    setupTime();
+    const tzn = { lisboa: 'hora de Lisboa', utc: 'UTC' }[r.tz] || '';
+    const s = r.summary, st = r.stats;
+    $('gdInfo').textContent = s.rows ? `${s.rows} reboques no Excel (${fmtD(s.from)} → ${fmtD(s.to)})${r.gradar && r.gradar.rows ? '' : ' · sem radar de solo importado: só se mostra a lista'}${tzn ? ' · horas do Excel lidas como ' + tzn : ''}` : `Sem Excel de reboques importado para ${FP.state.airport}`;
+    $('gdCount').textContent = st ? `${rows.length} reboques nos dias seleccionados · ${st.radar.identificados} no radar · ${st.radar.com_acompanhante} com acompanhante` : '';
+    if (!rows.length) {
+      body.innerHTML = s.rows ? `<div class="empty">Não há reboques do Excel nos dias seleccionados (o Excel cobre ${fmtD(s.from)} a ${fmtD(s.to)}).</div>` :
+        `<div class="empty">Importa o registo de reboques (Excel) com o botão “🚜 Excel de reboques…”. Colunas esperadas: Data, Início, Fim, Rasto, Schengen, De, Para, Rota, Cruzamento de pista, Duração registada (min), Observações.</div>`;
+    } else renderSub();
+  }
   const epochOf = d => Date.UTC(2000 + +d.slice(0, 2), +d.slice(2, 4) - 1, +d.slice(4, 6)) / 1000;
   const fmtD = d => d ? `${d.slice(4, 6)}/${d.slice(2, 4)}/20${d.slice(0, 2)}` : '—';
   const hms = t => { if (t == null) return '—'; const s = Math.round(t - dayEpoch); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60; return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}`; };
   const dur = s => s == null ? '—' : s >= 120 ? `${Math.floor(s / 60)}m${String(Math.round(s % 60)).padStart(2, '0')}` : `${Math.round(s)} s`;
 
   /* ---------------------------------------------------------------- tabelas */
+  const hmL = s => s == null ? '—' : `${String(Math.floor(s / 3600) % 24).padStart(2, '0')}:${String(Math.floor(s % 3600 / 60)).padStart(2, '0')}`;
+  const CONF = { 'alta': '#35c46a', 'média': '#f5b942', 'baixa': '#ff6b6b' };
   function renderSub() {
     const body = $('gdBody');
+    if (mode === 'tows') {
+      body.innerHTML = C.table([
+        { k: 'date', label: 'Data', fmt: fmtD }, { k: 't0', label: 'Início', fmt: hmL }, { k: 't1', label: 'Fim', fmt: hmL },
+        { k: 'de', label: 'De', fmt: v => `<b>${esc(v || '')}</b>` }, { k: 'para', label: 'Para', fmt: v => `<b>${esc(v || '')}</b>` },
+        { k: 'rota', label: 'Rota', fmt: v => `<span class="mono">${esc(v || '')}</span>` }, { k: 'wtc', label: 'Rasto' },
+        { k: 'cruz', label: 'Cruz. pista', fmt: v => esc(v || '—') },
+        { k: 'dur_reg', label: 'Dur. Excel (min)', fmt: (v, r) => v != null ? v : Math.round((r.t1 - r.t0) / 60) },
+        { k: 'rb', label: 'Reboque (radar)', fmt: v => v ? `<span style="color:${COL.RB}">${esc(v)}</span>` : '<span class="muted">—</span>' },
+        { k: 'fm', label: 'Acompanhante', fmt: v => v ? `<span style="color:${COL.FM}">${esc(v)}</span>` : '<span class="muted">—</span>' },
+        { k: 'conf', label: 'Confiança', fmt: (v, r) => v ? `<span style="color:${CONF[v]};font-weight:700">${v}</span>${r.alts ? ` <span class="muted" title="Outros alvos em movimento no mesmo período">(+${r.alts})</span>` : ''}` : `<span class="muted">${esc(r.status)}</span>` },
+        { k: 'real_dur', label: 'Dur. radar', fmt: v => v == null ? '—' : dur(v) }, { k: 'dist_m', label: 'Dist. (m)', fmt: v => v == null ? '—' : fmt(v) },
+        { k: 'cruz_radar', label: 'Cruz. radar', fmt: v => v == null ? '—' : v ? 'Sim' : 'Não' }, { k: 'obs', label: 'Obs.', fmt: v => esc(v || '') },
+      ], rows, { id: 'gdTable', limit: 3000, rowClass: r => 'gd-row' + (r.gid === sel ? ' sel' : '') });
+      body.onclick = ev => { const tr = ev.target.closest('tr[data-i]'); if (tr) select(rows[+tr.dataset.i].gid); };
+      return;
+    }
     if (mode === 'gradar') {
       body.innerHTML = C.table([
         { k: 'date', label: 'Data', fmt: fmtD }, { k: 'csn', label: 'Voo / alvo', fmt: v => `<b>${esc(v)}</b>` }, { k: 'modes', label: 'Modo S', fmt: v => v || '—' },
@@ -202,18 +250,21 @@ const Ground = (() => {
 
   /* ---------------------------------------------------------------- selecção e animação */
   function select(gid, o = {}) {
+    if (mode === 'tows' && gid >= 100000) gid = Math.floor((gid - 100000) / 10);   // clicou no follow-me: selecciona o reboque
     sel = gid === sel ? null : gid;
     document.querySelectorAll('#gdTable tr[data-i]').forEach(tr => {
       const on = rows[+tr.dataset.i].gid === sel; tr.classList.toggle('sel', on);
       if (on && o.scrollTable) tr.scrollIntoView({ block: 'center' });
     });
-    if (o.scrollTable && sub !== 'mov') { sub = 'mov'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'mov')); renderSub(); }
+    if (o.scrollTable && sub !== 'mov' && sub !== 'tows') { sub = 'mov'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'mov')); renderSub(); }
     routeGroup.clearLayers(); gtrack = null; if (gtMarker) { acGroup.removeLayer(gtMarker); gtMarker = null; }
     if (sel == null) return;
     const r = routes[sel], row = rows.find(x => x.gid === sel);
     if (mode === 'tower') loadGradar(sel, !r);
+    if (!r && mode === 'tows') { toast(row && row.status === 'sem radar' ? 'Este reboque não foi encontrado no radar de solo (verifica o fuso das horas e se o radar de solo desse dia está importado).' : 'Sem percurso para este reboque.', 'err'); return; }
     if (!r) { if (!(gradarInfo && gradarInfo.rows)) toast('Sem percurso reconstruído para este movimento (sem sequência de taxi).', 'err'); return; }
     L.polyline(r.pts, { color: COL[r.mt] || '#fff', weight: 4, opacity: .9 }).addTo(routeGroup);
+    if (mode === 'tows' && row) for (const k of row.tracks) if (k.pts !== r.pts && k.pts.length) L.polyline(k.pts, { color: COL.FM, weight: 3, opacity: .9, dashArray: '6 4' }).bindTooltip(k.role + ' · ' + k.label).addTo(routeGroup);
     L.circleMarker(r.pts[0], { radius: 5, color: '#35c46a', fillOpacity: 1 }).bindTooltip('início ' + hms(r.t0)).addTo(routeGroup);
     L.circleMarker(r.pts[r.pts.length - 1], { radius: 5, color: '#ff5d5d', fillOpacity: 1 }).bindTooltip('fim ' + hms(r.t1)).addTo(routeGroup);
     if (!o.keepTime) { map.fitBounds(L.latLngBounds(r.pts).pad(.3)); setSim(r.t0 - dayEpoch + 1); }
@@ -343,7 +394,19 @@ const Ground = (() => {
     $('gdTime').oninput = e => { stop(); setSim(+e.target.value); };
     $('gdRadar').onchange = drawFrame;
     $('gdGradar').onchange = () => { const g = sel; sel = null; if (g != null) select(g, { keepTime: true }); else drawFrame(); };
-    document.querySelectorAll('[data-gsub]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x === b)); sub = b.dataset.gsub; renderSub(); });
+    document.querySelectorAll('[data-gsub]').forEach(b => b.onclick = () => {
+      const prev = sub; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x === b)); sub = b.dataset.gsub;
+      if (sub === 'tows' || prev === 'tows') { loadedKey = ''; load(true); } else renderSub();
+    });
+    $('gdTowTz').onchange = e => { towTz = e.target.value; loadedKey = ''; load(true); };
+    $('gdTowImport').onclick = async () => {
+      try {
+        const r = await call('import_tows'); if (!r) return;
+        toast(`${r.rows} reboques importados de ${r.src} (${fmtD(r.from)} → ${fmtD(r.to)}).`, 'ok');
+        sub = 'tows'; document.querySelectorAll('[data-gsub]').forEach(x => x.classList.toggle('active', x.dataset.gsub === 'tows'));
+        loadedKey = ''; load(true);
+      } catch (e) { toast(e.message, 'err'); }
+    };
     $('gdImport').onclick = async () => {
       try {
         const r = await call('import_ground'); if (!r) return;
@@ -351,7 +414,7 @@ const Ground = (() => {
         loadedKey = ''; load(true);
       } catch (e) { toast(e.message, 'err'); }
     };
-    $('gdExport').onclick = async () => { try { if (mode === 'gradar') { const p = await call('export_rows', `Radar de solo — ${FP.state.airport}`, ['Data', 'Voo / alvo', 'Modo S', 'Início (UTC)', 'Fim (UTC)', 'Duração (s)', 'Vel. máx (kt)', 'Distância (m)', 'Pontos'], rows.map(r => [fmtD(r.date), r.csn, r.modes || '', hmsAbs(r.t0), hmsAbs(r.t1), Math.round(r.t1 - r.t0), r.vmax, r.dist, r.n])); if (p) toast('Exportado para ' + p, 'ok'); return; } const p = await call('export', 'ground', {}, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
+    $('gdExport').onclick = async () => { try { if (mode === 'tows') { toast('A preparar o Excel dos reboques…'); const p = await call('tows_export', $('gdTowScope').value, towTz); if (p) toast('Exportado para ' + p, 'ok'); return; } if (mode === 'gradar') { const p = await call('export_rows', `Radar de solo — ${FP.state.airport}`, ['Data', 'Voo / alvo', 'Modo S', 'Início (UTC)', 'Fim (UTC)', 'Duração (s)', 'Vel. máx (kt)', 'Distância (m)', 'Pontos'], rows.map(r => [fmtD(r.date), r.csn, r.modes || '', hmsAbs(r.t0), hmsAbs(r.t1), Math.round(r.t1 - r.t0), r.vmax, r.dist, r.n])); if (p) toast('Exportado para ' + p, 'ok'); return; } const p = await call('export', 'ground', {}, null); if (p) toast('Exportado para ' + p, 'ok'); } catch (e) { toast(e.message, 'err'); } };
   });
   /* ================================================================ Cruzamento de fontes */
   let cross = null, crossKey = '';

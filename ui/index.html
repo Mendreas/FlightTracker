@@ -262,6 +262,7 @@
     <div id="tab-solo" class="tabpane">
       <div class="toolbar wrap">
         <button class="btn primary" id="gdImport" title="Importar o export operacional da torre (ALL_LPPT_AAAA-MM-DD_…csv)">📥 Ficheiro da torre…</button>
+        <button class="btn" id="gdTowImport" title="Importar o registo de reboques (Excel) do aeroporto seleccionado: data, início, fim, de, para, rota, cruzamento de pista…">🚜 Excel de reboques…</button>
         <span id="gdInfo" class="muted"></span>
         <span class="spacer"></span>
         <button class="btn" id="gdPlay" title="Reproduzir o dia">▶</button>
@@ -277,7 +278,10 @@
       </div>
       <div class="gd-split" id="gdSplit">
         <div class="gd-left" id="gdLeft">
-          <div class="subtabs"><button class="subtab active" data-gsub="mov">Movimentos</button><button class="subtab" data-gsub="rot">ROT e taxi (A-SMGCS)</button><span id="gdCount" class="muted"></span><button class="btn sm" id="gdExport">⬇ Excel</button></div>
+          <div class="subtabs"><button class="subtab active" data-gsub="mov">Movimentos</button><button class="subtab" data-gsub="rot">ROT e taxi (A-SMGCS)</button><button class="subtab" data-gsub="tows">Reboques</button><span id="gdCount" class="muted"></span>
+            <select id="gdTowTz" class="inp tiny" style="display:none" title="Fuso das horas do Excel de reboques. Automático: escolhe o que melhor casa com o radar de solo."><option value="auto">Horas do Excel: automático</option><option value="lisboa">Horas do Excel: Lisboa</option><option value="utc">Horas do Excel: UTC</option></select>
+            <select id="gdTowScope" class="inp tiny" style="display:none" title="Que reboques vão para o Excel exportado"><option value="sel">Exportar: dias seleccionados</option><option value="all">Exportar: todos os reboques</option></select>
+            <button class="btn sm" id="gdExport">⬇ Excel</button></div>
           <div class="scroll" id="gdBody"><div class="empty">Importa o ficheiro da torre e aplica um filtro com dias de LPPT.</div></div>
         </div>
         <div class="gd-handle" id="gdHandle" title="Arrasta para redimensionar"></div>
