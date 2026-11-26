@@ -10,14 +10,15 @@ from __future__ import annotations
 
 import datetime as dt
 import math
+import re
 import unicodedata
 
 from .geo import AIRPORTS
 
 MOVING_KT = 1.5          # abaixo disto considera-se parado
-MAX_TOW_KT = 45.0        # um reboque (ou follow-me) nunca passa disto
-CLOSE_M = 120.0          # distância máxima entre reboque e acompanhante para contarem como "juntos"
-WINDOW_TOL = (90.0, 150.0)   # folga antes do início / depois do fim (o Excel tem resolução de minuto)
+TAXI_KT = 14.0           # acima disto o alvo já anda com motor próprio: acaba o reboque
+TOW_P75_KT = 10.0        # 75% do tempo em movimento abaixo disto: a rebocar (a rolar com motor próprio é mais rápido)
+WINDOW_TOL = (300.0, 300.0)  # o registo é manual: os minutos do Excel desviam-se facilmente 3-5 min do movimento real
 
 
 # ----------------------------------------------------------------------------- tempo
@@ -169,11 +170,12 @@ def _interp(t, ts, vals, i0=0):
 
 class Leg:
     """Percurso de um alvo do radar de solo (pode juntar vários troços do mesmo veículo)."""
-    __slots__ = ("key", "csn", "modes", "t", "x", "y", "lat", "lon", "gs")
+    __slots__ = ("key", "csn", "modes", "t", "x", "y", "lat", "lon", "gs", "mv", "orig")
 
     def __init__(self, key, csn, modes):
         self.key, self.csn, self.modes = key, csn, modes
-        self.t, self.x, self.y, self.lat, self.lon, self.gs = [], [], [], [], [], []
+        self.t, self.x, self.y, self.lat, self.lon, self.gs, self.mv = [], [], [], [], [], [], []
+        self.orig = None
 
     @property
     def t0(self):
@@ -183,8 +185,9 @@ class Leg:
     def t1(self):
         return self.t[-1]
 
-    def add(self, t, x, y, lat, lon, gs):
+    def add(self, t, x, y, lat, lon, gs, mv=None):
         self.t.append(t); self.x.append(x); self.y.append(y); self.lat.append(lat); self.lon.append(lon); self.gs.append(gs or 0.0)
+        self.mv.append((gs or 0.0) >= MOVING_KT if mv is None else mv)
 
     def label(self) -> str:
         if self.csn and self.csn != "(SEM ID)":
@@ -194,6 +197,19 @@ class Leg:
 
     def has_id(self) -> bool:
         return bool(self.csn) or bool(self.modes)
+
+
+def _mark_moving(leg: Leg, win: float = 20.0, min_m: float = 22.0) -> None:
+    """Em movimento = deslocou-se pelo menos min_m metros em ±win segundos (a velocidade do radar de solo tem muito ruído com o alvo parado)."""
+    n = len(leg.t)
+    lo = hi = 0
+    for i in range(n):
+        while leg.t[lo] < leg.t[i] - win:
+            lo += 1
+        while hi + 1 < n and leg.t[hi + 1] <= leg.t[i] + win:
+            hi += 1
+        span = leg.t[hi] - leg.t[lo]
+        leg.mv[i] = 6.0 <= span <= 2.5 * win and math.hypot(leg.x[hi] - leg.x[lo], leg.y[hi] - leg.y[lo]) >= min_m
 
 
 def build_legs(rows, xy: _XY, gap_s: float = 120.0) -> list[Leg]:
@@ -206,6 +222,8 @@ def build_legs(rows, xy: _XY, gap_s: float = 120.0) -> list[Leg]:
         x, y = xy(la, lo)
         cur.add(t, x, y, la, lo, gs)
         last_k, last_t = k, t
+    for L in legs:
+        _mark_moving(L)
     return legs
 
 
@@ -215,7 +233,7 @@ def _moving_time(leg: Leg, a: float, b: float) -> float:
         if leg.t[i] < a or leg.t[i - 1] > b:
             continue
         dt_ = leg.t[i] - leg.t[i - 1]
-        if dt_ <= 12 and (leg.gs[i] >= MOVING_KT or leg.gs[i - 1] >= MOVING_KT):
+        if dt_ <= 12 and (leg.mv[i] or leg.mv[i - 1]):
             s += dt_
     return s
 
@@ -225,20 +243,22 @@ def _slice(leg: Leg, a: float, b: float) -> Leg | None:
     if len(idx) < 3:
         return None
     s = Leg(leg.key, leg.csn, leg.modes)
+    s.orig = leg.orig or leg
     for i in idx:
-        s.add(leg.t[i], leg.x[i], leg.y[i], leg.lat[i], leg.lon[i], leg.gs[i])
+        s.add(leg.t[i], leg.x[i], leg.y[i], leg.lat[i], leg.lon[i], leg.gs[i], leg.mv[i])
     return s
 
 
 def _trim_moving(leg: Leg) -> Leg:
     """Remove as pontas paradas (parqueado antes/depois), mantendo 1 ponto de margem."""
-    mv = [i for i, g in enumerate(leg.gs) if g >= MOVING_KT]
+    mv = [i for i, f in enumerate(leg.mv) if f]
     if not mv:
         return leg
     i0, i1 = max(0, mv[0] - 1), min(len(leg.t) - 1, mv[-1] + 1)
     s = Leg(leg.key, leg.csn, leg.modes)
+    s.orig = leg.orig or leg
     for i in range(i0, i1 + 1):
-        s.add(leg.t[i], leg.x[i], leg.y[i], leg.lat[i], leg.lon[i], leg.gs[i])
+        s.add(leg.t[i], leg.x[i], leg.y[i], leg.lat[i], leg.lon[i], leg.gs[i], leg.mv[i])
     return s
 
 
@@ -254,41 +274,50 @@ def _stitch(subs: list[Leg]) -> list[Leg]:
                     continue
                 for i in range(len(s.t)):
                     if s.t[i] > o.t1:
-                        o.add(s.t[i], s.x[i], s.y[i], s.lat[i], s.lon[i], s.gs[i])
+                        o.add(s.t[i], s.x[i], s.y[i], s.lat[i], s.lon[i], s.gs[i], s.mv[i])
                 o.csn = o.csn or s.csn; o.modes = o.modes or s.modes
                 done = True
                 break
         if not done:
             c = Leg(s.key, s.csn, s.modes)
+            c.orig = s.orig
             for i in range(len(s.t)):
-                c.add(s.t[i], s.x[i], s.y[i], s.lat[i], s.lon[i], s.gs[i])
+                c.add(s.t[i], s.x[i], s.y[i], s.lat[i], s.lon[i], s.gs[i], s.mv[i])
             out.append(c)
     return out
 
 
-def _comove(A: Leg, B: Leg) -> float:
-    """Fração do tempo, em que ambos se movem em simultâneo, em que estão a menos de CLOSE_M um do outro."""
-    t0, t1 = max(A.t0, B.t0), min(A.t1, B.t1)
-    if t1 - t0 < 16:
-        return 0.0
-    n = close = 0
-    t = t0
-    ia = ib = 0
-    while t <= t1:
-        gA, ia = _interp(t, A.t, A.gs, ia)
-        gB, ib = _interp(t, B.t, B.gs, ib)
-        if gA >= MOVING_KT and gB >= MOVING_KT:
-            xa, _ = _interp(t, A.t, A.x, ia); ya, _ = _interp(t, A.t, A.y, ia)
-            xb, _ = _interp(t, B.t, B.x, ib); yb, _ = _interp(t, B.t, B.y, ib)
-            n += 1
-            if math.hypot(xa - xb, ya - yb) <= CLOSE_M:
-                close += 1
-        t += 2.0
-    return close / n if n >= 8 else 0.0
+def _extend(s: Leg, a: float, b: float, pad: float = 60.0, gap: float = 420.0) -> Leg:
+    """O Excel tem erros de minutos: alarga o troço escolhido ao episódio completo de movimento do mesmo alvo (parado > gap s = fim; os reboques esperam minutos antes de cruzar a pista). Limitado a [a-10 min, b+15 min]."""
+    o = s.orig
+    if o is None or o is s:
+        return s
+    mv = [i for i, f in enumerate(s.mv) if f]
+    if not mv:
+        return s
+    a, b = s.t[mv[0]], s.t[mv[-1]]
+    idx = [i for i, f in enumerate(o.mv) if f and o.gs[i] <= TAXI_KT and a - 600 <= o.t[i] <= b + 900]
+    eps, cur = [], None
+    for i in idx:
+        if cur and o.t[i] - o.t[cur[1]] <= gap:
+            cur[1] = i
+        else:
+            cur = [i, i]
+            eps.append(cur)
+    best = max(eps, key=lambda e: min(o.t[e[1]], b) - max(o.t[e[0]], a), default=None)
+    if best is None or min(o.t[best[1]], b) - max(o.t[best[0]], a) <= 0:
+        return s
+    return _slice(o, o.t[best[0]] - pad, o.t[best[1]] + pad) or s
 
 
 def _path_len(leg: Leg) -> float:
-    return sum(math.hypot(leg.x[i] - leg.x[i - 1], leg.y[i] - leg.y[i - 1]) for i in range(1, len(leg.t)))
+    """Comprimento do percurso, sem somar o ruído do radar (pontos com pelo menos 10 s de intervalo)."""
+    tot, last = 0.0, 0
+    for i in range(1, len(leg.t)):
+        if leg.t[i] - leg.t[last] >= 10:
+            tot += math.hypot(leg.x[i] - leg.x[last], leg.y[i] - leg.y[last])
+            last = i
+    return tot
 
 
 def runway_crossings(leg: Leg, airport: str, xy: _XY) -> int:
@@ -298,118 +327,126 @@ def runway_crossings(leg: Leg, airport: str, xy: _XY) -> int:
     if len(thr) != 2:
         return 0
     (ax, ay), (bx, by) = xy(*thr[0]), xy(*thr[1])
-    n, inside_prev = 0, False
+    n, last = 0, -1e9
     for i in range(1, len(leg.t)):
         px, py, qx, qy = leg.x[i - 1], leg.y[i - 1], leg.x[i], leg.y[i]
         d1 = (bx - ax) * (py - ay) - (by - ay) * (px - ax)
         d2 = (bx - ax) * (qy - ay) - (by - ay) * (qx - ax)
-        if d1 == 0 and d2 == 0:
-            continue
         if (d1 > 0) != (d2 > 0):
             d3 = (qx - px) * (ay - py) - (qy - py) * (ax - px)
             d4 = (qx - px) * (by - py) - (qy - py) * (bx - px)
-            if (d3 > 0) != (d4 > 0):
+            if (d3 > 0) != (d4 > 0) and leg.t[i] - last > 20:      # o ruído do radar faz o percurso "cruzar" várias vezes seguidas
                 n += 1
+                last = leg.t[i]
     return n
 
 
 # ----------------------------------------------------------------------------- emparelhamento
+FM_RE = re.compile(r"^(FM|FF)\d+$", re.I)    # veículos follow-me do Porto: FM05, FM06, FF01… (callsign no radar de solo)
+ESCORT_M = 260.0                              # o follow-me vai uns 50-150 m à frente do reboque (e pára à espera)
+
+
+def is_fm(leg: Leg) -> bool:
+    return bool(leg.csn and FM_RE.match(leg.csn))
+
+
+def _near_flags(fm: Leg, ts: list[float]) -> list[tuple[float, float, bool] | None]:
+    """Posição (x, y) do follow-me em cada instante de ts e se esteve em movimento nesses ±15 s; None se o follow-me não tem dados aí."""
+    out = []
+    i = 0
+    n = len(fm.t)
+    for t in ts:
+        if t < fm.t[0] - 20 or t > fm.t[-1] + 20:
+            out.append(None)
+            continue
+        x, i = _interp(t, fm.t, fm.x, i)
+        y, _ = _interp(t, fm.t, fm.y, i)
+        mv = any(fm.mv[k] for k in range(max(0, i - 8), min(n, i + 9)) if abs(fm.t[k] - t) <= 15)
+        out.append((x, y, mv))
+    return out
+
+
+def _time_fit(s: Leg, a: float, b: float) -> float:
+    """0-1: quanto o intervalo em movimento do alvo coincide com o intervalo registado [a, b]; se não coincide mas está
+    a menos de 5 min, vale pouco (o registo manual tem erros de minutos)."""
+    mv = [s.t[i] for i in range(len(s.t)) if s.mv[i]]
+    if not mv:
+        return 0.0
+    m0, m1 = mv[0], mv[-1]
+    ov = min(m1, b) - max(m0, a)
+    if ov > 0:
+        return min(1.0, ov / max(30.0, min(b - a, m1 - m0)))
+    gap = max(a - m1, m0 - b)
+    return max(0.0, 0.4 * (1.0 - gap / WINDOW_TOL[0]))
+
+
 def match_one(legs: list[Leg], a: float, b: float, airport: str, xy: _XY) -> dict:
-    """Procura, nos percursos do radar de solo, o reboque que decorreu em [a, b] (epoch UTC)."""
+    """Procura, no radar de solo, o reboque que decorreu em [a, b] (epoch UTC): um alvo lento que se move nesse intervalo
+    e é escoltado por um veículo follow-me (FM##/FF##) a poucas dezenas/centenas de metros."""
     dur = max(b - a, 60.0)
     lo, hi = a - WINDOW_TOL[0], b + WINDOW_TOL[1]
-    subs = []
+    fms, subs = [], []
     for L in legs:
         if L.t1 < lo or L.t0 > hi:
+            continue
+        if is_fm(L):
+            s = _slice(L, lo - 60, hi + 60)
+            if s is not None:
+                fms.append(s)
             continue
         s = _slice(L, lo, hi)
         if s is None:
             continue
         s = _trim_moving(s)
-        if sum(1 for g in s.gs if g > MAX_TOW_KT) > 2:     # aeronave a rolar/aterrar, não é um reboque
+        if sum(1 for g in s.gs if g > 30.0) > 2:        # aeronave a rolar/aterrar/descolar, não é um reboque
             continue
         subs.append(s)
+    res = {"status": "sem radar", "conf": None, "legs": [], "alts": 0}
     cands = []
     for s in _stitch(subs):
+        mv = [g for g, f in zip(s.gs, s.mv) if f]
+        if not mv:
+            continue
         mt = _moving_time(s, lo, hi)
         disp = math.hypot(s.x[-1] - s.x[0], s.y[-1] - s.y[0])
-        if mt < 30 or max(disp, _path_len(s) * 0.5) < 80:
+        if mt < 30 or max(disp, _path_len(s) * 0.5) < 60:
             continue
-        s_in = _moving_time(s, a - 30, b + 90)
-        cands.append((min(1.3, s_in / dur), s))
-    res = {"status": "sem radar", "conf": None, "legs": [], "alts": 0}
+        mv.sort()
+        if mv[int(len(mv) * 0.75)] > TOW_P75_KT:         # taxi com motor próprio: mais rápido que um reboque
+            continue
+        cov = _time_fit(s, a, b)
+        # escolta: fração dos instantes em movimento em que há um follow-me (também em movimento) por perto
+        ts = [s.t[i] for i in range(len(s.t)) if s.mv[i] and lo <= s.t[i] <= hi]
+        best_fm, best_n = None, 0
+        for f in fms:
+            near = _near_flags(f, ts)
+            k = sum(1 for t, p in zip(ts, near) if p and p[2] and math.hypot(p[0] - _interp(t, s.t, s.x)[0], p[1] - _interp(t, s.t, s.y)[0]) <= ESCORT_M)
+            if k > best_n:
+                best_fm, best_n = f, k
+        esc = best_n / len(ts) if ts else 0.0
+        cands.append({"leg": s, "cov": cov, "esc": esc, "fm": best_fm, "score": cov * (0.35 + 0.65 * min(1.0, esc / 0.6))})
     if not cands:
         return res
-    cands.sort(key=lambda c: -c[0])
-    cands = cands[:12]
-    n = len(cands)
-    C = [[0.0] * n for _ in range(n)]
-    for i in range(n):
-        for j in range(i + 1, n):
-            C[i][j] = C[j][i] = _comove(cands[i][1], cands[j][1])
-    groups, best = [], None
-    for i in range(n):
-        mem = [i] + sorted([j for j in range(n) if j != i and C[i][j] >= 0.6], key=lambda j: -C[i][j] * cands[j][0])[:2]
-        cov = max(cands[m][0] for m in mem)
-        score = cov * (1.0 + 0.3 * (min(len(mem), 2) - 1))
-        g = {"mem": mem, "cov": cov, "score": score}
-        groups.append(g)
-        if best is None or score > best["score"]:
-            best = g
-    used = set(best["mem"])
-    alts = [g for g in groups if not (set(g["mem"]) & used) and g["cov"] >= 0.5 and g["score"] >= 0.6 * best["score"]]
-    # alternativas distintas entre si (um mesmo conjunto aparece uma vez por membro)
-    alt_sets = {frozenset(g["mem"]) for g in alts}
-    res["alts"] = len(alt_sets)
-    mem = [cands[m][1] for m in best["mem"]]
-    roles = _roles(mem)
-    legs_out = []
-    for leg, role in zip(mem, roles):
-        legs_out.append({"role": role, "label": leg.label(), "csn": leg.csn, "modes": leg.modes, "leg": leg})
-    cov = best["cov"]
-    two = len(mem) >= 2
-    if two and cov >= 0.7 and not alt_sets:
+    cands.sort(key=lambda c: -c["score"])
+    best = cands[0]
+    alts = [c for c in cands[1:] if c["esc"] >= 0.3 and c["cov"] >= 0.4 and c["score"] >= 0.6 * best["score"]]
+    res["alts"] = len(alts)
+    tow = _extend(best["leg"], a, b)
+    members = [tow] + ([best["fm"]] if best["fm"] is not None and best["esc"] >= 0.2 else [])
+    legs_out = [{"role": "reboque", "label": tow.label(), "csn": tow.csn, "modes": tow.modes, "leg": tow}]
+    if len(members) == 2:
+        f = members[1]
+        f = _slice(f.orig, tow.t0 - 30, tow.t1 + 30) or f
+        legs_out.append({"role": "acompanhante", "label": f.label(), "csn": f.csn, "modes": f.modes, "leg": f})
+    cov, esc = best["cov"], best["esc"]
+    if esc >= 0.5 and cov >= 0.6 and not alts:
         conf = "alta"
-    elif (two and cov >= 0.5) or (cov >= 0.7 and not alt_sets):
+    elif esc >= 0.3 and cov >= 0.4:
         conf = "média"
     else:
         conf = "baixa"
-    res.update(status="ok", conf=conf, legs=legs_out, cov=round(min(cov, 1.0), 2), two=two)
+    res.update(status="ok", conf=conf, legs=legs_out, cov=round(min(cov, 1.0), 2), esc=round(esc, 2), two=len(members) == 2)
     return res
-
-
-def _roles(mem: list[Leg]) -> list[str]:
-    """reboque / acompanhante (follow-me): o follow-me vai sempre à frente do reboque, em relação ao sentido de marcha."""
-    if len(mem) == 1:
-        return ["reboque"]
-    # projecção da posição, no instante de maior velocidade conjunta, sobre o sentido de marcha
-    t0 = max(m.t0 for m in mem); t1 = min(m.t1 for m in mem)
-    if t1 <= t0:
-        return ["alvo A" if i == 0 else "alvo B" for i in range(len(mem))]
-    ref = mem[0]
-    inside = [i for i in range(len(ref.t)) if t0 <= ref.t[i] <= t1]
-    tm = ref.t[max(inside, key=lambda i: ref.gs[i])] if inside else (t0 + t1) / 2
-    vx = ref.x[-1] - ref.x[0]; vy = ref.y[-1] - ref.y[0]
-    # sentido instantâneo do alvo de referência em tm (mais fiável que o deslocamento total em percursos com curvas)
-    i = min(range(len(ref.t)), key=lambda k: abs(ref.t[k] - tm))
-    j0, j1 = max(0, i - 3), min(len(ref.t) - 1, i + 3)
-    if math.hypot(ref.x[j1] - ref.x[j0], ref.y[j1] - ref.y[j0]) > 3:
-        vx, vy = ref.x[j1] - ref.x[j0], ref.y[j1] - ref.y[j0]
-    nrm = math.hypot(vx, vy) or 1.0
-    proj = []
-    for m in mem:
-        x, _ = _interp(tm, m.t, m.x); y, _ = _interp(tm, m.t, m.y)
-        proj.append((x * vx + y * vy) / nrm)
-    order = sorted(range(len(mem)), key=lambda k: -proj[k])
-    if proj[order[0]] - proj[order[-1]] < 5:       # lado a lado: não dá para saber quem vai à frente
-        ids = [m.has_id() for m in mem]
-        if sum(ids) == 1:
-            return ["reboque" if i else "acompanhante" for i in ids]
-        return ["alvo A" if k == 0 else "alvo B" if k == 1 else "alvo C" for k in range(len(mem))]
-    roles = ["outro"] * len(mem)
-    roles[order[0]] = "acompanhante"
-    roles[order[-1]] = "reboque"
-    return roles
 
 
 # ----------------------------------------------------------------------------- obtenção dos dados
@@ -477,7 +514,7 @@ def _choose_tz(db, airport: str, tows: list[dict], xy: _XY) -> str:
             legs = _fetch_legs(db, airport, a - 600, b + 600, xy)
             m = match_one(legs, a, b, airport, xy)
             if m["status"] == "ok":
-                s += m["cov"] * (1.5 if m["two"] else 1.0)
+                s += m["cov"] * (0.3 + m["esc"])
         score[tz] = s
     # em empate (sem radar / hora igual no inverno) vale a hora de Lisboa
     return "utc" if score["utc"] > score["lisboa"] * 1.05 else "lisboa"
@@ -486,7 +523,7 @@ def _choose_tz(db, airport: str, tows: list[dict], xy: _XY) -> str:
 def _summarise(r: dict, m: dict, airport: str, xy: _XY) -> dict:
     """Linha final: dados do Excel + o que se encontrou no radar (geometria incluída, comprimida)."""
     row = dict(r)
-    row.update(status=m["status"], conf=m["conf"], alts=m.get("alts", 0), utc0=m["a"], utc1=m["b"])
+    row.update(cov=None, esc=None, status=m["status"], conf=m["conf"], alts=m.get("alts", 0), utc0=m["a"], utc1=m["b"])
     row.update(rb=None, fm=None, rb_modes=None, fm_modes=None, real_t0=None, real_t1=None, real_dur=None, dist_m=None,
                vmax=None, cruz_radar=None, n_cruz_radar=None, tracks=[])
     if m["status"] != "ok":
@@ -505,14 +542,14 @@ def _summarise(r: dict, m: dict, airport: str, xy: _XY) -> dict:
     tow = next((e["leg"] for e in legs if e["role"] == "reboque"), legs[0]["leg"])
     if row["rb"] is None:
         row["rb"], row["rb_modes"] = legs[0]["label"], legs[0]["modes"]
-    mv = [i for i, g in enumerate(tow.gs) if g >= MOVING_KT]
+    mv = [i for i, f in enumerate(tow.mv) if f]
     row["real_t0"], row["real_t1"] = tow.t[mv[0]] if mv else tow.t0, tow.t[mv[-1]] if mv else tow.t1
     row["real_dur"] = round(row["real_t1"] - row["real_t0"])
     row["dist_m"] = round(_path_len(tow))
     row["vmax"] = round(max(tow.gs), 1)
     n = runway_crossings(tow, airport, xy)
     row["n_cruz_radar"], row["cruz_radar"] = n, n > 0
-    row["cov"] = m.get("cov")
+    row["cov"], row["esc"] = m.get("cov"), m.get("esc")
     return row
 
 
