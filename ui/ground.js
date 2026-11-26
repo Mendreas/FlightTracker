@@ -145,9 +145,9 @@ const Ground = (() => {
       t.t_ref = t.utc0;
       t.tracks.forEach((k, i) => {
         if (!k.t.length) return;
-        const isTow = k.role === 'reboque' && !routes[t.gid];
-        routes[isTow ? t.gid : 100000 + t.gid * 10 + i] = { pts: k.pts, t: k.t, t0: k.t[0], t1: k.t[k.t.length - 1], mt: isTow ? 'RB' : 'FM',
-          csn: isTow ? `${t.de || '?'}→${t.para || '?'}` : (k.role === 'acompanhante' ? 'follow-me' : k.role) };
+        const first = routes[t.gid] === undefined;       // 1.º percurso = o que se selecciona (a aeronave rebocada; se não aparece no radar, o follow-me)
+        routes[first ? t.gid : 100000 + t.gid * 10 + i] = { pts: k.pts, t: k.t, t0: k.t[0], t1: k.t[k.t.length - 1], mt: first && k.role === 'reboque' ? 'RB' : 'FM',
+          csn: first ? `${t.de || '?'}→${t.para || '?'}${k.role === 'reboque' ? '' : ' (' + k.label + ')'}` : k.label };
       });
     }
     const days = [...FP.state.days].sort();
@@ -157,7 +157,7 @@ const Ground = (() => {
     const tzn = { lisboa: 'hora de Lisboa', utc: 'UTC' }[r.tz] || '';
     const s = r.summary, st = r.stats;
     $('gdInfo').textContent = s.rows ? `${s.rows} reboques no Excel (${fmtD(s.from)} → ${fmtD(s.to)})${r.gradar && r.gradar.rows ? '' : ' · sem radar de solo importado: só se mostra a lista'}${tzn ? ' · horas do Excel lidas como ' + tzn : ''}` : `Sem Excel de reboques importado para ${FP.state.airport}`;
-    $('gdCount').textContent = st ? `${rows.length} reboques nos dias seleccionados · ${st.radar.identificados} no radar · ${st.radar.com_acompanhante} com acompanhante` : '';
+    $('gdCount').textContent = st ? `${rows.length} reboques nos dias seleccionados · ${st.radar.identificados} encontrados no radar · ${st.radar.com_acompanhante} com follow-me` : '';
     if (!rows.length) {
       body.innerHTML = s.rows ? `<div class="empty">Não há reboques do Excel nos dias seleccionados (o Excel cobre ${fmtD(s.from)} a ${fmtD(s.to)}).</div>` :
         `<div class="empty">Importa o registo de reboques (Excel) com o botão “🚜 Excel de reboques…”. Colunas esperadas: Data, Início, Fim, Rasto, Schengen, De, Para, Rota, Cruzamento de pista, Duração registada (min), Observações.</div>`;
@@ -180,8 +180,8 @@ const Ground = (() => {
         { k: 'rota', label: 'Rota', fmt: v => `<span class="mono">${esc(v || '')}</span>` }, { k: 'wtc', label: 'Rasto' },
         { k: 'cruz', label: 'Cruz. pista', fmt: v => esc(v || '—') },
         { k: 'dur_reg', label: 'Dur. Excel (min)', fmt: (v, r) => v != null ? v : Math.round((r.t1 - r.t0) / 60) },
-        { k: 'rb', label: 'Reboque (radar)', fmt: v => v ? `<span style="color:${COL.RB}">${esc(v)}</span>` : '<span class="muted">—</span>' },
-        { k: 'fm', label: 'Acompanhante', fmt: v => v ? `<span style="color:${COL.FM}">${esc(v)}</span>` : '<span class="muted">—</span>' },
+        { k: 'rb', label: 'Aeronave rebocada (radar)', fmt: v => v ? `<span style="color:${COL.RB}">${esc(v)}</span>` : '<span class="muted" title="A aeronave rebocada nem sempre aparece no radar de solo">não visível</span>' },
+        { k: 'fm', label: 'Follow-me', fmt: v => v ? `<span style="color:${COL.FM}">${esc(v)}</span>` : '<span class="muted">—</span>' },
         { k: 'conf', label: 'Confiança', fmt: (v, r) => v ? `<span style="color:${CONF[v]};font-weight:700">${v}</span>${r.alts ? ` <span class="muted" title="Outros alvos em movimento no mesmo período">(+${r.alts})</span>` : ''}` : `<span class="muted">${esc(r.status)}</span>` },
         { k: 'real_dur', label: 'Dur. radar', fmt: v => v == null ? '—' : dur(v) }, { k: 'dist_m', label: 'Dist. (m)', fmt: v => v == null ? '—' : fmt(v) },
         { k: 'cruz_radar', label: 'Cruz. radar', fmt: v => v == null ? '—' : v ? 'Sim' : 'Não' }, { k: 'obs', label: 'Obs.', fmt: v => esc(v || '') },

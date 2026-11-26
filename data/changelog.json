@@ -9,7 +9,7 @@
         "title": "Novidades",
         "items": [
           "Botão '🚜 Excel de reboques…' (aba Solo): importa o registo de reboques do aeroporto seleccionado (colunas Data, Início, Fim, Rasto, Schengen, De, Para, Rota, Cruzamento de pista, Duração registada, Observações). Um novo ficheiro substitui o anterior.",
-          "Separador 'Reboques': lista só os reboques do Excel nos dias seleccionados e anima-os no mapa — alvo rebocado a rosa, follow-me a verde. O emparelhamento procura, no radar de solo, o alvo lento que se move na hora do registo (±5 min) e é escoltado por um veículo follow-me (callsign FM## / FF##).",
+          "Separador 'Reboques': lista só os reboques do Excel nos dias seleccionados e anima-os no mapa. O emparelhamento procura primeiro o veículo follow-me (callsign FM## / FF##) em movimento na hora do registo (±5 min) e, se a aeronave rebocada aparecer no radar de solo, mostra-a também (rosa; o follow-me a verde). Quando a aeronave não aparece, mostra o percurso do follow-me.",
           "Cada reboque tem uma confiança (alta / média / baixa) e o número de outros alvos em movimento na mesma altura. O fuso das horas do Excel (Lisboa ou UTC) é detectado automaticamente e pode ser forçado.",
           "Exportação Excel dos reboques: resumo (duração média, mediana, mínima, máxima, P90, cruzamentos de pista), por dia, mês, hora, categoria, Schengen, origem, destino, origem-destino e rota, mais o detalhe de cada reboque com os dados do radar (alvo, acompanhante, duração e distância reais, cruzamento de pista detectado pelo radar)."
         ]
@@ -18,7 +18,7 @@
         "title": "Notas",
         "items": [
           "Os stands não têm coordenadas na app, por isso o emparelhamento não usa a posição dos stands: se houver vários alvos escoltados na mesma altura, a confiança desce e aparece o número de alternativas.",
-          "O radar de solo tem de estar importado para os dias em causa (zips prtTGO)."
+          "O radar de solo tem de estar importado para os dias em causa (zips prtTGO). A aeronave rebocada nem sempre aparece no radar de solo; o follow-me aparece sempre."
         ]
       }
     ]

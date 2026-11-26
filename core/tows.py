@@ -287,7 +287,7 @@ def _stitch(subs: list[Leg]) -> list[Leg]:
     return out
 
 
-def _extend(s: Leg, a: float, b: float, pad: float = 60.0, gap: float = 420.0) -> Leg:
+def _extend(s: Leg, ea: float, eb: float, pad: float = 60.0, gap: float = 420.0, max_kt: float = 14.0, before: float = 600.0, after: float = 900.0) -> Leg:
     """O Excel tem erros de minutos: alarga o troço escolhido ao episódio completo de movimento do mesmo alvo (parado > gap s = fim; os reboques esperam minutos antes de cruzar a pista). Limitado a [a-10 min, b+15 min]."""
     o = s.orig
     if o is None or o is s:
@@ -296,7 +296,7 @@ def _extend(s: Leg, a: float, b: float, pad: float = 60.0, gap: float = 420.0) -
     if not mv:
         return s
     a, b = s.t[mv[0]], s.t[mv[-1]]
-    idx = [i for i, f in enumerate(o.mv) if f and o.gs[i] <= TAXI_KT and a - 600 <= o.t[i] <= b + 900]
+    idx = [i for i, f in enumerate(o.mv) if f and o.gs[i] <= max_kt and ea - before <= o.t[i] <= eb + after]
     eps, cur = [], None
     for i in idx:
         if cur and o.t[i] - o.t[cur[1]] <= gap:
@@ -304,10 +304,40 @@ def _extend(s: Leg, a: float, b: float, pad: float = 60.0, gap: float = 420.0) -
         else:
             cur = [i, i]
             eps.append(cur)
-    best = max(eps, key=lambda e: min(o.t[e[1]], b) - max(o.t[e[0]], a), default=None)
-    if best is None or min(o.t[best[1]], b) - max(o.t[best[0]], a) <= 0:
+    ov = lambda e, x0, x1: min(o.t[e[1]], x1) - max(o.t[e[0]], x0)  # noqa: E731
+    best = max(eps, key=lambda e: (ov(e, ea, eb), ov(e, a, b)), default=None)       # prefere o episódio que cai dentro da hora registada
+    if best is None or (ov(best, ea, eb) <= 0 and ov(best, a, b) <= 0):
         return s
     return _slice(o, o.t[best[0]] - pad, o.t[best[1]] + pad) or s
+
+
+def _extend_fm(f: Leg, ea: float, eb: float, pad: float = 30.0) -> Leg:
+    """Percurso do follow-me que corresponde ao reboque: só os troços a passo de reboque (mediana ≤ 18 kt — o trânsito do veículo
+    até ao ponto de recolha é bem mais rápido), separados por paragens, que caem em [ea-2 min, eb+5 min], unidos se a pausa for < 5 min."""
+    o = f.orig or f
+    idx = [i for i, m in enumerate(o.mv) if m and ea - 120 <= o.t[i] <= eb + 300]
+    segs, cur = [], None
+    for i in idx:
+        if cur and o.t[i] - o.t[cur[-1]] <= 40:
+            cur.append(i)
+        else:
+            cur = [i]
+            segs.append(cur)
+    keep = []
+    for sg in segs:
+        g = sorted(o.gs[i] for i in sg)
+        if o.t[sg[-1]] - o.t[sg[0]] >= 20 and g[len(g) // 2] <= 18.0:
+            keep.append((o.t[sg[0]], o.t[sg[-1]]))
+    chains = []
+    for a0, b0 in keep:
+        if chains and a0 - chains[-1][1] <= 300:
+            chains[-1][1] = b0
+        else:
+            chains.append([a0, b0])
+    if not chains:
+        return f
+    best = max(chains, key=lambda c: min(c[1], eb) - max(c[0], ea))
+    return _slice(o, best[0] - pad, best[1] + pad) or f
 
 
 def _path_len(leg: Leg) -> float:
@@ -381,9 +411,9 @@ def _time_fit(s: Leg, a: float, b: float) -> float:
 
 
 def match_one(legs: list[Leg], a: float, b: float, airport: str, xy: _XY) -> dict:
-    """Procura, no radar de solo, o reboque que decorreu em [a, b] (epoch UTC): um alvo lento que se move nesse intervalo
-    e é escoltado por um veículo follow-me (FM##/FF##) a poucas dezenas/centenas de metros."""
-    dur = max(b - a, 60.0)
+    """Procura, no radar de solo, o reboque que decorreu em [a, b] (epoch UTC). Todos os reboques são acompanhados por um
+    follow-me (callsign FM## / FF##), que é sempre visível; a aeronave rebocada nem sempre aparece no radar de solo.
+    Por isso procura-se primeiro o follow-me em movimento nessa hora e depois, se existir, o alvo lento que ele escolta."""
     lo, hi = a - WINDOW_TOL[0], b + WINDOW_TOL[1]
     fms, subs = [], []
     for L in legs:
@@ -402,50 +432,61 @@ def match_one(legs: list[Leg], a: float, b: float, airport: str, xy: _XY) -> dic
             continue
         subs.append(s)
     res = {"status": "sem radar", "conf": None, "legs": [], "alts": 0}
-    cands = []
+    targets = []
     for s in _stitch(subs):
-        mv = [g for g, f in zip(s.gs, s.mv) if f]
-        if not mv:
+        mv = sorted(g for g, f in zip(s.gs, s.mv) if f)
+        if not mv or _moving_time(s, lo, hi) < 30:
             continue
-        mt = _moving_time(s, lo, hi)
-        disp = math.hypot(s.x[-1] - s.x[0], s.y[-1] - s.y[0])
-        if mt < 30 or max(disp, _path_len(s) * 0.5) < 60:
+        if max(math.hypot(s.x[-1] - s.x[0], s.y[-1] - s.y[0]), _path_len(s) * 0.5) < 60 or mv[int(len(mv) * 0.75)] > TOW_P75_KT:
+            continue                                        # parado, ou a rolar com motor próprio (mais rápido que um reboque)
+        targets.append({"leg": s, "tf": _time_fit(s, a, b)})
+    cands = []
+    for f in fms:
+        if _moving_time(f, lo, hi) < 45:
             continue
-        mv.sort()
-        if mv[int(len(mv) * 0.75)] > TOW_P75_KT:         # taxi com motor próprio: mais rápido que um reboque
+        tf = _time_fit(f, a, b)
+        if tf <= 0:
             continue
-        cov = _time_fit(s, a, b)
-        # escolta: fração dos instantes em movimento em que há um follow-me (também em movimento) por perto
-        ts = [s.t[i] for i in range(len(s.t)) if s.mv[i] and lo <= s.t[i] <= hi]
-        best_fm, best_n = None, 0
-        for f in fms:
+        att, att_esc = None, 0.0
+        for T in targets:
+            if T["tf"] < 0.3:
+                continue
+            ts = [T["leg"].t[i] for i in range(len(T["leg"].t)) if T["leg"].mv[i] and lo <= T["leg"].t[i] <= hi]
+            if not ts:
+                continue
             near = _near_flags(f, ts)
-            k = sum(1 for t, p in zip(ts, near) if p and p[2] and math.hypot(p[0] - _interp(t, s.t, s.x)[0], p[1] - _interp(t, s.t, s.y)[0]) <= ESCORT_M)
-            if k > best_n:
-                best_fm, best_n = f, k
-        esc = best_n / len(ts) if ts else 0.0
-        cands.append({"leg": s, "cov": cov, "esc": esc, "fm": best_fm, "score": cov * (0.35 + 0.65 * min(1.0, esc / 0.6))})
+            k = sum(1 for t, p in zip(ts, near) if p and p[2] and math.hypot(p[0] - _interp(t, T["leg"].t, T["leg"].x)[0], p[1] - _interp(t, T["leg"].t, T["leg"].y)[0]) <= ESCORT_M)
+            esc = k / len(ts)
+            if esc >= 0.5 and esc * T["tf"] > att_esc * (att["tf"] if att else 0):
+                att, att_esc = T, esc
+        cands.append({"fm": f, "tf": tf, "tgt": att, "esc": att_esc, "score": tf * (0.6 + 0.4 * (1.0 if att else 0.0))})
     if not cands:
+        if not targets:
+            return res
+        T = max(targets, key=lambda t: t["tf"])
+        tow = _extend(T["leg"], a, b, max_kt=TAXI_KT)
+        res.update(status="ok", conf="baixa", legs=[{"role": "reboque", "label": tow.label(), "csn": tow.csn, "modes": tow.modes, "leg": tow}],
+                   cov=round(min(1.0, T["tf"]), 2), esc=0.0, two=False)
         return res
     cands.sort(key=lambda c: -c["score"])
     best = cands[0]
-    alts = [c for c in cands[1:] if c["esc"] >= 0.3 and c["cov"] >= 0.4 and c["score"] >= 0.6 * best["score"]]
-    res["alts"] = len(alts)
-    tow = _extend(best["leg"], a, b)
-    members = [tow] + ([best["fm"]] if best["fm"] is not None and best["esc"] >= 0.2 else [])
-    legs_out = [{"role": "reboque", "label": tow.label(), "csn": tow.csn, "modes": tow.modes, "leg": tow}]
-    if len(members) == 2:
-        f = members[1]
-        f = _slice(f.orig, tow.t0 - 30, tow.t1 + 30) or f
-        legs_out.append({"role": "acompanhante", "label": f.label(), "csn": f.csn, "modes": f.modes, "leg": f})
-    cov, esc = best["cov"], best["esc"]
-    if esc >= 0.5 and cov >= 0.6 and not alts:
+    res["alts"] = sum(1 for c in cands[1:] if c["fm"].csn != best["fm"].csn and c["score"] >= 0.6 * best["score"])
+    legs_out = []
+    if best["tgt"] is not None:
+        tow = _extend(best["tgt"]["leg"], a, b, max_kt=TAXI_KT)
+        legs_out.append({"role": "reboque", "label": tow.label(), "csn": tow.csn, "modes": tow.modes, "leg": tow})
+        f = _slice(best["fm"].orig, tow.t0 - 30, tow.t1 + 30) or best["fm"]
+    else:
+        f = _extend_fm(best["fm"], a, b)
+    legs_out.append({"role": "acompanhante", "label": f.label(), "csn": f.csn, "modes": f.modes, "leg": f})
+    tf = best["tf"]
+    if best["tgt"] is not None and tf >= 0.6 and not res["alts"]:
         conf = "alta"
-    elif esc >= 0.3 and cov >= 0.4:
+    elif best["tgt"] is not None or (tf >= 0.6 and not res["alts"]):
         conf = "média"
     else:
         conf = "baixa"
-    res.update(status="ok", conf=conf, legs=legs_out, cov=round(min(cov, 1.0), 2), esc=round(esc, 2), two=len(members) == 2)
+    res.update(status="ok", conf=conf, legs=legs_out, cov=round(min(tf, 1.0), 2), esc=round(best["esc"], 2), two=best["tgt"] is not None)
     return res
 
 
@@ -539,9 +580,7 @@ def _summarise(r: dict, m: dict, airport: str, xy: _XY) -> dict:
             row["rb"], row["rb_modes"] = e["label"], e["modes"]
         elif e["role"] == "acompanhante" and row["fm"] is None:
             row["fm"], row["fm_modes"] = e["label"], e["modes"]
-    tow = next((e["leg"] for e in legs if e["role"] == "reboque"), legs[0]["leg"])
-    if row["rb"] is None:
-        row["rb"], row["rb_modes"] = legs[0]["label"], legs[0]["modes"]
+    tow = next((e["leg"] for e in legs if e["role"] == "reboque"), legs[0]["leg"])     # sem alvo rebocado visível, vale o percurso do follow-me
     mv = [i for i, f in enumerate(tow.mv) if f]
     row["real_t0"], row["real_t1"] = tow.t[mv[0]] if mv else tow.t0, tow.t[mv[-1]] if mv else tow.t1
     row["real_dur"] = round(row["real_t1"] - row["real_t0"])
@@ -549,6 +588,8 @@ def _summarise(r: dict, m: dict, airport: str, xy: _XY) -> dict:
     row["vmax"] = round(max(tow.gs), 1)
     n = runway_crossings(tow, airport, xy)
     row["n_cruz_radar"], row["cruz_radar"] = n, n > 0
+    if row["conf"] == "baixa" and n > 0 and cruz_flag(row.get("cruz")) is True:      # o radar confirma o cruzamento da pista registado
+        row["conf"] = "média"
     row["cov"], row["esc"] = m.get("cov"), m.get("esc")
     return row
 
@@ -670,7 +711,7 @@ def export_sheets(rows: list[dict], tz_used: str, airport: str, with_radar: bool
     head = ["Data", "Início (Excel)", "Fim (Excel)", "Rasto", "Schengen", "De", "Para", "Rota", "Cruzamento (Excel)", "Duração registada (min)",
             "Duração calculada (min)", "Observações"]
     if with_radar:
-        head += ["Radar: estado", "Confiança", "Reboque (alvo)", "Acompanhante (follow-me)", "Início radar (UTC)", "Fim radar (UTC)", "Duração radar (s)",
+        head += ["Radar: estado", "Confiança", "Aeronave rebocada (se visível no radar)", "Acompanhante (follow-me)", "Início radar (UTC)", "Fim radar (UTC)", "Duração radar (s)",
                  "Distância (m)", "Vel. máx (kt)", "Cruzou pista (radar)", "N.º cruzamentos (radar)", "Alternativas"]
     det = []
     for r in rows:
